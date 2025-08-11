@@ -1,5 +1,5 @@
-import React, { useRef } from "react";
-import "../styles/sidebar.css";
+import React, { useRef, useState } from "react";
+import "../styles/sidebar.css"; // Make sure this imports your updated sidebar.css
 import hoverSound from "../assets/click.mp3";
 import bgVideo from "../assets/bg.mp4";
 import ActiveUsers from "../components/ActiveUsers.jsx";
@@ -17,6 +17,7 @@ import OpenPositions from "../components/OpenPositions.jsx";
 
 export default function Dashboard() {
   const audioRef = useRef(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const playHoverSound = () => {
     if (audioRef.current) {
@@ -50,7 +51,7 @@ export default function Dashboard() {
         Your browser does not support the video tag.
       </video>
 
-      {/* Overlay for darkening background */}
+      {/* Overlay */}
       <div className="fixed top-0 left-0 w-full h-full bg-black opacity-80 z-10"></div>
 
       {/* Hover sound */}
@@ -58,9 +59,21 @@ export default function Dashboard() {
         <source src={hoverSound} type="audio/mpeg" />
       </audio>
 
+      {/* Mobile Toggle Button */}
+      <button
+        className="sidebar-toggle-btn md:hidden"
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        aria-label="Toggle sidebar"
+      >
+        ☰
+      </button>
+
       {/* Sidebar */}
-      <div className="fixed left-0 top-0 h-full w-64 bg-black/70 text-white p-4 z-20 rounded-r-xl border-2 border-cyan-400">
-        <h2 className="text-xl font-bold mb-6 text-cyan-300 drop-shadow-md">
+      <div
+        className={`sidebar bg-black/70 text-white px-4 pb-4 rounded-r-xl border-2 border-cyan-400
+          ${sidebarOpen ? "open" : ""}`}
+      >
+        <h2 className="text-xl font-bold mb-10 mt-0 text-cyan-300 drop-shadow-md">
           QuantumCopyTrading
         </h2>
         <nav className="flex flex-col space-y-3">
@@ -79,16 +92,14 @@ export default function Dashboard() {
 
       {/* Main content */}
       <main
-        className="relative z-20 ml-64 p-6 overflow-y-auto animate-fade-in text-white"
+        className="relative z-20 p-6 overflow-y-auto animate-fade-in text-white md:ml-64"
         style={{ height: "calc(100vh - 64px)" }}
       >
-        {/* Title bar with shimmer and neon border */}
         <div className="shimmer-wrapper w-full py-4 px-6 mb-6">
           <h1 className="text-4xl font-semibold text-white drop-shadow-md">Dashboard</h1>
         </div>
 
-        {/* Cards */}
-        <div className="grid grid-cols-4 gap-7">
+        <div className="grid grid-cols-4 gap-7 max-lg:grid-cols-2 max-sm:grid-cols-1">
           <div className="dashboard-column dashboard-column-cyan">
             <ActiveUsers />
           </div>
@@ -103,7 +114,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-7 mt-8">
+        <div className="grid grid-cols-3 gap-7 mt-8 max-lg:grid-cols-1">
           <div className="dashboard-column dashboard-column-cyan">
             <Profit />
           </div>
@@ -115,18 +126,16 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Balance Graph + Weekly Revenue */}
-        <div className="flex gap-4 w-full items-start mt-8">
-          <div className="dashboard-column dashboard-column-cyan w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden">
+        <div className="flex gap-4 w-full items-start mt-8 max-lg:flex-col">
+          <div className="dashboard-column dashboard-column-cyan w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden">
             <BalanceGraph />
           </div>
-          <div className="dashboard-column dashboard-column-purple w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden">
+          <div className="dashboard-column dashboard-column-purple w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden">
             <WeeklyRevenue />
           </div>
         </div>
 
-        {/* DailyPnL + BestTradingPairs */}
-        <div className="grid grid-cols-2 gap-7 mt-8">
+        <div className="grid grid-cols-2 gap-7 mt-8 max-sm:grid-cols-1">
           <div className="dashboard-column dashboard-column-cyan">
             <DailyPnL />
           </div>
@@ -135,14 +144,12 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Open Positions */}
         <div className="mt-8">
           <div className="dashboard-column dashboard-column-green">
             <OpenPositions />
           </div>
         </div>
 
-        {/* View All Positions Button */}
         <div className="flex justify-center mt-4">
           <a href="F:/crypto-dashboard-prototype/crypto-dashboard-prototype/admin/positions.html">
             <button className="dashboard-column dashboard-column-cyan p-6 text-center">
