@@ -1,4 +1,4 @@
-"homepage": "https://YOUR-USERNAME.github.io/YOUR-REPO-NAME",
+"homepage": "https://QadriG.github.io/my-dashboard",
 "scripts": {
   "predeploy": "npm run build",
   "deploy": "gh-pages -d build"
