@@ -1,3 +1,8 @@
+"homepage": "https://YOUR-USERNAME.github.io/YOUR-REPO-NAME",
+"scripts": {
+  "predeploy": "npm run build",
+  "deploy": "gh-pages -d build"
+}
 {
   "name": "my-dashboard",
   "version": "0.1.0",
