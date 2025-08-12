@@ -65,6 +65,7 @@ html, body, #root {
     background-position: 100% 50%;
   }
 }
+
 .wave-mask {
   background: radial-gradient(circle, rgba(255, 255, 255, 0.2) 20%, transparent 70%);
   background-size: 200% 100%;
@@ -78,6 +79,16 @@ html, body, #root {
   }
   100% {
     background-position: 200% 0;
+  }
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  .overlay {
+    background-color: rgba(0, 0, 0, 0.6); /* Darker for better contrast */
+  }
+  .wave-mask {
+    background-size: 100% 100%; /* Adjust wave for smaller screens */
   }
 }
 

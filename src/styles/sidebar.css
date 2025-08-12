@@ -1,5 +1,42 @@
 @import url('https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css');
 
+/* Zoom out container */
+.zoom-out-container {
+  transform-origin: top left;
+  transition: transform 0.3s ease;
+}
+.zoomed-out {
+  transform: scale(0.7);
+  width: calc(100% / 0.7);
+  height: calc(100% / 0.7);
+  overflow: hidden;
+}
+
+.rotate-landscape {
+  transform: rotate(-90deg) translateX(-100%);
+  transform-origin: top left;
+  width: 100vh;
+  height: 100vw;
+  overflow: auto;
+  position: fixed;
+  top: 0;
+  left: 0;
+  background: black;
+}
+
+.expanded {
+  position: fixed;
+  top: 5vh;
+  left: 5vw;
+  width: 90vw;
+  height: 90vh;
+  background: rgba(0, 0, 0, 0.95);
+  border-radius: 10px;
+  z-index: 1000;
+  transform: scale(1);
+  overflow: auto;
+}
+
 /* Sidebar styles */
 .sidebar {
   position: fixed;      /* Fixed sidebar on desktop */

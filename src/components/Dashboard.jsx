@@ -30,7 +30,6 @@ export default function Dashboard() {
   const diagonalPx = Math.sqrt(screenInfo.width ** 2 + screenInfo.height ** 2);
 
   // For DPI / inches calculation, assume common 96dpi or use window.devicePixelRatio to refine
-  // Let's get approximate diagonal inches:
   const dpi = 96 * (window.devicePixelRatio || 1);
   const diagonalInches = diagonalPx / dpi;
 
@@ -54,7 +53,6 @@ export default function Dashboard() {
     if (window.screen.orientation) {
       window.screen.orientation.addEventListener("change", updateScreenInfo);
     } else {
-      // fallback: listen to orientationchange event
       window.addEventListener("orientationchange", updateScreenInfo);
     }
     return () => {
@@ -124,7 +122,11 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="relative h-screen w-screen overflow-x-hidden overflow-y-auto">
+      <div
+        className={`zoom-out-container ${
+          isSmallScreen ? "zoomed-out rotate-landscape" : ""
+        } relative h-screen w-screen overflow-x-hidden overflow-y-auto`}
+      >
         {/* Background video */}
         <video
           autoPlay
@@ -138,7 +140,7 @@ export default function Dashboard() {
         </video>
 
         {/* Overlay */}
-        <div className="fixed top-0 left-0 w-full h-full bg-black opacity-80 z-10"></div>
+        <div className="overlay"></div>
 
         {/* Hover sound */}
         <audio ref={audioRef} preload="auto">
@@ -291,7 +293,10 @@ export default function Dashboard() {
 
           <div className="flex justify-center mt-4">
             <a href="F:/crypto-dashboard-prototype/crypto-dashboard-prototype/admin/positions.html">
-              <button className="dashboard-column dashboard-column-cyan p-6 text-center">
+              <button
+                className="dashboard-column dashboard-column-cyan p-6 text-center"
+                onClick={() => handleCardClick("viewAllPositions")}
+              >
                 View All Positions
               </button>
             </a>
