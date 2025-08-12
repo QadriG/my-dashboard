@@ -22,7 +22,6 @@ export default function DashboardMobile() {
   const [screenInfo, setScreenInfo] = useState({
     width: window.innerHeight, // Use height as width for landscape
     height: window.innerWidth, // Use width as height for landscape
-    orientation: "landscape-primary", // Force landscape orientation
   });
 
   useEffect(() => {
@@ -30,19 +29,21 @@ export default function DashboardMobile() {
       setScreenInfo({
         width: window.innerHeight, // Swap for landscape
         height: window.innerWidth,
-        orientation: "landscape-primary",
       });
     }
 
     updateScreenInfo();
     window.addEventListener("resize", updateScreenInfo);
-    if (window.screen.orientation) {
-      window.screen.orientation.lock("landscape-primary").catch(() => {}); // Attempt to lock landscape
+    // Orientation lock attempt (may not work on all devices)
+    if (window.screen?.orientation) {
+      window.screen.orientation.lock("landscape-primary").catch(() => {
+        console.log("Landscape lock not supported, relying on CSS");
+      });
     }
     return () => {
       window.removeEventListener("resize", updateScreenInfo);
-      if (window.screen.orientation) {
-        window.screen.orientation.unlock(); // Clean up orientation lock
+      if (window.screen?.orientation) {
+        window.screen.orientation.unlock();
       }
     };
   }, []);
@@ -77,20 +78,22 @@ export default function DashboardMobile() {
     <div
       className="relative overflow-x-hidden overflow-y-auto"
       style={{
-        width: `${screenInfo.height}px`, // Use swapped dimensions
-        height: `${screenInfo.width}px`, // Use swapped dimensions
-        transform: "rotate(0deg)", // No rotation needed, dimensions handle layout
+        width: `${screenInfo.height}px`, // Landscape width
+        height: `${screenInfo.width}px`, // Landscape height
         transformOrigin: "top left",
         position: "fixed",
         top: 0,
         left: 0,
-        backgroundColor: "#000", // Ensure no black flash
+        backgroundColor: "#000", // Prevent black flash
       }}
     >
       {/* Overlay */}
       <div
         className="overlay"
-        style={{ backgroundColor: "rgba(0, 0, 0, 0.1)" }} // Reduced opacity to minimize black
+        style={{
+          backgroundColor: "rgba(0, 0, 0, 0.1)",
+          zIndex: 10, // Below content but above background
+        }}
       ></div>
 
       {/* Hover sound */}
@@ -103,7 +106,7 @@ export default function DashboardMobile() {
         className="sidebar-toggle-btn"
         onClick={() => setSidebarOpen(!sidebarOpen)}
         aria-label="Toggle sidebar"
-        style={{ zIndex: 1001 }} // Ensure button is above other elements
+        style={{ zIndex: 1002 }} // Above sidebar and main
       >
         ☰
       </button>
@@ -117,8 +120,9 @@ export default function DashboardMobile() {
           width: "16rem",
           position: "absolute",
           top: 0,
-          left: 0,
-          zIndex: 1000,
+          left: sidebarOpen ? "0" : "-16rem", // Hide when closed
+          zIndex: 1001, // Above overlay, below button
+          transition: "left 0.3s ease",
         }}
       >
         <h2 className="text-xl font-bold mb-10 text-cyan-300 drop-shadow-md">
@@ -160,6 +164,7 @@ export default function DashboardMobile() {
           position: "absolute",
           top: 0,
           left: 0,
+          zIndex: 20, // Above sidebar when closed
         }}
       >
         <div className="shimmer-wrapper w-full py-4 px-4 mb-4">

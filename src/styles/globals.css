@@ -82,7 +82,9 @@ html, body, #root {
     background-position: 200% 0;
   }
 }
-
+@media (max-width: 768px) {
+  body { width: 100vh; height: 100vw; }
+}
 /* --- Removed conflicting sidebar styles here --- */
 
 /* Sidebar styles moved to second CSS file */
