@@ -7,16 +7,16 @@
 }
 .zoomed-out {
   transform: scale(0.7);
-  width: calc(100% / 0.7);
-  height: calc(100% / 0.7);
+  width: 100vw; /* Fixed to viewport width */
+  height: 100vh; /* Fixed to viewport height */
   overflow: hidden;
 }
 
 .rotate-landscape {
   transform: rotate(-90deg) translateX(-100%);
   transform-origin: top left;
-  width: 100vh;
-  height: 100vw;
+  width: 100vh; /* Use viewport height as width */
+  height: 100vw; /* Use viewport width as height */
   overflow: auto;
   position: fixed;
   top: 0;
@@ -24,13 +24,14 @@
   background: #000; /* Match global background */
 }
 
+/* Expanded and sidebar styles remain unchanged */
 .expanded {
   position: fixed;
   top: 5vh;
   left: 5vw;
   width: 90vw;
   height: 90vh;
-  background: rgba(0, 0, 0, 0.95); /* Match overlay */
+  background: rgba(0, 0, 0, 0.95);
   border-radius: 10px;
   z-index: 1000;
   transform: scale(1);
@@ -39,24 +40,24 @@
 
 /* Sidebar styles */
 .sidebar {
-  position: fixed;      /* Fixed sidebar on desktop */
+  position: fixed;
   top: 0;
   left: 0;
   height: 100%;
-  width: 16rem;         /* 256px */
+  width: 16rem;
   background: #1a1a2e49;
   color: white;
   padding: 20px 20px 20px;
   z-index: 200;
   transition: left 0.3s ease;
-  border-radius: 0 0.75rem 0.75rem 0; /* Rounded right edges */
+  border-radius: 0 0.75rem 0.75rem 0;
   border-right: 2px solid cyan;
 }
 
-/* Fix: Pin sidebar title at the very top by removing top padding and margin */
+/* Fix: Pin sidebar title at the very top */
 .sidebar h2 {
-  margin-top: 0 !important;           /* remove any margin top */
-  margin-bottom: 2.5rem !important;   /* space below title = mb-10 */
+  margin-top: 0 !important;
+  margin-bottom: 2.5rem !important;
   padding-top: 0 !important;
   padding-bottom: 0 !important;
   color: #00d4ff;
@@ -80,7 +81,7 @@
   background: #16213e;
 }
 
-/* Sidebar button base (gradient embossed) */
+/* Sidebar button base */
 .sidebar-button {
   position: relative;
   display: block;
@@ -153,6 +154,7 @@
 .sidebar-red { border: 2px solid #ef4444 !important; }
 .sidebar-red:hover { box-shadow: 0 0 10px #ef4444, 0 0 20px #ef4444, 0 0 30px #ef4444 !important; }
 
+/* Rest of the styles remain unchanged */
 /* Dashboard column styles */
 .dashboard-column {
   position: relative;

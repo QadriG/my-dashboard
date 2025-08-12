@@ -36,9 +36,6 @@ export default function Dashboard() {
   // Decide if small screen (under 7 inches diagonal)
   const isSmallScreen = diagonalInches < 7;
 
-  // Detect if device is in portrait mode
-  const isPortrait = screenInfo.orientation.includes("portrait") || screenInfo.height > screenInfo.width;
-
   // Update screen info on resize and orientation change
   useEffect(() => {
     function updateScreenInfo() {
@@ -165,10 +162,11 @@ export default function Dashboard() {
       <main
         className="relative z-20 p-6 overflow-y-auto animate-fade-in text-white md:ml-64"
         style={{
-          height: isSmallScreen ? "100vh" : "calc(100vh - 64px)", /* Full height on small screens */
-          width: isSmallScreen ? "100vw" : "auto", /* Full width on small screens */
+          height: "100vh", /* Full height */
+          width: "100vw", /* Full width */
+          maxWidth: isSmallScreen ? "100vw" : "auto", /* Prevent overflow on small screens */
           transformOrigin: "top left",
-          transform: isSmallScreen ? "scale(0.65)" : "none",
+          transform: isSmallScreen ? "scale(0.7)" : "none", /* Adjusted scale */
           transition: "transform 0.3s ease",
         }}
       >
