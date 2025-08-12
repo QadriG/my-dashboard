@@ -21,7 +21,7 @@
   position: fixed;
   top: 0;
   left: 0;
-  background: black;
+  background: #000; /* Match global background */
 }
 
 .expanded {
@@ -30,7 +30,7 @@
   left: 5vw;
   width: 90vw;
   height: 90vh;
-  background: rgba(0, 0, 0, 0.95);
+  background: rgba(0, 0, 0, 0.95); /* Match overlay */
   border-radius: 10px;
   z-index: 1000;
   transform: scale(1);

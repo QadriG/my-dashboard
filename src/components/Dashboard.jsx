@@ -104,7 +104,7 @@ export default function Dashboard() {
             left: 0,
             width: "100vw",
             height: "100vh",
-            backgroundColor: "#000c",
+            backgroundColor: "rgba(0, 0, 0, 0.9)", /* Match overlay for full coverage */
             color: "white",
             zIndex: 9999,
             display: "flex",
@@ -127,17 +127,19 @@ export default function Dashboard() {
           isSmallScreen ? "zoomed-out rotate-landscape" : ""
         } relative h-screen w-screen overflow-x-hidden overflow-y-auto`}
       >
-        {/* Background video */}
-        <video
-          autoPlay
-          muted
-          loop
-          playsInline
-          className="fixed top-0 left-0 w-full h-full object-cover z-0"
-        >
-          <source src={bgVideo} type="video/mp4" />
-          Your browser does not support the video tag.
-        </video>
+        {/* Background video - disabled on small screens */}
+        {!isSmallScreen && (
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="fixed top-0 left-0 w-full h-full object-cover z-0"
+          >
+            <source src={bgVideo} type="video/mp4" />
+            Your browser does not support the video tag.
+          </video>
+        )}
 
         {/* Overlay */}
         <div className="overlay"></div>
@@ -195,7 +197,7 @@ export default function Dashboard() {
             transformOrigin: "top left",
             transform: isSmallScreen ? "scale(0.65)" : "none",
             transition: "transform 0.3s ease",
-            width: isSmallScreen ? "150vw" : "auto", // widen so scaled content fits better
+            width: isSmallScreen ? "150vw" : "auto",
           }}
         >
           <div className="shimmer-wrapper w-full py-4 px-6 mb-6">
