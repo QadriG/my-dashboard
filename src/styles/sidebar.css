@@ -5,12 +5,6 @@
   transform-origin: top left;
   transition: transform 0.3s ease;
 }
-.zoomed-out {
-  transform: scale(0.7);
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
-}
 
 /* Expanded and sidebar styles remain unchanged */
 .expanded {
@@ -141,10 +135,6 @@
 
 .sidebar-red { border: 2px solid #ef4444 !important; }
 .sidebar-red:hover { box-shadow: 0 0 10px #ef4444, 0 0 20px #ef4444, 0 0 30px #ef4444 !important; }
-
-/* Rest of the styles remain unchanged */
-
-/* Rest of the styles remain unchanged */
 /* Dashboard column styles */
 .dashboard-column {
   position: relative;

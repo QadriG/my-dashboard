@@ -36,6 +36,9 @@ export default function Dashboard() {
   // Decide if small screen (under 7 inches diagonal)
   const isSmallScreen = diagonalInches < 7;
 
+  // Detect if device is in portrait mode
+  const isPortrait = screenInfo.orientation.includes("portrait") || screenInfo.height > screenInfo.width;
+
   // Update screen info on resize and orientation change
   useEffect(() => {
     function updateScreenInfo() {
@@ -93,7 +96,7 @@ export default function Dashboard() {
   return (
     <div
       className={`zoom-out-container ${
-        isSmallScreen ? "zoomed-out" : ""
+        isSmallScreen ? "zoomed-out rotate-landscape" : ""
       } relative h-screen w-screen overflow-x-hidden overflow-y-auto`}
     >
       {/* Background video - disabled on small screens */}
@@ -162,11 +165,10 @@ export default function Dashboard() {
       <main
         className="relative z-20 p-6 overflow-y-auto animate-fade-in text-white md:ml-64"
         style={{
-          height: "100vh",
-          width: "100vw",
-          maxWidth: "100vw",
+          height: isSmallScreen ? "100vh" : "calc(100vh - 64px)", /* Full height on small screens */
+          width: isSmallScreen ? "100vw" : "auto", /* Full width on small screens */
           transformOrigin: "top left",
-          transform: isSmallScreen ? "scale(0.8)" : "none",
+          transform: isSmallScreen ? "scale(0.65)" : "none",
           transition: "transform 0.3s ease",
         }}
       >
@@ -286,7 +288,7 @@ export default function Dashboard() {
             width: "100vw",
             height: "100vh",
             backgroundColor: "rgba(0,0,0,0.9)",
-            zIndex: 1000, /* Fixed with colon */
+            zIndex: 1000,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
