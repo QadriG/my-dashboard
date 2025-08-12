@@ -165,11 +165,11 @@ export default function Dashboard() {
       <main
         className="relative z-20 p-6 overflow-y-auto animate-fade-in text-white md:ml-64"
         style={{
-          height: "calc(100vh - 64px)",
+          height: isSmallScreen ? "100vh" : "calc(100vh - 64px)", /* Full height on small screens */
+          width: isSmallScreen ? "100vw" : "auto", /* Full width on small screens */
           transformOrigin: "top left",
           transform: isSmallScreen ? "scale(0.65)" : "none",
           transition: "transform 0.3s ease",
-          width: isSmallScreen ? "150vw" : "auto",
         }}
       >
         <div className="shimmer-wrapper w-full py-4 px-6 mb-6">
