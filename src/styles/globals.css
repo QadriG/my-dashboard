@@ -29,7 +29,7 @@ html, body, #root {
   background-color: transparent;
 }
 
-/* Black overlay for contrasts */
+/* Black overlay for contrast */
 .overlay {
   position: fixed;
   top: 0;
@@ -80,5 +80,18 @@ html, body, #root {
   }
   100% {
     background-position: 200% 0;
+  }
+}
+
+/* Force landscape dimensions for mobile (<7 inches approx.) */
+@media (max-width: 768px) {
+  body {
+    width: 100vh;
+    height: 100vw;
+    overflow-x: hidden;
+  }
+  #root {
+    width: 100vw;
+    height: 100vh;
   }
 }
