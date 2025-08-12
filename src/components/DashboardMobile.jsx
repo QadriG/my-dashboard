@@ -79,6 +79,15 @@ export default function DashboardMobile() {
   return (
     <div
       className="relative h-screen w-screen overflow-x-hidden overflow-y-auto"
+      style={{
+        transform: "rotate(-90deg)", // Force landscape
+        transformOrigin: "top left",
+        width: "100vh", // Swap dimensions for landscape
+        height: "100vw",
+        position: "fixed",
+        top: 0,
+        left: 0,
+      }}
     >
       {/* Overlay */}
       <div className="overlay"></div>
@@ -133,7 +142,11 @@ export default function DashboardMobile() {
         className="relative z-20 p-4 overflow-y-auto text-white"
         style={{
           height: "100vh",
-          width: "100%",
+          width: "calc(100vw - 16rem)",
+          transform: "scale(0.8)", // Slight zoom-out to make data smaller
+          transformOrigin: "top left",
+          marginLeft: sidebarOpen ? "16rem" : "0",
+          transition: "margin-left 0.3s ease",
         }}
       >
         <div className="shimmer-wrapper w-full py-4 px-4 mb-4">
@@ -142,7 +155,7 @@ export default function DashboardMobile() {
           </h1>
         </div>
 
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-4 gap-4 max-lg:grid-cols-2 max-sm:grid-cols-1">
           <div
             className="dashboard-column dashboard-column-cyan"
             onClick={() => handleCardClick("activeUsers")}
@@ -167,6 +180,9 @@ export default function DashboardMobile() {
           >
             {cards.totalBalances}
           </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-4 mt-8 max-lg:grid-cols-1">
           <div
             className="dashboard-column dashboard-column-cyan"
             onClick={() => handleCardClick("profit")}
@@ -185,18 +201,24 @@ export default function DashboardMobile() {
           >
             {cards.fundsDistribution}
           </div>
+        </div>
+
+        <div className="flex gap-4 w-full items-start mt-8 max-lg:flex-col">
           <div
-            className="dashboard-column dashboard-column-cyan"
+            className="dashboard-column dashboard-column-cyan w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden"
             onClick={() => handleCardClick("balanceGraph")}
           >
             {cards.balanceGraph}
           </div>
           <div
-            className="dashboard-column dashboard-column-purple"
+            className="dashboard-column dashboard-column-purple w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden"
             onClick={() => handleCardClick("weeklyRevenue")}
           >
             {cards.weeklyRevenue}
           </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 mt-8 max-sm:grid-cols-1">
           <div
             className="dashboard-column dashboard-column-cyan"
             onClick={() => handleCardClick("dailyPnL")}
@@ -209,22 +231,26 @@ export default function DashboardMobile() {
           >
             {cards.bestTradingPairs}
           </div>
+        </div>
+
+        <div className="mt-8">
           <div
             className="dashboard-column dashboard-column-green"
             onClick={() => handleCardClick("openPositions")}
           >
             {cards.openPositions}
           </div>
-          <div className="flex justify-center mt-4">
-            <a href="F:/crypto-dashboard-prototype/crypto-dashboard-prototype/admin/positions.html">
-              <button
-                className="dashboard-column dashboard-column-cyan p-4 text-center"
-                onClick={() => handleCardClick("viewAllPositions")}
-              >
-                View All Positions
-              </button>
-            </a>
-          </div>
+        </div>
+
+        <div className="flex justify-center mt-4">
+          <a href="F:/crypto-dashboard-prototype/crypto-dashboard-prototype/admin/positions.html">
+            <button
+              className="dashboard-column dashboard-column-cyan p-4 text-center"
+              onClick={() => handleCardClick("viewAllPositions")}
+            >
+              View All Positions
+            </button>
+          </a>
         </div>
       </main>
 
