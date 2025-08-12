@@ -20,32 +20,29 @@ export default function DashboardMobile() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedCard, setExpandedCard] = useState(null);
   const [screenInfo, setScreenInfo] = useState({
-    width: window.innerWidth,
-    height: window.innerHeight,
-    orientation: window.screen.orientation ? window.screen.orientation.type : "unknown",
+    width: window.innerHeight, // Use height as width for landscape
+    height: window.innerWidth, // Use width as height for landscape
+    orientation: "landscape-primary", // Force landscape orientation
   });
 
   useEffect(() => {
     function updateScreenInfo() {
       setScreenInfo({
-        width: window.innerWidth,
-        height: window.innerHeight,
-        orientation: window.screen.orientation ? window.screen.orientation.type : "unknown",
+        width: window.innerHeight, // Swap for landscape
+        height: window.innerWidth,
+        orientation: "landscape-primary",
       });
     }
 
+    updateScreenInfo();
     window.addEventListener("resize", updateScreenInfo);
     if (window.screen.orientation) {
-      window.screen.orientation.addEventListener("change", updateScreenInfo);
-    } else {
-      window.addEventListener("orientationchange", updateScreenInfo);
+      window.screen.orientation.lock("landscape-primary").catch(() => {}); // Attempt to lock landscape
     }
     return () => {
       window.removeEventListener("resize", updateScreenInfo);
       if (window.screen.orientation) {
-        window.screen.orientation.removeEventListener("change", updateScreenInfo);
-      } else {
-        window.removeEventListener("orientationchange", updateScreenInfo);
+        window.screen.orientation.unlock(); // Clean up orientation lock
       }
     };
   }, []);
@@ -78,19 +75,23 @@ export default function DashboardMobile() {
 
   return (
     <div
-      className="relative h-screen w-screen overflow-x-hidden overflow-y-auto"
+      className="relative overflow-x-hidden overflow-y-auto"
       style={{
-        transform: "rotate(-90deg)", // Force landscape
+        width: `${screenInfo.height}px`, // Use swapped dimensions
+        height: `${screenInfo.width}px`, // Use swapped dimensions
+        transform: "rotate(0deg)", // No rotation needed, dimensions handle layout
         transformOrigin: "top left",
-        width: "100vh", // Swap dimensions for landscape
-        height: "100vw",
         position: "fixed",
         top: 0,
         left: 0,
+        backgroundColor: "#000", // Ensure no black flash
       }}
     >
       {/* Overlay */}
-      <div className="overlay"></div>
+      <div
+        className="overlay"
+        style={{ backgroundColor: "rgba(0, 0, 0, 0.1)" }} // Reduced opacity to minimize black
+      ></div>
 
       {/* Hover sound */}
       <audio ref={audioRef} preload="auto">
@@ -102,6 +103,7 @@ export default function DashboardMobile() {
         className="sidebar-toggle-btn"
         onClick={() => setSidebarOpen(!sidebarOpen)}
         aria-label="Toggle sidebar"
+        style={{ zIndex: 1001 }} // Ensure button is above other elements
       >
         ☰
       </button>
@@ -110,6 +112,14 @@ export default function DashboardMobile() {
       <div
         className={`sidebar bg-black/70 text-white pt-8 px-4 pb-4 rounded-r-xl border-2 border-cyan-400
           ${sidebarOpen ? "open" : ""}`}
+        style={{
+          height: `${screenInfo.width}px`, // Match landscape height
+          width: "16rem",
+          position: "absolute",
+          top: 0,
+          left: 0,
+          zIndex: 1000,
+        }}
       >
         <h2 className="text-xl font-bold mb-10 text-cyan-300 drop-shadow-md">
           QuantumCopyTrading
@@ -141,12 +151,15 @@ export default function DashboardMobile() {
       <main
         className="relative z-20 p-4 overflow-y-auto text-white"
         style={{
-          height: "100vh",
-          width: "calc(100vw - 16rem)",
-          transform: "scale(0.8)", // Slight zoom-out to make data smaller
+          height: `${screenInfo.width}px`, // Match landscape height
+          width: `calc(${screenInfo.height}px - 16rem)`, // Adjust for sidebar
+          transform: "scale(0.8)", // Slight zoom-out
           transformOrigin: "top left",
           marginLeft: sidebarOpen ? "16rem" : "0",
           transition: "margin-left 0.3s ease",
+          position: "absolute",
+          top: 0,
+          left: 0,
         }}
       >
         <div className="shimmer-wrapper w-full py-4 px-4 mb-4">
@@ -182,7 +195,7 @@ export default function DashboardMobile() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4 mt-8 max-lg:grid-cols-1">
+        <div className="grid grid-cols-3 gap-4 mt-4 max-lg:grid-cols-1">
           <div
             className="dashboard-column dashboard-column-cyan"
             onClick={() => handleCardClick("profit")}
@@ -203,22 +216,22 @@ export default function DashboardMobile() {
           </div>
         </div>
 
-        <div className="flex gap-4 w-full items-start mt-8 max-lg:flex-col">
+        <div className="flex gap-2 w-full items-start mt-4 max-lg:flex-col">
           <div
-            className="dashboard-column dashboard-column-cyan w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden"
+            className="dashboard-column dashboard-column-cyan w-full lg:w-1/2 p-2 max-h-[60px] h-[60px] overflow-hidden"
             onClick={() => handleCardClick("balanceGraph")}
           >
             {cards.balanceGraph}
           </div>
           <div
-            className="dashboard-column dashboard-column-purple w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden"
+            className="dashboard-column dashboard-column-purple w-full lg:w-1/2 p-2 max-h-[60px] h-[60px] overflow-hidden"
             onClick={() => handleCardClick("weeklyRevenue")}
           >
             {cards.weeklyRevenue}
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mt-8 max-sm:grid-cols-1">
+        <div className="grid grid-cols-2 gap-4 mt-4 max-sm:grid-cols-1">
           <div
             className="dashboard-column dashboard-column-cyan"
             onClick={() => handleCardClick("dailyPnL")}
@@ -233,7 +246,7 @@ export default function DashboardMobile() {
           </div>
         </div>
 
-        <div className="mt-8">
+        <div className="mt-4">
           <div
             className="dashboard-column dashboard-column-green"
             onClick={() => handleCardClick("openPositions")}
