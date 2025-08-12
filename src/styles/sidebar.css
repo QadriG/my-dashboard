@@ -7,21 +7,9 @@
 }
 .zoomed-out {
   transform: scale(0.7);
-  width: 100vw; /* Fixed to viewport width */
-  height: 100vh; /* Fixed to viewport height */
+  width: 100vw;
+  height: 100vh;
   overflow: hidden;
-}
-
-.rotate-landscape {
-  transform: rotate(-90deg) translateX(-100%);
-  transform-origin: top left;
-  width: 100vh; /* Use viewport height as width */
-  height: 100vw; /* Use viewport width as height */
-  overflow: auto;
-  position: fixed;
-  top: 0;
-  left: 0;
-  background: #000; /* Match global background */
 }
 
 /* Expanded and sidebar styles remain unchanged */
@@ -153,6 +141,8 @@
 
 .sidebar-red { border: 2px solid #ef4444 !important; }
 .sidebar-red:hover { box-shadow: 0 0 10px #ef4444, 0 0 20px #ef4444, 0 0 30px #ef4444 !important; }
+
+/* Rest of the styles remain unchanged */
 
 /* Rest of the styles remain unchanged */
 /* Dashboard column styles */

@@ -39,32 +39,25 @@ html, body, #root {
   background-color: rgba(0, 0, 0, 0.9); /* Stronger overlay to cover all */
   z-index: 1;
   pointer-events: none; /* Let clicks pass through */
-  transform-origin: top left; /* Match container transform */
-  transform: none; /* Reset any inherited transform */
-}
-
-/* Debugging style to visualize overlay */
-.overlay::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(255, 0, 0, 0.1); /* Light red to debug coverage */
 }
 
 /* Mobile adjustments */
-@media (max-width: 768px) {
+@media (max-width: 768px) and (orientation: portrait) {
   .overlay {
     background-color: rgba(0, 0, 0, 0.95); /* Even darker for small screens */
   }
-  .wave-mask {
-    background-size: 100% 100%; /* Adjust wave for smaller screens */
+  body {
+    transform: rotate(-90deg) translateX(-100vh); /* Force landscape */
+    transform-origin: top left;
+    width: 100vh;
+    height: 100vw;
+    overflow: auto;
+    position: fixed;
+    top: 0;
+    left: 0;
   }
 }
 
-/* Shimmer and wave styles remain unchanged */
 .shimmer-wrapper {
   position: relative;
   overflow: hidden;

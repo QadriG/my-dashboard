@@ -93,7 +93,7 @@ export default function Dashboard() {
   return (
     <div
       className={`zoom-out-container ${
-        isSmallScreen ? "zoomed-out rotate-landscape" : ""
+        isSmallScreen ? "zoomed-out" : ""
       } relative h-screen w-screen overflow-x-hidden overflow-y-auto`}
     >
       {/* Background video - disabled on small screens */}
@@ -162,11 +162,11 @@ export default function Dashboard() {
       <main
         className="relative z-20 p-6 overflow-y-auto animate-fade-in text-white md:ml-64"
         style={{
-          height: "100vh", /* Full height */
-          width: "100vw", /* Full width */
-          maxWidth: isSmallScreen ? "100vw" : "auto", /* Prevent overflow on small screens */
+          height: "100vh",
+          width: "100vw",
+          maxWidth: "100vw",
           transformOrigin: "top left",
-          transform: isSmallScreen ? "scale(0.7)" : "none", /* Adjusted scale */
+          transform: isSmallScreen ? "scale(0.8)" : "none",
           transition: "transform 0.3s ease",
         }}
       >
@@ -286,7 +286,7 @@ export default function Dashboard() {
             width: "100vw",
             height: "100vh",
             backgroundColor: "rgba(0,0,0,0.9)",
-            zIndex: 1000,
+            zIndex: 1000, /* Fixed with colon */
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
