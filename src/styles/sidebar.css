@@ -154,6 +154,16 @@
 .dashboard-column-darkpurple { border: 2px solid #ff0000; }
 .dashboard-column-darkpurple:hover { box-shadow: 0 0 10px #f70707, 0 0 20px #ff0909, 0 0 30px #4f03ff; transform: scale(1.05); }
 
+/* Prevent horizontal scroll on small screens when scaled */
+body, html, #root {
+  overflow-x: hidden;
+}
+
+/* Optional: Smooth scaling */
+main {
+  transition: transform 0.3s ease;
+}
+
 /* Neon glow */
 .neon-glow {
   box-shadow:
