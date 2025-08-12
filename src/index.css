@@ -8,6 +8,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   overflow: hidden; /* Prevent scrollbars */
   background-color: #000; /* Solid background to eliminate black screen */
+  transform-origin: top left; /* Support landscape transform */
 }
 
 /* Code font */
@@ -22,6 +23,7 @@ html, body, #root {
   padding: 0;
   height: 100%;
   background-color: #000 !important; /* Match body background */
+  position: relative; /* Ensure proper stacking context */
 }
 
 /* Force landscape dimensions for mobile (<7 inches approx.) */
@@ -29,6 +31,7 @@ html, body, #root {
   body {
     width: 100vh;
     height: 100vw;
+    transform: rotate(90deg) !important; /* Enforce landscape */
   }
   #root {
     width: 100vw;

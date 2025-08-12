@@ -15,6 +15,14 @@ import DailyPnL from "../components/DailyPnL.jsx";
 import BestTradingPairs from "../components/BestTradingPairs.jsx";
 import OpenPositions from "../components/OpenPositions.jsx";
 
+// Filter out video components on mobile
+const filterVideoContent = (component) => {
+  if (isMobile) {
+    return React.cloneElement(component, { disableVideo: true });
+  }
+  return component;
+};
+
 export default function DashboardMobile() {
   const audioRef = useRef(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -34,6 +42,7 @@ export default function DashboardMobile() {
       });
       document.body.style.width = `${landscapeWidth}px`;
       document.body.style.height = `${landscapeHeight}px`;
+      document.body.style.overflow = "hidden";
     }
 
     updateScreenInfo();
@@ -49,18 +58,18 @@ export default function DashboardMobile() {
   };
 
   const cards = {
-    activeUsers: <ActiveUsers />,
-    activeExchange: <ActiveExchange />,
-    activePositions: <ActivePositions />,
-    totalBalances: <TotalBalances />,
-    profit: <Profit />,
-    upl: <UPL />,
-    fundsDistribution: <FundsDistribution />,
-    balanceGraph: <BalanceGraph />,
-    weeklyRevenue: <WeeklyRevenue />,
-    dailyPnL: <DailyPnL />,
-    bestTradingPairs: <BestTradingPairs />,
-    openPositions: <OpenPositions />,
+    activeUsers: filterVideoContent(<ActiveUsers />),
+    activeExchange: filterVideoContent(<ActiveExchange />),
+    activePositions: filterVideoContent(<ActivePositions />),
+    totalBalances: filterVideoContent(<TotalBalances />),
+    profit: filterVideoContent(<Profit />),
+    upl: filterVideoContent(<UPL />),
+    fundsDistribution: filterVideoContent(<FundsDistribution />),
+    balanceGraph: filterVideoContent(<BalanceGraph />),
+    weeklyRevenue: filterVideoContent(<WeeklyRevenue />),
+    dailyPnL: filterVideoContent(<DailyPnL />),
+    bestTradingPairs: filterVideoContent(<BestTradingPairs />),
+    openPositions: filterVideoContent(<OpenPositions />),
   };
 
   const handleCardClick = (key) => {
@@ -71,12 +80,14 @@ export default function DashboardMobile() {
     <div
       className="relative overflow-hidden"
       style={{
-        width: "100%", // Use full body width
-        height: "100%", // Use full body height
+        width: "100vw", // Use viewport width
+        height: "100vh", // Use viewport height
         position: "fixed",
         top: 0,
         left: 0,
         backgroundColor: "#000", // Solid background
+        transformOrigin: "top left",
+        transform: "rotate(90deg)", // Force landscape
       }}
     >
       {/* Overlay */}
@@ -87,6 +98,9 @@ export default function DashboardMobile() {
           zIndex: 10,
           width: "100%",
           height: "100%",
+          position: "absolute",
+          top: 0,
+          left: 0,
         }}
       ></div>
 
@@ -100,7 +114,7 @@ export default function DashboardMobile() {
         className={`sidebar-toggle-btn ${sidebarOpen ? "open" : ""}`}
         onClick={() => setSidebarOpen(!sidebarOpen)}
         aria-label="Toggle sidebar"
-        style={{ zIndex: 1002 }}
+        style={{ zIndex: 1002, position: "absolute", top: "1rem", left: "1rem", transform: "rotate(-90deg)" }}
       >
         ☰
       </button>
@@ -113,6 +127,9 @@ export default function DashboardMobile() {
           width: "16rem",
           top: "0",
           zIndex: 1001,
+          position: "absolute",
+          transform: "rotate(-90deg)",
+          transformOrigin: "top left",
         }}
       >
         <h2 className="text-xl font-bold mb-10 text-cyan-300 drop-shadow-md">
@@ -134,6 +151,7 @@ export default function DashboardMobile() {
               href="#"
               onMouseEnter={playHoverSound}
               className={`sidebar-button ${btn.className} px-4 py-2 bg-gray-900 text-white`}
+              style={{ transform: "rotate(-90deg)" }}
             >
               {btn.label}
             </a>
@@ -152,6 +170,9 @@ export default function DashboardMobile() {
           left: sidebarOpen ? "16rem" : "0", // Shift content when sidebar opens
           transition: "left 0.3s ease",
           zIndex: 20,
+          transform: "rotate(-90deg)",
+          transformOrigin: "top left",
+          backgroundColor: "rgba(0, 0, 0, 0.8)", // Debug background
         }}
       >
         <div className="shimmer-wrapper w-full py-4 px-4 mb-4">
@@ -164,24 +185,28 @@ export default function DashboardMobile() {
           <div
             className="dashboard-column dashboard-column-cyan"
             onClick={() => handleCardClick("activeUsers")}
+            style={{ transform: "rotate(-90deg)" }}
           >
             {cards.activeUsers}
           </div>
           <div
             className="dashboard-column dashboard-column-purple"
             onClick={() => handleCardClick("activeExchange")}
+            style={{ transform: "rotate(-90deg)" }}
           >
             {cards.activeExchange}
           </div>
           <div
             className="dashboard-column dashboard-column-green"
             onClick={() => handleCardClick("activePositions")}
+            style={{ transform: "rotate(-90deg)" }}
           >
             {cards.activePositions}
           </div>
           <div
             className="dashboard-column dashboard-column-yellow"
             onClick={() => handleCardClick("totalBalances")}
+            style={{ transform: "rotate(-90deg)" }}
           >
             {cards.totalBalances}
           </div>
@@ -191,18 +216,21 @@ export default function DashboardMobile() {
           <div
             className="dashboard-column dashboard-column-cyan"
             onClick={() => handleCardClick("profit")}
+            style={{ transform: "rotate(-90deg)" }}
           >
             {cards.profit}
           </div>
           <div
             className="dashboard-column dashboard-column-purple"
             onClick={() => handleCardClick("upl")}
+            style={{ transform: "rotate(-90deg)" }}
           >
             {cards.upl}
           </div>
           <div
             className="dashboard-column dashboard-column-green"
             onClick={() => handleCardClick("fundsDistribution")}
+            style={{ transform: "rotate(-90deg)" }}
           >
             {cards.fundsDistribution}
           </div>
@@ -212,12 +240,14 @@ export default function DashboardMobile() {
           <div
             className="dashboard-column dashboard-column-cyan w-full lg:w-1/2 p-2 max-h-[60px] h-[60px] overflow-hidden"
             onClick={() => handleCardClick("balanceGraph")}
+            style={{ transform: "rotate(-90deg)" }}
           >
             {cards.balanceGraph}
           </div>
           <div
             className="dashboard-column dashboard-column-purple w-full lg:w-1/2 p-2 max-h-[60px] h-[60px] overflow-hidden"
             onClick={() => handleCardClick("weeklyRevenue")}
+            style={{ transform: "rotate(-90deg)" }}
           >
             {cards.weeklyRevenue}
           </div>
@@ -227,12 +257,14 @@ export default function DashboardMobile() {
           <div
             className="dashboard-column dashboard-column-cyan"
             onClick={() => handleCardClick("dailyPnL")}
+            style={{ transform: "rotate(-90deg)" }}
           >
             {cards.dailyPnL}
           </div>
           <div
             className="dashboard-column dashboard-column-purple"
             onClick={() => handleCardClick("bestTradingPairs")}
+            style={{ transform: "rotate(-90deg)" }}
           >
             {cards.bestTradingPairs}
           </div>
@@ -242,6 +274,7 @@ export default function DashboardMobile() {
           <div
             className="dashboard-column dashboard-column-green"
             onClick={() => handleCardClick("openPositions")}
+            style={{ transform: "rotate(-90deg)" }}
           >
             {cards.openPositions}
           </div>
@@ -252,6 +285,7 @@ export default function DashboardMobile() {
             <button
               className="dashboard-column dashboard-column-cyan p-4 text-center"
               onClick={() => handleCardClick("viewAllPositions")}
+              style={{ transform: "rotate(-90deg)" }}
             >
               View All Positions
             </button>
@@ -276,6 +310,8 @@ export default function DashboardMobile() {
             justifyContent: "center",
             padding: "1rem",
             cursor: "pointer",
+            transform: "rotate(90deg)",
+            transformOrigin: "top left",
           }}
           aria-modal="true"
           role="dialog"
@@ -292,6 +328,8 @@ export default function DashboardMobile() {
               overflowY: "auto",
               boxShadow: "0 0 20px 5px #00ffff",
               position: "relative",
+              transform: "rotate(-90deg)",
+              transformOrigin: "top left",
             }}
           >
             {cards[expandedCard]}
@@ -307,6 +345,7 @@ export default function DashboardMobile() {
                 fontSize: "2rem",
                 cursor: "pointer",
                 fontWeight: "bold",
+                transform: "rotate(-90deg)",
               }}
               aria-label="Close expanded view"
             >
