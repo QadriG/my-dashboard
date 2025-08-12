@@ -34,18 +34,7 @@ export default function DashboardMobile() {
 
     updateScreenInfo();
     window.addEventListener("resize", updateScreenInfo);
-    // Orientation lock attempt (may not work on all devices)
-    if (window.screen?.orientation) {
-      window.screen.orientation.lock("landscape-primary").catch(() => {
-        console.log("Landscape lock not supported, relying on CSS");
-      });
-    }
-    return () => {
-      window.removeEventListener("resize", updateScreenInfo);
-      if (window.screen?.orientation) {
-        window.screen.orientation.unlock();
-      }
-    };
+    return () => window.removeEventListener("resize", updateScreenInfo);
   }, []);
 
   const playHoverSound = () => {
@@ -84,7 +73,7 @@ export default function DashboardMobile() {
         position: "fixed",
         top: 0,
         left: 0,
-        backgroundColor: "#000", // Prevent black flash
+        backgroundColor: "#000", // Solid background
       }}
     >
       {/* Overlay */}
@@ -92,7 +81,7 @@ export default function DashboardMobile() {
         className="overlay"
         style={{
           backgroundColor: "rgba(0, 0, 0, 0.1)",
-          zIndex: 10, // Below content but above background
+          zIndex: 10,
         }}
       ></div>
 
@@ -103,26 +92,22 @@ export default function DashboardMobile() {
 
       {/* Mobile Toggle Button */}
       <button
-        className="sidebar-toggle-btn"
+        className={`sidebar-toggle-btn ${sidebarOpen ? "" : "open"}`}
         onClick={() => setSidebarOpen(!sidebarOpen)}
         aria-label="Toggle sidebar"
-        style={{ zIndex: 1002 }} // Above sidebar and main
+        style={{ zIndex: 1002 }}
       >
         ☰
       </button>
 
       {/* Sidebar */}
       <div
-        className={`sidebar bg-black/70 text-white pt-8 px-4 pb-4 rounded-r-xl border-2 border-cyan-400
-          ${sidebarOpen ? "open" : ""}`}
+        className={`sidebar ${sidebarOpen ? "open" : ""}`}
         style={{
           height: `${screenInfo.width}px`, // Match landscape height
           width: "16rem",
-          position: "absolute",
-          top: 0,
-          left: sidebarOpen ? "0" : "-16rem", // Hide when closed
-          zIndex: 1001, // Above overlay, below button
-          transition: "left 0.3s ease",
+          top: "0",
+          zIndex: 1001,
         }}
       >
         <h2 className="text-xl font-bold mb-10 text-cyan-300 drop-shadow-md">
@@ -164,7 +149,7 @@ export default function DashboardMobile() {
           position: "absolute",
           top: 0,
           left: 0,
-          zIndex: 20, // Above sidebar when closed
+          zIndex: 20,
         }}
       >
         <div className="shimmer-wrapper w-full py-4 px-4 mb-4">

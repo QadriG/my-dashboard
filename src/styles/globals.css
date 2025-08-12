@@ -82,9 +82,18 @@ html, body, #root {
     background-position: 200% 0;
   }
 }
-@media (max-width: 768px) {
-  body { width: 100vh; height: 100vw; }
-}
-/* --- Removed conflicting sidebar styles here --- */
 
-/* Sidebar styles moved to second CSS file */
+/* Enforce landscape for screens below 7 inches (approx. 768px) */
+@media (max-width: 768px) {
+  body {
+    width: 100vh;
+    height: 100vw;
+    transform: rotate(90deg);
+    transform-origin: top left;
+    overflow-x: hidden;
+  }
+  #root {
+    width: 100vw;
+    height: 100vh;
+  }
+}
