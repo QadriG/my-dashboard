@@ -6,8 +6,8 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow: hidden; /* Prevent scrollbars over video */
-  background-color: #000; /* Force black background to eliminate white */
+  overflow: hidden; /* Prevent scrollbars */
+  background-color: #000; /* Force black background */
 }
 
 /* Code font */
@@ -29,7 +29,7 @@ html, body, #root {
   background-color: transparent;
 }
 
-/* Black overlay on top of video for contrast */
+/* Black overlay for contrast */
 .overlay {
   position: fixed;
   top: 0;
@@ -80,20 +80,5 @@ html, body, #root {
   }
   100% {
     background-position: 200% 0;
-  }
-}
-
-/* Enforce landscape for screens below 7 inches (approx. 768px) */
-@media (max-width: 768px) {
-  body {
-    width: 100vh;
-    height: 100vw;
-    transform: rotate(90deg);
-    transform-origin: top left;
-    overflow-x: hidden;
-  }
-  #root {
-    width: 100vw;
-    height: 100vh;
   }
 }

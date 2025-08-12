@@ -20,15 +20,15 @@ export default function DashboardMobile() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedCard, setExpandedCard] = useState(null);
   const [screenInfo, setScreenInfo] = useState({
-    width: window.innerHeight, // Use height as width for landscape
-    height: window.innerWidth, // Use width as height for landscape
+    width: window.innerHeight, // Landscape width (height in portrait)
+    height: window.innerWidth, // Landscape height (width in portrait)
   });
 
   useEffect(() => {
     function updateScreenInfo() {
       setScreenInfo({
-        width: window.innerHeight, // Swap for landscape
-        height: window.innerWidth,
+        width: window.innerHeight, // Use height as width for landscape
+        height: window.innerWidth, // Use width as height for landscape
       });
     }
 
@@ -69,11 +69,11 @@ export default function DashboardMobile() {
       style={{
         width: `${screenInfo.height}px`, // Landscape width
         height: `${screenInfo.width}px`, // Landscape height
-        transformOrigin: "top left",
         position: "fixed",
         top: 0,
         left: 0,
         backgroundColor: "#000", // Solid background
+        transformOrigin: "top left",
       }}
     >
       {/* Overlay */}
@@ -92,7 +92,7 @@ export default function DashboardMobile() {
 
       {/* Mobile Toggle Button */}
       <button
-        className={`sidebar-toggle-btn ${sidebarOpen ? "" : "open"}`}
+        className={`sidebar-toggle-btn ${sidebarOpen ? "open" : ""}`}
         onClick={() => setSidebarOpen(!sidebarOpen)}
         aria-label="Toggle sidebar"
         style={{ zIndex: 1002 }}
@@ -141,14 +141,13 @@ export default function DashboardMobile() {
         className="relative z-20 p-4 overflow-y-auto text-white"
         style={{
           height: `${screenInfo.width}px`, // Match landscape height
-          width: `calc(${screenInfo.height}px - 16rem)`, // Adjust for sidebar
+          width: `calc(${screenInfo.height}px - ${sidebarOpen ? "16rem" : "0"})`, // Dynamic width based on sidebar
           transform: "scale(0.8)", // Slight zoom-out
           transformOrigin: "top left",
-          marginLeft: sidebarOpen ? "16rem" : "0",
-          transition: "margin-left 0.3s ease",
           position: "absolute",
           top: 0,
-          left: 0,
+          left: sidebarOpen ? "16rem" : "0", // Shift content when sidebar opens
+          transition: "left 0.3s ease",
           zIndex: 20,
         }}
       >
