@@ -2,7 +2,6 @@ import React, { useRef, useState, useEffect } from "react";
 import { isMobile, deviceType, browserName } from "react-device-detect"; 
 import "../styles/sidebar.css";
 import hoverSound from "../assets/click.mp3";
-import bgVideo from "../assets/bg.mp4";
 import ActiveUsers from "../components/ActiveUsers.jsx";
 import ActiveExchange from "../components/ActiveExchange.jsx";
 import ActivePositions from "../components/ActivePositions.jsx";
@@ -16,7 +15,7 @@ import DailyPnL from "../components/DailyPnL.jsx";
 import BestTradingPairs from "../components/BestTradingPairs.jsx";
 import OpenPositions from "../components/OpenPositions.jsx";
 
-export default function DashboardPC() {
+export default function DashboardMobile() {
   const audioRef = useRef(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedCard, setExpandedCard] = useState(null);
@@ -74,27 +73,13 @@ export default function DashboardPC() {
   };
 
   const handleCardClick = (key) => {
-    if (!isMobile) {
-      setExpandedCard(expandedCard === key ? null : key);
-    }
+    setExpandedCard(expandedCard === key ? null : key);
   };
 
   return (
     <div
-      className="zoom-out-container relative h-screen w-screen overflow-x-hidden overflow-y-auto"
+      className="relative h-screen w-screen overflow-x-hidden overflow-y-auto"
     >
-      {/* Background video */}
-      <video
-        autoPlay
-        muted
-        loop
-        playsInline
-        className="fixed top-0 left-0 w-full h-full object-cover z-0"
-      >
-        <source src={bgVideo} type="video/mp4" />
-        Your browser does not support the video tag.
-      </video>
-
       {/* Overlay */}
       <div className="overlay"></div>
 
@@ -105,7 +90,7 @@ export default function DashboardPC() {
 
       {/* Mobile Toggle Button */}
       <button
-        className="sidebar-toggle-btn md:hidden"
+        className="sidebar-toggle-btn"
         onClick={() => setSidebarOpen(!sidebarOpen)}
         aria-label="Toggle sidebar"
       >
@@ -145,20 +130,19 @@ export default function DashboardPC() {
 
       {/* Main content container */}
       <main
-        className="relative z-20 p-6 overflow-y-auto animate-fade-in text-white md:ml-64"
+        className="relative z-20 p-4 overflow-y-auto text-white"
         style={{
           height: "100vh",
           width: "100%",
-          maxWidth: "calc(100vw - 16rem)",
         }}
       >
-        <div className="shimmer-wrapper w-full py-4 px-6 mb-6">
-          <h1 className="text-4xl font-semibold text-white drop-shadow-md">
+        <div className="shimmer-wrapper w-full py-4 px-4 mb-4">
+          <h1 className="text-2xl font-semibold text-white drop-shadow-md">
             Dashboard
           </h1>
         </div>
 
-        <div className="grid grid-cols-4 gap-7 max-lg:grid-cols-2 max-sm:grid-cols-1">
+        <div className="grid grid-cols-1 gap-4">
           <div
             className="dashboard-column dashboard-column-cyan"
             onClick={() => handleCardClick("activeUsers")}
@@ -183,9 +167,6 @@ export default function DashboardPC() {
           >
             {cards.totalBalances}
           </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-7 mt-8 max-lg:grid-cols-1">
           <div
             className="dashboard-column dashboard-column-cyan"
             onClick={() => handleCardClick("profit")}
@@ -204,24 +185,18 @@ export default function DashboardPC() {
           >
             {cards.fundsDistribution}
           </div>
-        </div>
-
-        <div className="flex gap-4 w-full items-start mt-8 max-lg:flex-col">
           <div
-            className="dashboard-column dashboard-column-cyan w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden"
+            className="dashboard-column dashboard-column-cyan"
             onClick={() => handleCardClick("balanceGraph")}
           >
             {cards.balanceGraph}
           </div>
           <div
-            className="dashboard-column dashboard-column-purple w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden"
+            className="dashboard-column dashboard-column-purple"
             onClick={() => handleCardClick("weeklyRevenue")}
           >
             {cards.weeklyRevenue}
           </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-7 mt-8 max-sm:grid-cols-1">
           <div
             className="dashboard-column dashboard-column-cyan"
             onClick={() => handleCardClick("dailyPnL")}
@@ -234,31 +209,27 @@ export default function DashboardPC() {
           >
             {cards.bestTradingPairs}
           </div>
-        </div>
-
-        <div className="mt-8">
           <div
             className="dashboard-column dashboard-column-green"
             onClick={() => handleCardClick("openPositions")}
           >
             {cards.openPositions}
           </div>
-        </div>
-
-        <div className="flex justify-center mt-4">
-          <a href="F:/crypto-dashboard-prototype/crypto-dashboard-prototype/admin/positions.html">
-            <button
-              className="dashboard-column dashboard-column-cyan p-6 text-center"
-              onClick={() => handleCardClick("viewAllPositions")}
-            >
-              View All Positions
-            </button>
-          </a>
+          <div className="flex justify-center mt-4">
+            <a href="F:/crypto-dashboard-prototype/crypto-dashboard-prototype/admin/positions.html">
+              <button
+                className="dashboard-column dashboard-column-cyan p-4 text-center"
+                onClick={() => handleCardClick("viewAllPositions")}
+              >
+                View All Positions
+              </button>
+            </a>
+          </div>
         </div>
       </main>
 
       {/* Expanded modal */}
-      {!isMobile && expandedCard && (
+      {isMobile && expandedCard && (
         <div
           onClick={() => setExpandedCard(null)}
           style={{
