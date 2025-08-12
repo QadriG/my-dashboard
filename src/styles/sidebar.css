@@ -135,6 +135,8 @@
 
 .sidebar-red { border: 2px solid #ef4444 !important; }
 .sidebar-red:hover { box-shadow: 0 0 10px #ef4444, 0 0 20px #ef4444, 0 0 30px #ef4444 !important; }
+
+/* Rest of the styles remain unchanged */
 /* Dashboard column styles */
 .dashboard-column {
   position: relative;

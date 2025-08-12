@@ -42,16 +42,16 @@ html, body, #root {
 }
 
 /* Mobile adjustments */
-@media (max-width: 768px) and (orientation: portrait) {
+@media (max-width: 768px) {
   body {
-    transform: rotate(-90deg) translateX(-100vh); /* Force landscape */
+    transform: rotate(-90deg); /* Force landscape without translation */
     transform-origin: top left;
     width: 100vh;
     height: 100vw;
-    overflow: auto;
     position: fixed;
     top: 0;
     left: 0;
+    overflow: auto;
   }
   .overlay {
     background-color: rgba(0, 0, 0, 0.1); /* Minimal overlay for mobile */
