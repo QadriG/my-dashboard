@@ -81,4 +81,6 @@ html, body, #root {
   }
 }
 
+/* --- Removed conflicting sidebar styles here --- */
 
+/* Sidebar styles moved to second CSS file */
