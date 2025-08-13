@@ -6,8 +6,9 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow: hidden; /* Prevent scrollbars */
+  overflow: hidden; /* Prevent scrollbars on body; scrolling happens in <main> */
   background-color: #000; /* Force black background */
+  color: #fff;
 }
 
 /* Code font */
@@ -41,12 +42,13 @@ html, body, #root {
   pointer-events: none; /* Let clicks pass through */
 }
 
+/* Text shimmer effect */
 .shimmer-wrapper {
   position: relative;
   overflow: hidden;
   background: linear-gradient(
     270deg,
-    #22d3ee, /* cyan-400 */
+    #22d3ee,
     #ffffff,
     #22d3ee
   );
@@ -54,17 +56,12 @@ html, body, #root {
   animation: shimmer 3s ease infinite;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  /* fallback */
   color: #22d3ee;
 }
 
 @keyframes shimmer {
-  0% {
-    background-position: 0% 50%;
-  }
-  100% {
-    background-position: 100% 50%;
-  }
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
 }
 
 .wave-mask {
@@ -75,23 +72,80 @@ html, body, #root {
 }
 
 @keyframes waveMove {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
-/* Force landscape dimensions for mobile (<7 inches approx.) */
+/* ===========================
+   Mobile scaling utilities
+   =========================== */
+
+/* JS will set this between ~0.85–1 on small screens */
+:root {
+  --card-scale: 1;
+}
+
+/* Wrap each dashboard card with this for crisp scaling */
+.scaled-card {
+  transform: scale(var(--card-scale));
+  transform-origin: top center;
+  width: calc(100% / max(var(--card-scale), 0.0001)); /* keep full logical width */
+  transition: transform 220ms ease, width 220ms ease;
+  will-change: transform;
+}
+
+/* Small helper for stacked sections on mobile */
+.mobile-stack {
+  gap: 0.5rem;
+}
+
+/* Ensure charts/media never overflow their card */
+canvas, svg, video, img {
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+/* ===========================
+   Mobile-only refinements
+   (≤ ~7" screens)
+   =========================== */
 @media (max-width: 768px) {
-  body {
-    width: 100vh;
-    height: 100vw;
-    overflow-x: hidden;
+  html, body {
+    transform: none !important;
+    width: 100% !important;
+    overflow-x: hidden !important;
   }
+
   #root {
-    width: 100vw;
-    height: 100vh;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  /* So the scroll happens inside main, not body */
+  main {
+    padding: clamp(8px, 2.5vw, 16px) !important;
+    transition: padding 220ms ease;
+  }
+
+  /* Tighten card padding slightly for small screens */
+  .dashboard-column {
+    padding: clamp(10px, 3vw, 18px) !important;
+  }
+
+  .shimmer-wrapper {
+    border-radius: 0.5rem;
+  }
+
+  /* Stack any grid into a single column on mobile */
+  .grid.grid-cols-4,
+  .grid.grid-cols-3,
+  .grid.grid-cols-2 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Force mixed flex rows to stack vertically on mobile */
+  .mobile-stack {
+    display: flex;
+    flex-direction: column !important;
   }
 }

@@ -6,7 +6,7 @@
   transition: transform 0.3s ease;
 }
 
-/* Expanded and sidebar styles remain unchanged */
+/* Expanded and sidebar styles remain (desktop defaults) */
 .expanded {
   position: fixed;
   top: 5vh;
@@ -24,13 +24,13 @@
 .sidebar {
   position: fixed;
   top: 0;
-  left: 0;
+  left: 0; /* desktop is visible */
   height: 100%;
   width: 16rem;
   background: #1a1a2e49;
   color: white;
   padding: 20px 20px 20px;
-  z-index: 200;
+  z-index: 1001;
   transition: left 0.3s ease;
   border-radius: 0 0.75rem 0.75rem 0;
   border-right: 2px solid cyan;
@@ -136,7 +136,6 @@
 .sidebar-red { border: 2px solid #ef4444 !important; }
 .sidebar-red:hover { box-shadow: 0 0 10px #ef4444, 0 0 20px #ef4444, 0 0 30px #ef4444 !important; }
 
-/* Rest of the styles remain unchanged */
 /* Dashboard column styles */
 .dashboard-column {
   position: relative;
@@ -245,7 +244,7 @@ main {
   100% { transform: translateX(100%); }
 }
 
-/* Grid layout */
+/* Grid layout helpers (tailwind-like) */
 .space-y-3 > div { display: contents; }
 .grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
 .grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
@@ -272,21 +271,22 @@ main {
 .mt-2 { margin-top: 0.5rem; }
 .drop-shadow { filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.1)) drop-shadow(0 1px 1px rgb(0 0 0 / 0.06)); }
 
-/* === MOBILE ONLY STYLES === */
+/* ===== Mobile-only styles (≤ 768px) ===== */
 @media (max-width: 768px) {
+  /* Sidebar collapses off-canvas by default */
   .sidebar {
-    left: -16rem; /* 256px offscreen */
+    left: -16rem; /* offscreen */
   }
-
   .sidebar.open {
-    left: 0;
+    left: 0; /* slide in */
   }
 
+  /* Toggle button for sidebar (mobile) */
   .sidebar-toggle-btn {
     position: fixed;
     top: 1rem;
     left: 1rem;
-    z-index: 300;
+    z-index: 1100;
     background: rgba(26, 26, 46, 0.85);
     color: white;
     padding: 0.5rem 0.75rem;
@@ -294,5 +294,18 @@ main {
     border: 1px solid #22d3ee;
     font-size: 1.25rem;
     cursor: pointer;
+  }
+
+  /* Backdrop behind the opened sidebar */
+  .sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 1000;
+  }
+
+  /* Stack mixed flex rows when needed */
+  .mobile-stack {
+    flex-direction: column !important;
   }
 }
