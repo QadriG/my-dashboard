@@ -7,27 +7,30 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow: hidden; /* Prevent scrollbars on body; scrolling happens in <main> */
-  background-color: #000;
+  background-color: #000; /* Force black background */
   color: #fff;
 }
 
+/* Code font */
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
 
+/* Make entire app transparent */
 html, body, #root {
   margin: 0;
   padding: 0;
   height: 100%;
-  background-color: #000 !important;
+  background-color: #000 !important; /* Match body background */
 }
 
+/* Force all elements transparent unless specified */
 * {
   background-color: transparent;
 }
 
-/* Black overlay */
+/* Black overlay for contrast */
 .overlay {
   position: fixed;
   top: 0;
@@ -36,14 +39,19 @@ html, body, #root {
   height: 100%;
   background-color: rgba(0, 0, 0, 0.5);
   z-index: 1;
-  pointer-events: none;
+  pointer-events: none; /* Let clicks pass through */
 }
 
-/* Shimmer text effect */
+/* Text shimmer effect */
 .shimmer-wrapper {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(270deg, #22d3ee, #ffffff, #22d3ee);
+  background: linear-gradient(
+    270deg,
+    #22d3ee,
+    #ffffff,
+    #22d3ee
+  );
   background-size: 600% 600%;
   animation: shimmer 3s ease infinite;
   -webkit-background-clip: text;
@@ -68,28 +76,39 @@ html, body, #root {
   100% { background-position: 200% 0; }
 }
 
-/* Mobile scaling */
+/* ===========================
+   Mobile scaling utilities
+   =========================== */
+
+/* JS will set this between ~0.85–1 on small screens */
 :root {
   --card-scale: 1;
 }
 
+/* Wrap each dashboard card with this for crisp scaling */
 .scaled-card {
   transform: scale(var(--card-scale));
   transform-origin: top center;
-  width: calc(100% / max(var(--card-scale), 0.0001));
+  width: calc(100% / max(var(--card-scale), 0.0001)); /* keep full logical width */
   transition: transform 220ms ease, width 220ms ease;
   will-change: transform;
 }
 
+/* Small helper for stacked sections on mobile */
 .mobile-stack {
   gap: 0.5rem;
 }
 
+/* Ensure charts/media never overflow their card */
 canvas, svg, video, img {
   max-width: 100% !important;
   height: auto !important;
 }
 
+/* ===========================
+   Mobile-only refinements
+   (≤ ~7" screens)
+   =========================== */
 @media (max-width: 768px) {
   html, body {
     transform: none !important;
@@ -102,21 +121,29 @@ canvas, svg, video, img {
     height: auto !important;
   }
 
+  /* So the scroll happens inside main, not body */
   main {
     padding: clamp(8px, 2.5vw, 16px) !important;
     transition: padding 220ms ease;
   }
 
+  /* Tighten card padding slightly for small screens */
   .dashboard-column {
     padding: clamp(10px, 3vw, 18px) !important;
   }
 
+  .shimmer-wrapper {
+    border-radius: 0.5rem;
+  }
+
+  /* Stack any grid into a single column on mobile */
   .grid.grid-cols-4,
   .grid.grid-cols-3,
   .grid.grid-cols-2 {
-    grid-template-columns: 1fr 1fr !important; /* two cards per row */
+    grid-template-columns: 1fr !important;
   }
 
+  /* Force mixed flex rows to stack vertically on mobile */
   .mobile-stack {
     display: flex;
     flex-direction: column !important;

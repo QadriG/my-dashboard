@@ -1,32 +1,30 @@
 @import url('https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css');
 
-/* Zoom container */
+/* Zoom out container */
 .zoom-out-container {
   transform-origin: top left;
   transition: transform 0.3s ease;
 }
 
-/* Expanded modal */
+/* Expanded and sidebar styles remain (desktop defaults) */
 .expanded {
   position: fixed;
   top: 5vh;
   left: 5vw;
   width: 90vw;
-  height: auto;
-  max-height: 90vh;
+  height: 90vh;
   background: rgba(0, 0, 0, 0.95);
   border-radius: 10px;
   z-index: 1000;
   transform: scale(1);
   overflow: auto;
-  transition: all 0.3s ease;
 }
 
-/* Sidebar */
+/* Sidebar styles */
 .sidebar {
   position: fixed;
   top: 0;
-  left: 0;
+  left: 0; /* desktop is visible */
   height: 100%;
   width: 16rem;
   background: #1a1a2e49;
@@ -38,15 +36,16 @@
   border-right: 2px solid cyan;
 }
 
+/* Fix: Pin sidebar title at the very top */
 .sidebar h2 {
   margin-top: 0 !important;
   margin-bottom: 2.5rem !important;
   padding-top: 0 !important;
   padding-bottom: 0 !important;
   color: #00d4ff;
-  text-align: center;
 }
 
+/* Sidebar list */
 .sidebar ul {
   list-style: none;
   padding: 0;
@@ -64,6 +63,7 @@
   background: #16213e;
 }
 
+/* Sidebar button base */
 .sidebar-button {
   position: relative;
   display: block;
@@ -84,6 +84,7 @@
   border: 2px solid transparent;
 }
 
+/* Shine wave effect on hover */
 .sidebar-button::before {
   content: '';
   position: absolute;
@@ -102,7 +103,12 @@
 
 .sidebar-button:hover {
   background: linear-gradient(145deg, #1c1f2a, #2b2e3c);
-  transform: translateY(-2px) scale(1.03);
+  box-shadow:
+    inset 2px 2px 6px rgba(255, 255, 255, 0.15),
+    inset -2px -2px 6px rgba(0, 0, 0, 0.9),
+    8px 8px 16px rgba(0, 0, 0, 1);
+  transform: translateY(-4px) scale(1.05);
+  z-index: 2;
 }
 
 /* Neon glow colors */
