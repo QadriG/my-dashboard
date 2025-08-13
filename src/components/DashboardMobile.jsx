@@ -36,11 +36,11 @@ export default function DashboardMobile() {
   const audioRef = useRef(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedCard, setExpandedCard] = useState(null);
+  const [isDarkMode, setIsDarkMode] = useState(true); // Default to dark mode
 
   /* Compute a smooth per-component scale for small screens */
   useEffect(() => {
     const setScale = () => {
-      // Treat 390px as the design width for mobile; clamp between 0.85 and 1
       const designWidth = 390;
       const w = Math.max(320, Math.min(window.innerWidth, 768));
       const scale = Math.max(0.85, Math.min(1, w / designWidth));
@@ -56,6 +56,10 @@ export default function DashboardMobile() {
       audioRef.current.currentTime = 0;
       audioRef.current.play().catch(() => {});
     }
+  };
+
+  const toggleTheme = () => {
+    setIsDarkMode((prev) => !prev);
   };
 
   const cards = {
@@ -79,21 +83,21 @@ export default function DashboardMobile() {
 
   return (
     <div
-      className="relative overflow-hidden"
+      className={`relative overflow-hidden ${isDarkMode ? "dark-mode" : "light-mode"}`}
       style={{
         width: "100vw",
         height: "100vh",
         position: "fixed",
         top: 0,
         left: 0,
-        backgroundColor: "#000", // solid black background for mobile
+        backgroundColor: isDarkMode ? "#000" : "#fff", // Dynamic background
       }}
     >
       {/* Overlay (visual only) */}
       <div
         className="overlay"
         style={{
-          backgroundColor: "rgba(0, 0, 0, 0.1)",
+          backgroundColor: isDarkMode ? "rgba(0, 0, 0, 0.1)" : "rgba(255, 255, 255, 0.1)",
           zIndex: 10,
           width: "100%",
           height: "100%",
@@ -102,6 +106,25 @@ export default function DashboardMobile() {
           left: 0,
         }}
       ></div>
+
+      {/* Theme Toggle Button */}
+      <button
+        onClick={toggleTheme}
+        style={{
+          position: "fixed",
+          top: "1rem",
+          right: "1rem",
+          zIndex: 1102,
+          padding: "0.5rem 1rem",
+          backgroundColor: isDarkMode ? "#333" : "#ddd",
+          color: isDarkMode ? "#fff" : "#000",
+          border: "none",
+          borderRadius: "4px",
+          cursor: "pointer",
+        }}
+      >
+        {isDarkMode ? "Light Mode" : "Dark Mode"}
+      </button>
 
       {/* Hover sound */}
       <audio ref={audioRef} preload="auto">
@@ -142,6 +165,7 @@ export default function DashboardMobile() {
               href="#"
               onMouseEnter={playHoverSound}
               className={`sidebar-button ${btn.className} px-4 py-2 bg-gray-900 text-white`}
+              style={{ color: isDarkMode ? "#fff" : "#000" }} // Dynamic text color
             >
               {btn.label}
             </a>
@@ -160,7 +184,7 @@ export default function DashboardMobile() {
 
       {/* Main content container */}
       <main
-        className="relative z-20 p-4 overflow-y-auto text-white"
+        className="relative z-20 p-4 overflow-y-auto"
         style={{
           height: "100%",
           width: "100%",
@@ -169,11 +193,12 @@ export default function DashboardMobile() {
           left: 0,
           transition: "left 0.3s ease",
           zIndex: 20,
-          backgroundColor: "rgba(0, 0, 0, 0.8)",
+          color: isDarkMode ? "#fff" : "#000", // Dynamic text color
+          backgroundColor: isDarkMode ? "rgba(0, 0, 0, 0.8)" : "rgba(255, 255, 255, 0.8)", // Dynamic background
         }}
       >
         <div className="shimmer-wrapper w-full py-4 px-4 mb-4">
-          <h1 className="text-2xl font-semibold text-white drop-shadow-md">
+          <h1 className="text-2xl font-semibold drop-shadow-md" style={{ color: isDarkMode ? "#fff" : "#000" }}>
             Dashboard
           </h1>
         </div>
@@ -183,24 +208,28 @@ export default function DashboardMobile() {
           <Card
             className="dashboard-column-cyan"
             onClick={() => handleCardClick("activeUsers")}
+            style={{ color: isDarkMode ? "#fff" : "#000" }} // Dynamic text color
           >
             {cards.activeUsers}
           </Card>
           <Card
             className="dashboard-column-purple"
             onClick={() => handleCardClick("activeExchange")}
+            style={{ color: isDarkMode ? "#fff" : "#000" }} // Dynamic text color
           >
             {cards.activeExchange}
           </Card>
           <Card
             className="dashboard-column-green"
             onClick={() => handleCardClick("activePositions")}
+            style={{ color: isDarkMode ? "#fff" : "#000" }} // Dynamic text color
           >
             {cards.activePositions}
           </Card>
           <Card
             className="dashboard-column-yellow"
             onClick={() => handleCardClick("totalBalances")}
+            style={{ color: isDarkMode ? "#fff" : "#000" }} // Dynamic text color
           >
             {cards.totalBalances}
           </Card>
@@ -211,50 +240,57 @@ export default function DashboardMobile() {
           <Card
             className="dashboard-column-cyan"
             onClick={() => handleCardClick("profit")}
+            style={{ color: isDarkMode ? "#fff" : "#000" }} // Dynamic text color
           >
             {cards.profit}
           </Card>
           <Card
             className="dashboard-column-purple"
             onClick={() => handleCardClick("upl")}
+            style={{ color: isDarkMode ? "#fff" : "#000" }} // Dynamic text color
           >
             {cards.upl}
           </Card>
           <Card
             className="dashboard-column-green"
             onClick={() => handleCardClick("fundsDistribution")}
+            style={{ color: isDarkMode ? "#fff" : "#000" }} // Dynamic text color
           >
             {cards.fundsDistribution}
           </Card>
         </div>
 
         {/* Row 3 */}
-        <div className="mobile-stack flex gap-2 w-full items-start mt-4">
+        <div className="mobile-stack flex gap-2 w-full items-start mt-4 max-lg:flex-col">
           <Card
             className="dashboard-column-cyan w-full lg:w-1/2 p-2 max-h-[60px] h-[60px] overflow-hidden"
             onClick={() => handleCardClick("balanceGraph")}
+            style={{ color: isDarkMode ? "#fff" : "#000" }} // Dynamic text color
           >
             {cards.balanceGraph}
           </Card>
           <Card
             className="dashboard-column-purple w-full lg:w-1/2 p-2 max-h-[60px] h-[60px] overflow-hidden"
             onClick={() => handleCardClick("weeklyRevenue")}
+            style={{ color: isDarkMode ? "#fff" : "#000" }} // Dynamic text color
           >
             {cards.weeklyRevenue}
           </Card>
         </div>
 
         {/* Row 4 */}
-        <div className="grid grid-cols-2 gap-2 mt-4">
+        <div className="grid grid-cols-2 gap-2 mt-4 max-sm:grid-cols-1">
           <Card
             className="dashboard-column-cyan"
             onClick={() => handleCardClick("dailyPnL")}
+            style={{ color: isDarkMode ? "#fff" : "#000" }} // Dynamic text color
           >
             {cards.dailyPnL}
           </Card>
           <Card
             className="dashboard-column-purple"
             onClick={() => handleCardClick("bestTradingPairs")}
+            style={{ color: isDarkMode ? "#fff" : "#000" }} // Dynamic text color
           >
             {cards.bestTradingPairs}
           </Card>
@@ -265,6 +301,7 @@ export default function DashboardMobile() {
           <Card
             className="dashboard-column-green"
             onClick={() => handleCardClick("openPositions")}
+            style={{ color: isDarkMode ? "#fff" : "#000" }} // Dynamic text color
           >
             {cards.openPositions}
           </Card>
@@ -276,6 +313,7 @@ export default function DashboardMobile() {
             <button
               className="scaled-card dashboard-column dashboard-column-cyan p-4 text-center"
               onClick={() => handleCardClick("viewAllPositions")}
+              style={{ color: isDarkMode ? "#fff" : "#000" }} // Dynamic text color
             >
               View All Positions
             </button>
@@ -290,7 +328,7 @@ export default function DashboardMobile() {
           style={{
             position: "fixed",
             inset: 0,
-            backgroundColor: "rgba(0,0,0,0.9)",
+            backgroundColor: isDarkMode ? "rgba(0,0,0,0.9)" : "rgba(255,255,255,0.9)",
             zIndex: 1200,
             display: "flex",
             alignItems: "center",
@@ -305,7 +343,7 @@ export default function DashboardMobile() {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              backgroundColor: "#111827",
+              backgroundColor: isDarkMode ? "#111827" : "#f9fafb",
               borderRadius: "1rem",
               padding: "1rem",
               width: "95%",
@@ -313,6 +351,7 @@ export default function DashboardMobile() {
               overflowY: "auto",
               boxShadow: "0 0 20px 5px #00ffff",
               position: "relative",
+              color: isDarkMode ? "#fff" : "#000",
             }}
           >
             {cards[expandedCard]}

@@ -16,7 +16,7 @@ import DailyPnL from "../components/DailyPnL.jsx";
 import BestTradingPairs from "../components/BestTradingPairs.jsx";
 import OpenPositions from "../components/OpenPositions.jsx";
 
-export default function DashboardPC() {
+export default function Dashboard() {
   const audioRef = useRef(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedCard, setExpandedCard] = useState(null);
@@ -25,6 +25,7 @@ export default function DashboardPC() {
     height: window.innerHeight,
     orientation: window.screen.orientation ? window.screen.orientation.type : "unknown",
   });
+  const [isDarkMode, setIsDarkMode] = useState(true); // Default to dark mode
 
   useEffect(() => {
     function updateScreenInfo() {
@@ -58,6 +59,10 @@ export default function DashboardPC() {
     }
   };
 
+  const toggleTheme = () => {
+    setIsDarkMode((prev) => !prev);
+  };
+
   const cards = {
     activeUsers: <ActiveUsers />,
     activeExchange: <ActiveExchange />,
@@ -81,22 +86,52 @@ export default function DashboardPC() {
 
   return (
     <div
-      className="zoom-out-container relative h-screen w-screen overflow-x-hidden overflow-y-auto"
+      className={`zoom-out-container relative h-screen w-screen overflow-x-hidden overflow-y-auto ${isDarkMode ? "dark-mode" : "light-mode"}`}
+      style={{
+        backgroundColor: isDarkMode ? "#000" : "#fff", // Dynamic background
+      }}
     >
-      {/* Background video */}
+      {/* Background video 
       <video
         autoPlay
         muted
         loop
         playsInline
         className="fixed top-0 left-0 w-full h-full object-cover z-0"
+        style={{ display: isDarkMode ? "block" : "none" }} // Hide in light mode
       >
         <source src={bgVideo} type="video/mp4" />
         Your browser does not support the video tag.
-      </video>
+      </video>*/}
 
       {/* Overlay */}
-      <div className="overlay"></div>
+      <div
+        className="overlay"
+        style={{
+          backgroundColor: isDarkMode ? "rgba(0, 0, 0, 0.5)" : "rgba(255, 255, 255, 0.1)",
+          zIndex: 1,
+          pointerEvents: "none",
+        }}
+      ></div>
+
+      {/* Theme Toggle Button */}
+      <button
+        onClick={toggleTheme}
+        style={{
+          position: "fixed",
+          top: "1rem",
+          right: "1rem",
+          zIndex: 1102,
+          padding: "0.5rem 1rem",
+          backgroundColor: isDarkMode ? "#333" : "#ddd",
+          color: isDarkMode ? "#fff" : "#000",
+          border: "none",
+          borderRadius: "4px",
+          cursor: "pointer",
+        }}
+      >
+        {isDarkMode ? "Light Mode" : "Dark Mode"}
+      </button>
 
       {/* Hover sound */}
       <audio ref={audioRef} preload="auto">
@@ -150,10 +185,11 @@ export default function DashboardPC() {
           height: "100vh",
           width: "100%",
           maxWidth: "calc(100vw - 16rem)",
+          color: isDarkMode ? "#fff" : "#000", // Dynamic text color
         }}
       >
         <div className="shimmer-wrapper w-full py-4 px-6 mb-6">
-          <h1 className="text-4xl font-semibold text-white drop-shadow-md">
+          <h1 className="text-4xl font-semibold drop-shadow-md">
             Dashboard
           </h1>
         </div>
@@ -267,7 +303,7 @@ export default function DashboardPC() {
             left: 0,
             width: "100vw",
             height: "100vh",
-            backgroundColor: "rgba(0,0,0,0.9)",
+            backgroundColor: isDarkMode ? "rgba(0,0,0,0.9)" : "rgba(255,255,255,0.9)",
             zIndex: 1000,
             display: "flex",
             alignItems: "center",
@@ -282,7 +318,7 @@ export default function DashboardPC() {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              backgroundColor: "#111827",
+              backgroundColor: isDarkMode ? "#111827" : "#f9fafb",
               borderRadius: "1rem",
               padding: "1rem",
               width: "90vw",
@@ -290,6 +326,7 @@ export default function DashboardPC() {
               overflowY: "auto",
               boxShadow: "0 0 20px 5px #00ffff",
               position: "relative",
+              color: isDarkMode ? "#fff" : "#000",
             }}
           >
             {cards[expandedCard]}
