@@ -24,7 +24,7 @@
 .sidebar {
   position: fixed;
   top: 0;
-  left: 0; /* desktop is visible */
+  left: 0; /* Desktop is visible */
   height: 100%;
   width: 16rem;
   background: #1a1a2e49;
@@ -147,32 +147,36 @@
   text-align: center;
   box-shadow: none;
   border: none;
+  color: inherit; /* Inherit parent color */
+  transform-origin: center center; /* Ensure scaling from center */
+  margin: 0.25rem; /* Prevent overlap during scale */
 }
 
-/* Column color & glow */
+/* Column hover effects - reduced scale */
 .dashboard-column-cyan { border: 2px solid #00ffff; }
-.dashboard-column-cyan:hover { box-shadow: 0 8px 24px 0 #00ffff, 0 2px 8px 0 #00ffff; transform: scale(1.08); }
+.dashboard-column-cyan:hover { box-shadow: 0 8px 24px 0 #00ffff, 0 2px 8px 0 #00ffff; transform: scale(1.02); }
 
 .dashboard-column-purple { border: 2px solid #a855f7; }
-.dashboard-column-purple:hover { box-shadow: 0 8px 24px 0 #a855f7, 0 2px 8px 0 #a855f7; transform: scale(1.05); }
+.dashboard-column-purple:hover { box-shadow: 0 8px 24px 0 #a855f7, 0 2px 8px 0 #a855f7; transform: scale(1.02); }
 
 .dashboard-column-green { border: 2px solid #22c55e; }
-.dashboard-column-green:hover { box-shadow: 0 8px 24px 0 #22c55e, 0 2px 8px 0 #22c55e; transform: scale(1.05); }
+.dashboard-column-green:hover { box-shadow: 0 8px 24px 0 #22c55e, 0 2px 8px 0 #22c55e; transform: scale(1.02); }
 
 .dashboard-column-yellow { border: 2px solid #facc15; }
-.dashboard-column-yellow:hover { box-shadow: 0 8px 24px 0 #facc15, 0 2px 8px 0 #facc15; transform: scale(1.05); }
+.dashboard-column-yellow:hover { box-shadow: 0 8px 24px 0 #facc15, 0 2px 8px 0 #facc15; transform: scale(1.02); }
 
 .dashboard-column-teal { border: 2px solid #00e5ff; }
-.dashboard-column-teal:hover { box-shadow: 0 8px 24px 0 #00e5ff, 0 2px 8px 0 #00e5ff; transform: scale(1.05); }
+.dashboard-column-teal:hover { box-shadow: 0 8px 24px 0 #00e5ff, 0 2px 8px 0 #00e5ff; transform: scale(1.02); }
 
 .dashboard-column-orange { border: 2px solid #f97316; }
-.dashboard-column-orange:hover { box-shadow: 0 8px 24px 0 #f97316, 0 2px 8px 0 #f97316; transform: scale(1.05); }
+.dashboard-column-orange:hover { box-shadow: 0 8px 24px 0 #f97316, 0 2px 8px 0 #f97316; transform: scale(1.02); }
 
 .dashboard-column-red { border: 2px solid #ef4444; }
-.dashboard-column-red:hover { box-shadow: 0 8px 24px 0 #ef4444, 0 2px 8px 0 #ef4444; transform: scale(1.05); }
+.dashboard-column-red:hover { box-shadow: 0 8px 24px 0 #ef4444, 0 2px 8px 0 #ef4444; transform: scale(1.02); }
 
 .dashboard-column-darkpurple { border: 2px solid #ff0000; }
-.dashboard-column-darkpurple:hover { box-shadow: 0 0 10px #f70707, 0 0 20px #ff0909, 0 0 30px #4f03ff; transform: scale(1.05); }
+.dashboard-column-darkpurple:hover { box-shadow: 0 0 10px #f70707, 0 0 20px #ff0909, 0 0 30px #4f03ff; transform: scale(1.02); }
+
 
 /* Prevent horizontal scroll on small screens when scaled */
 body, html, #root {
@@ -215,11 +219,11 @@ main {
   border-radius: 0.75rem;
 }
 
-/* Shimmer wrapper */
+/* Shimmer wrapper - adjusted for light mode */
 .shimmer-wrapper {
   position: relative;
   overflow: hidden;
-  background-image: linear-gradient(to right, #1e293b, #334155, #1e293b);
+  background-image: none; /* Remove gradient in light mode */
   border: 2px solid #00ffff;
   border-radius: 0.75rem;
   box-shadow: inset 4px 4px 8px rgba(255,255,255,0.08),
@@ -237,6 +241,15 @@ main {
   background: linear-gradient(120deg, transparent, rgba(255,255,255,0.25), transparent);
   animation: shimmer-bar 2s infinite linear;
   pointer-events: none;
+  display: none; /* Disabled by default */
+}
+
+.dark-mode .shimmer-wrapper::before {
+  display: block; /* Enable shimmer in dark mode */
+}
+
+.light-mode .shimmer-wrapper::before {
+  display: none; /* Disable shimmer in light mode */
 }
 
 @keyframes shimmer-bar {
@@ -308,4 +321,26 @@ main {
   .mobile-stack {
     flex-direction: column !important;
   }
+}
+
+/* Light mode text overrides */
+.light-mode .text-white,
+.light-mode .text-white-200,
+.light-mode .text-white-300,
+.light-mode .text-white-400,
+.light-mode .text-gray-400 {
+  color: #000 !important;
+}
+
+/* Force ALL text inside dashboard columns to be black in light mode */
+.light-mode .dashboard-column,
+.light-mode .dashboard-column * {
+  color: #000 !important;
+  text-shadow: none !important;
+  filter: none !important;
+}
+
+/* Keep background light */
+.light-mode .dashboard-column {
+  background-color: rgba(255, 255, 255, 0.2) !important;
 }

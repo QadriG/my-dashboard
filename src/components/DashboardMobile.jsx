@@ -333,60 +333,67 @@ export default function DashboardMobile() {
         </div>
       </main>
 
-      {/* Expanded modal */}
-      {isMobile && expandedCard && (
-        <div
-          onClick={() => setExpandedCard(null)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            backgroundColor: isDarkMode ? "rgba(0,0,0,0.9)" : "rgba(255,255,255,0.9)",
-            zIndex: 1200,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "1rem",
-            cursor: "pointer",
-          }}
-          aria-modal="true"
-          role="dialog"
-          tabIndex={-1}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: isDarkMode ? "#111827" : "#f9fafb",
-              borderRadius: "1rem",
-              padding: "1rem",
-              width: "95%",
-              height: "90%",
-              overflowY: "auto",
-              boxShadow: "0 0 20px 5px #00ffff",
-              position: "relative",
-              color: isDarkMode ? "#fff" : "#000", // Pure black text in light mode
-            }}
-          >
-            {cards[expandedCard]}
-            <button
-              onClick={() => setExpandedCard(null)}
-              style={{
-                position: "absolute",
-                top: "0.5rem",
-                right: "0.75rem",
-                background: "transparent",
-                border: "none",
-                color: "#00ffff",
-                fontSize: "2rem",
-                cursor: "pointer",
-                fontWeight: "bold",
-              }}
-              aria-label="Close expanded view"
-            >
-              &times;
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+   {/* Expanded modal */}
+   {!isMobile && expandedCard && (
+     <div
+       onClick={() => setExpandedCard(null)}
+       style={{
+         position: "fixed",
+         top: "50%",
+         left: "50%",
+         transform: "translate(-50%, -50%)", // Center perfectly
+         backgroundColor: "transparent",
+         zIndex: 1000,
+         display: "flex",
+         alignItems: "center",
+         justifyContent: "center",
+         cursor: "pointer",
+         padding: 0, // No extra space
+       }}
+       aria-modal="true"
+       role="dialog"
+       tabIndex={-1}
+     >
+       <div
+         onClick={(e) => e.stopPropagation()}
+         style={{
+           backgroundColor: isDarkMode ? "#111827" : "#f9fafb",
+           borderRadius: "1rem",
+           padding: "1rem",
+           display: "inline-block", // Shrinks to fit content
+           maxWidth: "90vw", // Prevent overflow
+           maxHeight: "90vh", // Prevent overflow
+           overflow: "auto",
+           boxShadow: "0 0 20px 5px #00ffff",
+           position: "relative",
+           color: isDarkMode ? "#fff" : "#000",
+           fontSize: "2em", // Twice as big text
+           lineHeight: "1.8",
+           transition: "font-size 0.25s ease",
+         }}
+       >
+         {cards[expandedCard]}
+         <button
+           onClick={() => setExpandedCard(null)}
+           style={{
+             position: "absolute",
+             top: "0.5rem",
+             right: "0.5rem",
+             background: "transparent",
+             border: "none",
+             color: "#00ffff",
+             fontSize: "2rem",
+             cursor: "pointer",
+             fontWeight: "bold",
+           }}
+           aria-label="Close expanded view"
+         >
+           &times;
+         </button>
+       </div>
+     </div>
+   )}
+   
+       </div>
+     );
+   }

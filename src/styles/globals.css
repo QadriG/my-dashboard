@@ -42,10 +42,15 @@ html, body, #root {
   pointer-events: none; /* Let clicks pass through */
 }
 
-/* Text shimmer effect */
+/* Text shimmer effect - disabled in light mode */
 .shimmer-wrapper {
   position: relative;
   overflow: hidden;
+  border: 2px solid #00ffff;
+  border-radius: 0.75rem;
+}
+
+.shimmer-wrapper .shimmer-effect {
   background: linear-gradient(
     270deg,
     #22d3ee,
@@ -57,6 +62,12 @@ html, body, #root {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   color: #22d3ee;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
 }
 
 @keyframes shimmer {
@@ -168,7 +179,7 @@ canvas, svg, video, img {
 }
 
 .light-mode .overlay {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: transparent; /* Remove overlay in light mode */
 }
 
 /* Theme-specific dashboard column adjustments */
@@ -181,12 +192,26 @@ canvas, svg, video, img {
 }
 
 /* Theme-specific shimmer wrapper text */
-.dark-mode .shimmer-wrapper {
-  color: #22d3ee;
+.dark-mode .shimmer-wrapper h1 {
+  position: relative;
 }
 
-.light-mode .shimmer-wrapper {
-  color: #000; /* Pure black text */
+.dark-mode .shimmer-wrapper h1 .shimmer-effect {
+  display: block; /* Enable shimmer in dark mode */
+}
+
+.light-mode .shimmer-wrapper h1 {
+  position: relative;
+}
+
+.light-mode .shimmer-wrapper h1 .shimmer-effect {
+  display: none; /* Disable shimmer in light mode */
+}
+
+.light-mode .shimmer-wrapper h1 {
+  color: #000 !important; /* Force pure black text */
+  -webkit-text-fill-color: #000 !important; /* Override any shimmer fill */
+  text-shadow: none !important; /* Remove shadow effects */
 }
 
 /* Remove blur or dim effects from text in light mode */
@@ -198,8 +223,4 @@ canvas, svg, video, img {
 
 .light-mode main {
   color: #000 !important; /* Force pure black text for main content */
-}
-
-.light-mode .shimmer-wrapper h1 {
-  color: #000 !important; /* Force pure black text for title */
 }

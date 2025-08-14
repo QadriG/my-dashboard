@@ -1,3 +1,4 @@
+/* eslint no-undef: "off" */
 import React, { useRef, useState, useEffect } from "react";
 import { isMobile, deviceType, browserName } from "react-device-detect"; 
 import "../styles/sidebar.css";
@@ -15,7 +16,7 @@ import DailyPnL from "../components/DailyPnL.jsx";
 import BestTradingPairs from "../components/BestTradingPairs.jsx";
 import OpenPositions from "../components/OpenPositions.jsx";
 
-export default function DashboardPC() {
+export default function Dashboard() {
   const audioRef = useRef(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedCard, setExpandedCard] = useState(null);
@@ -61,7 +62,6 @@ export default function DashboardPC() {
 
   const toggleTheme = () => {
     setIsDarkMode((prev) => !prev);
-    // Alternate button text independently of theme
     setButtonText((prev) => (prev === "Light Mode" ? "Dark Mode" : "Light Mode"));
   };
 
@@ -86,31 +86,43 @@ export default function DashboardPC() {
     }
   };
 
+  // Define button style outside render
+  const buttonStyle = {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    padding: "0.5rem 1rem",
+    backgroundColor: isDarkMode ? "#333" : "#ddd",
+    color: isDarkMode ? "#fff" : "#000",
+    border: "2px solid " + (isDarkMode ? "#00ffff" : "#0000ff"),
+    borderRadius: "4px",
+    cursor: "pointer",
+    textAlign: "center",
+    boxShadow: isDarkMode ? "0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff" : "0 0 10px #0000ff, 0 0 20px #0000ff, 0 0 30px #0000ff",
+    transition: "all 0.3s ease",
+    height: "100%",
+    width: "10rem",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "1.5rem",
+    opacity: 1,
+    // eslint-disable-next-line no-undef
+    textShadow: isDarkMode ? "0 0 1px #ffffff" : "none",
+  };
+
   return (
     <div
       className={`zoom-out-container relative h-screen w-screen overflow-x-hidden overflow-y-auto ${isDarkMode ? "dark-mode" : "light-mode"}`}
       style={{
-        backgroundColor: isDarkMode ? "#000" : "#fff", // Dynamic background
+        backgroundColor: isDarkMode ? "#000" : "#fff",
       }}
     >
-      {/* Background video commented out */}
-      {/* <video
-        autoPlay
-        muted
-        loop
-        playsInline
-        className="fixed top-0 left-0 w-full h-full object-cover z-0"
-        style={{ display: isDarkMode ? "block" : "none" }}
-      >
-        <source src={bgVideo} type="video/mp4" />
-        Your browser does not support the video tag.
-      </video> */}
-
       {/* Overlay */}
       <div
         className="overlay"
         style={{
-          backgroundColor: isDarkMode ? "rgba(0, 0, 0, 0.5)" : "rgba(255, 255, 255, 0.1)",
+          backgroundColor: isDarkMode ? "rgba(0, 0, 0, 0.5)" : "transparent",
           zIndex: 1,
           pointerEvents: "none",
         }}
@@ -132,13 +144,12 @@ export default function DashboardPC() {
 
       {/* Sidebar */}
       <div
-        className={`sidebar bg-black/70 text-white pt-8 px-4 pb-4 rounded-r-xl border-2 border-cyan-400
-          ${sidebarOpen ? "open" : ""}`}
+        className={`sidebar bg-black/70 text-white pt-8 px-4 pb-4 rounded-r-xl border-2 border-cyan-400 ${sidebarOpen ? "open" : ""}`}
       >
         <h2 className="text-xl font-bold mb-10 text-cyan-300 drop-shadow-md">
           QuantumCopyTrading
         </h2>
-        <nav className="flex flex-col space-y-3">
+        <ul>
           {[
             { label: "Dashboard", className: "sidebar-cyan" },
             { label: "Settings", className: "sidebar-purple" },
@@ -149,16 +160,17 @@ export default function DashboardPC() {
             { label: "Manual Push", className: "sidebar-manual-push" },
             { label: "Logout", className: "sidebar-red" },
           ].map((btn, i) => (
-            <a
-              key={i}
-              href="#"
-              onMouseEnter={playHoverSound}
-              className={`sidebar-button ${btn.className} px-4 py-2 bg-gray-900 text-white`}
-            >
-              {btn.label}
-            </a>
+            <li key={i}>
+              <a
+                href="#"
+                onMouseEnter={playHoverSound}
+                className={`sidebar-button ${btn.className}`}
+              >
+                {btn.label}
+              </a>
+            </li>
           ))}
-        </nav>
+        </ul>
       </div>
 
       {/* Main content container */}
@@ -168,37 +180,23 @@ export default function DashboardPC() {
           height: "100vh",
           width: "100%",
           maxWidth: "calc(100vw - 16rem)",
-          color: isDarkMode ? "#fff" : "#000", // Pure black text in light mode
+          color: isDarkMode ? "#fff" : "#000",
         }}
       >
         <div className="shimmer-wrapper w-full py-4 px-6 mb-6" style={{ position: "relative" }}>
-          <h1 className="text-4xl font-semibold drop-shadow-md inline-block" style={{ color: isDarkMode ? "#fff" : "#000" }}>
+          <h1
+            className="text-4xl font-semibold drop-shadow-md inline-block"
+            style={{
+              color: isDarkMode ? "#fff" : "#000",
+              textShadow: "none !important",
+              WebkitTextFillColor: isDarkMode ? "#fff" : "#000",
+            }}
+          >
             Dashboard
           </h1>
           <button
             onClick={toggleTheme}
-            style={{
-              position: "absolute",
-              top: 0,
-              right: 0,
-              padding: "0.5rem 1rem",
-              backgroundColor: isDarkMode ? "#333" : "#ddd",
-              color: isDarkMode ? "#fff" : "#000", // Black text in light mode, white in dark mode
-              border: "2px solid " + (isDarkMode ? "#00ffff" : "#0000ff"), // Add border for better visibility
-              borderRadius: "4px",
-              cursor: "pointer",
-              textAlign: "center",
-              boxShadow: isDarkMode ? "0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff" : "0 0 10px #0000ff, 0 0 20px #0000ff, 0 0 30px #0000ff",
-              transition: "all 0.3s ease",
-              height: "100%",
-              width: "10rem",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center", // Ensure text is centered
-              fontSize: "1.5rem", // Ensure readable font size
-              opacity: 1, // Ensure no transparency
-              textShadow: isDarkMode ? "0 0 1px #ffffffff" : "0 0 1px #000000ff", // Add text shadow for contrast
-            }}
+            style={buttonStyle}
             onMouseEnter={(e) => { e.target.style.boxShadow = isDarkMode ? "0 0 15px #00ffff, 0 0 25px #00ffff, 0 0 40px #00ffff" : "0 0 15px #0000ff, 0 0 25px #0000ff, 0 0 40px #0000ff"; }}
             onMouseLeave={(e) => { e.target.style.boxShadow = isDarkMode ? "0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff" : "0 0 10px #0000ff, 0 0 20px #0000ff, 0 0 30px #0000ff"; }}
           >
@@ -210,30 +208,30 @@ export default function DashboardPC() {
           <div
             className="dashboard-column dashboard-column-cyan"
             onClick={() => handleCardClick("activeUsers")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
+            style={{ color: isDarkMode ? "#fff" : "#000", textShadow: "none !important" }}
           >
-            {cards.activeUsers}
+            {React.cloneElement(cards.activeUsers, { isDarkMode })}
           </div>
           <div
             className="dashboard-column dashboard-column-purple"
             onClick={() => handleCardClick("activeExchange")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
+            style={{ color: isDarkMode ? "#fff" : "#000", textShadow: "none !important" }}
           >
-            {cards.activeExchange}
+            {React.cloneElement(cards.activeExchange, { isDarkMode })}
           </div>
           <div
             className="dashboard-column dashboard-column-green"
             onClick={() => handleCardClick("activePositions")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
+            style={{ color: isDarkMode ? "#fff" : "#000", textShadow: "none !important" }}
           >
-            {cards.activePositions}
+            {React.cloneElement(cards.activePositions, { isDarkMode })}
           </div>
           <div
             className="dashboard-column dashboard-column-yellow"
             onClick={() => handleCardClick("totalBalances")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
+            style={{ color: isDarkMode ? "#fff" : "#000", textShadow: "none !important" }}
           >
-            {cards.totalBalances}
+            {React.cloneElement(cards.totalBalances, { isDarkMode })}
           </div>
         </div>
 
@@ -241,23 +239,23 @@ export default function DashboardPC() {
           <div
             className="dashboard-column dashboard-column-cyan"
             onClick={() => handleCardClick("profit")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
+            style={{ color: isDarkMode ? "#fff" : "#000", textShadow: "none !important" }}
           >
-            {cards.profit}
+            {React.cloneElement(cards.profit, { isDarkMode })}
           </div>
           <div
             className="dashboard-column dashboard-column-purple"
             onClick={() => handleCardClick("upl")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
+            style={{ color: isDarkMode ? "#fff" : "#000", textShadow: "none !important" }}
           >
-            {cards.upl}
+            {React.cloneElement(cards.upl, { isDarkMode })}
           </div>
           <div
             className="dashboard-column dashboard-column-green"
             onClick={() => handleCardClick("fundsDistribution")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
+            style={{ color: isDarkMode ? "#fff" : "#000", textShadow: "none !important" }}
           >
-            {cards.fundsDistribution}
+            {React.cloneElement(cards.fundsDistribution, { isDarkMode })}
           </div>
         </div>
 
@@ -265,16 +263,16 @@ export default function DashboardPC() {
           <div
             className="dashboard-column dashboard-column-cyan w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden"
             onClick={() => handleCardClick("balanceGraph")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
+            style={{ color: isDarkMode ? "#fff" : "#000", textShadow: "none !important" }}
           >
-            {cards.balanceGraph}
+            {React.cloneElement(cards.balanceGraph, { isDarkMode })}
           </div>
           <div
             className="dashboard-column dashboard-column-purple w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden"
             onClick={() => handleCardClick("weeklyRevenue")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
+            style={{ color: isDarkMode ? "#fff" : "#000", textShadow: "none !important" }}
           >
-            {cards.weeklyRevenue}
+            {React.cloneElement(cards.weeklyRevenue, { isDarkMode })}
           </div>
         </div>
 
@@ -282,16 +280,16 @@ export default function DashboardPC() {
           <div
             className="dashboard-column dashboard-column-cyan"
             onClick={() => handleCardClick("dailyPnL")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
+            style={{ color: isDarkMode ? "#fff" : "#000", textShadow: "none !important" }}
           >
-            {cards.dailyPnL}
+            {React.cloneElement(cards.dailyPnL, { isDarkMode })}
           </div>
           <div
             className="dashboard-column dashboard-column-purple"
             onClick={() => handleCardClick("bestTradingPairs")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
+            style={{ color: isDarkMode ? "#fff" : "#000", textShadow: "none !important" }}
           >
-            {cards.bestTradingPairs}
+            {React.cloneElement(cards.bestTradingPairs, { isDarkMode })}
           </div>
         </div>
 
@@ -299,9 +297,9 @@ export default function DashboardPC() {
           <div
             className="dashboard-column dashboard-column-green"
             onClick={() => handleCardClick("openPositions")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
+            style={{ color: isDarkMode ? "#fff" : "#000", textShadow: "none !important" }}
           >
-            {cards.openPositions}
+            {React.cloneElement(cards.openPositions, { isDarkMode })}
           </div>
         </div>
 
@@ -310,7 +308,7 @@ export default function DashboardPC() {
             <button
               className="dashboard-column dashboard-column-cyan p-6 text-center"
               onClick={() => handleCardClick("viewAllPositions")}
-              style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
+              style={{ color: isDarkMode ? "#fff" : "#000", textShadow: "none !important" }}
             >
               View All Positions
             </button>
@@ -318,63 +316,67 @@ export default function DashboardPC() {
         </div>
       </main>
 
-      {/* Expanded modal */}
-      {!isMobile && expandedCard && (
-        <div
-          onClick={() => setExpandedCard(null)}
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            backgroundColor: isDarkMode ? "rgba(0,0,0,0.9)" : "rgba(255,255,255,0.9)",
-            zIndex: 1000,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "1rem",
-            cursor: "pointer",
-          }}
-          aria-modal="true"
-          role="dialog"
-          tabIndex={-1}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: isDarkMode ? "#111827" : "#f9fafb",
-              borderRadius: "1rem",
-              padding: "1rem",
-              width: "90vw",
-              height: "90vh",
-              overflowY: "auto",
-              boxShadow: "0 0 20px 5px #00ffff",
-              position: "relative",
-              color: isDarkMode ? "#fff" : "#000", // Pure black text in light mode
-            }}
-          >
-            {cards[expandedCard]}
-            <button
-              onClick={() => setExpandedCard(null)}
-              style={{
-                position: "absolute",
-                top: "1rem",
-                right: "1rem",
-                background: "transparent",
-                border: "none",
-                color: "#00ffff",
-                fontSize: "2rem",
-                cursor: "pointer",
-                fontWeight: "bold",
-              }}
-              aria-label="Close expanded view"
-            >
-              &times;
-            </button>
-          </div>
-        </div>
-      )}
+  {/* Expanded modal */}
+{!isMobile && expandedCard && (
+  <div
+    onClick={() => setExpandedCard(null)}
+    style={{
+      position: "fixed",
+      top: "50%",
+      left: "50%",
+      transform: "translate(-50%, -50%)", // Center perfectly
+      backgroundColor: "transparent",
+      zIndex: 1000,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      cursor: "pointer",
+      padding: 0, // No extra space
+    }}
+    aria-modal="true"
+    role="dialog"
+    tabIndex={-1}
+  >
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        backgroundColor: isDarkMode ? "#111827" : "#f9fafb",
+        borderRadius: "1rem",
+        padding: "1rem",
+        display: "inline-block", // Shrinks to fit content
+        maxWidth: "90vw", // Prevent overflow
+        maxHeight: "90vh", // Prevent overflow
+        overflow: "auto",
+        boxShadow: "0 0 20px 5px #00ffff",
+        position: "relative",
+        color: isDarkMode ? "#fff" : "#000",
+        fontSize: "2em", // Twice as big text
+        lineHeight: "1.8",
+        transition: "font-size 0.25s ease",
+      }}
+    >
+      {cards[expandedCard]}
+      <button
+        onClick={() => setExpandedCard(null)}
+        style={{
+          position: "absolute",
+          top: "0.5rem",
+          right: "0.5rem",
+          background: "transparent",
+          border: "none",
+          color: "#00ffff",
+          fontSize: "2rem",
+          cursor: "pointer",
+          fontWeight: "bold",
+        }}
+        aria-label="Close expanded view"
+      >
+        &times;
+      </button>
+    </div>
+  </div>
+)}
+
     </div>
   );
 }
