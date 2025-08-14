@@ -196,7 +196,7 @@ export default function DashboardMobile() {
               border: "2px solid " + (isDarkMode ? "#00ffff" : "#0000ff"), // Add border for better visibility
               borderRadius: "4px",
               cursor: "pointer",
-              textAlign: "center",
+              textAlign: "right",
               boxShadow: isDarkMode ? "0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff" : "0 0 10px #0000ff, 0 0 20px #0000ff, 0 0 30px #0000ff",
               transition: "all 0.3s ease",
               height: "100%",
