@@ -144,11 +144,12 @@ export default function DashboardMobile() {
             { label: "Manual Push", className: "sidebar-manual-push" },
             { label: "Logout", className: "sidebar-red" },
           ].map((btn, i) => (
-            <a
+                        <a
               key={i}
               href="#"
               onMouseEnter={playHoverSound}
               className={`sidebar-button ${btn.className} px-4 py-2 bg-gray-900 text-white`}
+              style={{ color: isDarkMode ? "#fff" : "#fff" }} // Force white text in both modes for mobile
             >
               {btn.label}
             </a>

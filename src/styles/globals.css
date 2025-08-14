@@ -224,3 +224,6 @@ canvas, svg, video, img {
 .light-mode main {
   color: #000 !important; /* Force pure black text for main content */
 }
+.light-mode .sidebar-button {
+  color: #fff !important;
+}
