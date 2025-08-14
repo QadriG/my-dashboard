@@ -181,7 +181,7 @@ export default function DashboardMobile() {
         }}
       >
         <div className="shimmer-wrapper w-full py-4 px-6 mb-4" style={{ position: "relative" }}>
-          <h1 className="text-2xl font-semibold drop-shadow-md inline-block" style={{ color: isDarkMode ? "#fff" : "#000" }}>
+          <h1 className="text-2xl font-semibold drop-shadow-md inline-block" style={{ color: isDarkMode ? "#fff" : "#000", paddingLeft: isMobile ? "1.5rem" : "0" }}>
             Dashboard
           </h1>
           <button
@@ -196,7 +196,7 @@ export default function DashboardMobile() {
               border: "2px solid " + (isDarkMode ? "#00ffff" : "#0000ff"), // Add border for better visibility
               borderRadius: "4px",
               cursor: "pointer",
-              textAlign: "right",
+              textAlign: "center",
               boxShadow: isDarkMode ? "0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff" : "0 0 10px #0000ff, 0 0 20px #0000ff, 0 0 30px #0000ff",
               transition: "all 0.3s ease",
               height: "100%",
