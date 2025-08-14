@@ -37,6 +37,7 @@ export default function DashboardMobile() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedCard, setExpandedCard] = useState(null);
   const [isDarkMode, setIsDarkMode] = useState(true); // Default to dark mode
+  const [buttonText, setButtonText] = useState("Light Mode"); // State for alternating text
 
   /* Compute a smooth per-component scale for small screens */
   useEffect(() => {
@@ -60,6 +61,8 @@ export default function DashboardMobile() {
 
   const toggleTheme = () => {
     setIsDarkMode((prev) => !prev);
+    // Alternate button text independently of theme
+    setButtonText((prev) => (prev === "Light Mode" ? "Dark Mode" : "Light Mode"));
   };
 
   const cards = {
@@ -107,25 +110,6 @@ export default function DashboardMobile() {
         }}
       ></div>
 
-      {/* Theme Toggle Button */}
-      <button
-        onClick={toggleTheme}
-        style={{
-          position: "fixed",
-          top: "1rem",
-          right: "1rem",
-          zIndex: 1102,
-          padding: "0.5rem 1rem",
-          backgroundColor: isDarkMode ? "#333" : "#ddd",
-          color: isDarkMode ? "#fff" : "#000",
-          border: "none",
-          borderRadius: "4px",
-          cursor: "pointer",
-        }}
-      >
-        {isDarkMode ? "Light Mode" : "Dark Mode"}
-      </button>
-
       {/* Hover sound */}
       <audio ref={audioRef} preload="auto">
         <source src={hoverSound} type="audio/mpeg" />
@@ -165,7 +149,6 @@ export default function DashboardMobile() {
               href="#"
               onMouseEnter={playHoverSound}
               className={`sidebar-button ${btn.className} px-4 py-2 bg-gray-900 text-white`}
-              style={{ color: isDarkMode ? "#fff" : "#000" }} // Dynamic text color
             >
               {btn.label}
             </a>
@@ -193,14 +176,43 @@ export default function DashboardMobile() {
           left: 0,
           transition: "left 0.3s ease",
           zIndex: 20,
-          color: isDarkMode ? "#fff" : "#000", // Dynamic text color
+          color: isDarkMode ? "#fff" : "#000", // Pure black text in light mode
           backgroundColor: isDarkMode ? "rgba(0, 0, 0, 0.8)" : "rgba(255, 255, 255, 0.8)", // Dynamic background
         }}
       >
-        <div className="shimmer-wrapper w-full py-4 px-4 mb-4">
-          <h1 className="text-2xl font-semibold drop-shadow-md" style={{ color: isDarkMode ? "#fff" : "#000" }}>
+        <div className="shimmer-wrapper w-full py-4 px-6 mb-4" style={{ position: "relative" }}>
+          <h1 className="text-2xl font-semibold drop-shadow-md inline-block" style={{ color: isDarkMode ? "#fff" : "#000" }}>
             Dashboard
           </h1>
+          <button
+            onClick={toggleTheme}
+            style={{
+              position: "absolute",
+              top: 0,
+              right: 0,
+              padding: "0.5rem 1rem",
+              backgroundColor: isDarkMode ? "#333" : "#ddd",
+              color: isDarkMode ? "#fff" : "#000", // Black text in light mode, white in dark mode
+              border: "2px solid " + (isDarkMode ? "#00ffff" : "#0000ff"), // Add border for better visibility
+              borderRadius: "4px",
+              cursor: "pointer",
+              textAlign: "center",
+              boxShadow: isDarkMode ? "0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff" : "0 0 10px #0000ff, 0 0 20px #0000ff, 0 0 30px #0000ff",
+              transition: "all 0.3s ease",
+              height: "100%",
+              width: "10rem",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center", // Ensure text is centered
+              fontSize: "1.5rem", // Ensure readable font size
+              opacity: 1, // Ensure no transparency
+              textShadow: isDarkMode ? "0 0 1px #ffffffff" : "0 0 1px #000000ff", // Add text shadow for contrast
+            }}
+            onMouseEnter={(e) => { e.target.style.boxShadow = isDarkMode ? "0 0 15px #00ffff, 0 0 25px #00ffff, 0 0 40px #00ffff" : "0 0 15px #0000ff, 0 0 25px #0000ff, 0 0 40px #0000ff"; }}
+            onMouseLeave={(e) => { e.target.style.boxShadow = isDarkMode ? "0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff" : "0 0 10px #0000ff, 0 0 20px #0000ff, 0 0 30px #0000ff"; }}
+          >
+            {buttonText}
+          </button>
         </div>
 
         {/* Row 1 */}
@@ -208,28 +220,28 @@ export default function DashboardMobile() {
           <Card
             className="dashboard-column-cyan"
             onClick={() => handleCardClick("activeUsers")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Dynamic text color
+            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
           >
             {cards.activeUsers}
           </Card>
           <Card
             className="dashboard-column-purple"
             onClick={() => handleCardClick("activeExchange")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Dynamic text color
+            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
           >
             {cards.activeExchange}
           </Card>
           <Card
             className="dashboard-column-green"
             onClick={() => handleCardClick("activePositions")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Dynamic text color
+            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
           >
             {cards.activePositions}
           </Card>
           <Card
             className="dashboard-column-yellow"
             onClick={() => handleCardClick("totalBalances")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Dynamic text color
+            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
           >
             {cards.totalBalances}
           </Card>
@@ -240,21 +252,21 @@ export default function DashboardMobile() {
           <Card
             className="dashboard-column-cyan"
             onClick={() => handleCardClick("profit")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Dynamic text color
+            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
           >
             {cards.profit}
           </Card>
           <Card
             className="dashboard-column-purple"
             onClick={() => handleCardClick("upl")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Dynamic text color
+            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
           >
             {cards.upl}
           </Card>
           <Card
             className="dashboard-column-green"
             onClick={() => handleCardClick("fundsDistribution")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Dynamic text color
+            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
           >
             {cards.fundsDistribution}
           </Card>
@@ -265,14 +277,14 @@ export default function DashboardMobile() {
           <Card
             className="dashboard-column-cyan w-full lg:w-1/2 p-2 max-h-[60px] h-[60px] overflow-hidden"
             onClick={() => handleCardClick("balanceGraph")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Dynamic text color
+            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
           >
             {cards.balanceGraph}
           </Card>
           <Card
             className="dashboard-column-purple w-full lg:w-1/2 p-2 max-h-[60px] h-[60px] overflow-hidden"
             onClick={() => handleCardClick("weeklyRevenue")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Dynamic text color
+            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
           >
             {cards.weeklyRevenue}
           </Card>
@@ -283,14 +295,14 @@ export default function DashboardMobile() {
           <Card
             className="dashboard-column-cyan"
             onClick={() => handleCardClick("dailyPnL")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Dynamic text color
+            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
           >
             {cards.dailyPnL}
           </Card>
           <Card
             className="dashboard-column-purple"
             onClick={() => handleCardClick("bestTradingPairs")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Dynamic text color
+            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
           >
             {cards.bestTradingPairs}
           </Card>
@@ -301,7 +313,7 @@ export default function DashboardMobile() {
           <Card
             className="dashboard-column-green"
             onClick={() => handleCardClick("openPositions")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Dynamic text color
+            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
           >
             {cards.openPositions}
           </Card>
@@ -313,7 +325,7 @@ export default function DashboardMobile() {
             <button
               className="scaled-card dashboard-column dashboard-column-cyan p-4 text-center"
               onClick={() => handleCardClick("viewAllPositions")}
-              style={{ color: isDarkMode ? "#fff" : "#000" }} // Dynamic text color
+              style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
             >
               View All Positions
             </button>
@@ -351,7 +363,7 @@ export default function DashboardMobile() {
               overflowY: "auto",
               boxShadow: "0 0 20px 5px #00ffff",
               position: "relative",
-              color: isDarkMode ? "#fff" : "#000",
+              color: isDarkMode ? "#fff" : "#000", // Pure black text in light mode
             }}
           >
             {cards[expandedCard]}

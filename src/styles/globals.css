@@ -186,5 +186,20 @@ canvas, svg, video, img {
 }
 
 .light-mode .shimmer-wrapper {
-  color: #0891b2;
+  color: #000; /* Pure black text */
+}
+
+/* Remove blur or dim effects from text in light mode */
+.light-mode .dashboard-column {
+  filter: none !important;
+  text-shadow: none !important;
+  color: #000 !important; /* Force pure black text */
+}
+
+.light-mode main {
+  color: #000 !important; /* Force pure black text for main content */
+}
+
+.light-mode .shimmer-wrapper h1 {
+  color: #000 !important; /* Force pure black text for title */
 }
