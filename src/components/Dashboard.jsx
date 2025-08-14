@@ -260,21 +260,35 @@ export default function Dashboard() {
         </div>
 
         <div className="flex gap-4 w-full items-start mt-8 max-lg:flex-col">
-          <div
-            className="dashboard-column dashboard-column-cyan w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden"
-            onClick={() => handleCardClick("balanceGraph")}
-            style={{ color: isDarkMode ? "#fff" : "#000", textShadow: "none !important" }}
-          >
-            {React.cloneElement(cards.balanceGraph, { isDarkMode })}
-          </div>
-          <div
-            className="dashboard-column dashboard-column-purple w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden"
-            onClick={() => handleCardClick("weeklyRevenue")}
-            style={{ color: isDarkMode ? "#fff" : "#000", textShadow: "none !important" }}
-          >
-            {React.cloneElement(cards.weeklyRevenue, { isDarkMode })}
-          </div>
+        <div
+          className="dashboard-column dashboard-column-cyan balance-graph w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden"
+          onClick={() => handleCardClick("balanceGraph")}
+          style={{ color: isDarkMode ? "#fff" : "#000", textShadow: "none !important" }}
+        >
+          {React.cloneElement(cards.balanceGraph, {
+            isDarkMode,
+            axisColor: isDarkMode ? "#fff" : "#000",
+            labelColor: isDarkMode ? "#fff" : "#000",
+            gridColor: isDarkMode ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)",
+            tooltipBg: isDarkMode ? "#111827" : "#ffffff",
+          })}
         </div>
+
+        <div
+          className="dashboard-column dashboard-column-purple weekly-revenue w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden"
+          onClick={() => handleCardClick("weeklyRevenue")}
+          style={{ color: isDarkMode ? "#fff" : "#000", textShadow: "none !important" }}
+        >
+          {React.cloneElement(cards.weeklyRevenue, {
+            isDarkMode,
+            axisColor: isDarkMode ? "#fff" : "#000",
+            labelColor: isDarkMode ? "#fff" : "#000",
+            gridColor: isDarkMode ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)",
+            tooltipBg: isDarkMode ? "#111827" : "#ffffff",
+          })}
+        </div>
+      </div>
+
 
         <div className="grid grid-cols-2 gap-7 mt-8 max-sm:grid-cols-1">
           <div
@@ -351,7 +365,7 @@ export default function Dashboard() {
         position: "relative",
         color: isDarkMode ? "#fff" : "#000",
         fontSize: "2em", // Twice as big text
-        lineHeight: "1.8",
+        lineHeight: "1.2",
         transition: "font-size 0.25s ease",
       }}
     >
