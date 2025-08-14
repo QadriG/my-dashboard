@@ -252,21 +252,21 @@ export default function DashboardMobile() {
           <Card
             className="dashboard-column-cyan"
             onClick={() => handleCardClick("profit")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
+            style={{ color: isDarkMode ? "#fff !important" : "#000 !important" }} // Force pure black/white text
           >
             {cards.profit}
           </Card>
           <Card
             className="dashboard-column-purple"
             onClick={() => handleCardClick("upl")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
+            style={{ color: isDarkMode ? "#fff !important" : "#000 !important" }} // Force pure black/white text
           >
             {cards.upl}
           </Card>
           <Card
             className="dashboard-column-green"
             onClick={() => handleCardClick("fundsDistribution")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
+            style={{ color: isDarkMode ? "#fff !important" : "#000 !important" }} // Force pure black/white text
           >
             {cards.fundsDistribution}
           </Card>
