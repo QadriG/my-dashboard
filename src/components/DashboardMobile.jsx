@@ -320,23 +320,18 @@ export default function DashboardMobile() {
           </Card>
         </div>
 
-        {/* View All Positions button (outside table, full neon style) */}
-<div className="flex justify-center mt-6 mb-10">
-  <a href="F:/crypto-dashboard-prototype/crypto-dashboard-prototype/admin/positions.html">
-    <button
-      className="sidebar-button sidebar-cyan px-6 py-3 text-lg font-semibold"
-      onClick={() => handleCardClick("viewAllPositions")}
-      onMouseEnter={playHoverSound}
-      style={{
-        color: isDarkMode ? "#fff" : "#000",
-        textShadow: "none",
-      }}
-    >
-      View All Positions
-    </button>
-  </a>
-</div>
-
+        {/* CTA */}
+        <div className="flex justify-center mt-4">
+          <a href="F:/crypto-dashboard-prototype/crypto-dashboard-prototype/admin/positions.html">
+            <button
+              className="scaled-card dashboard-column dashboard-column-cyan p-4 text-center"
+              onClick={() => handleCardClick("viewAllPositions")}
+              style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
+            >
+              View All Positions
+            </button>
+          </a>
+        </div>
       </main>
 
    {/* Expanded modal for desktop & mobile */}
