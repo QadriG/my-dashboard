@@ -332,6 +332,14 @@ main {
   color: #000 !important;
 }
 
+/* Dark mode text overrides */
+.dark-mode .dashboard-column,
+.dark-mode .dashboard-column * {
+  color: #fff !important;
+  text-shadow: none !important;
+  filter: none !important;
+}
+
 /* Force ALL text inside dashboard columns to be black in light mode */
 .light-mode .dashboard-column,
 .light-mode .dashboard-column * {
