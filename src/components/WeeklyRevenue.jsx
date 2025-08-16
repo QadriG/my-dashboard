@@ -12,7 +12,13 @@ export default function WeeklyRevenue({ isDarkMode }) {
       chartRef.current.destroy();
     }
 
-    const labelColor = isDarkMode ? "#ffffff" : "#000000";
+    // Detect mobile
+    const isMobile = window.innerWidth <= 768;
+
+    // Force white labels ONLY on mobile dark mode
+    const labelColor =
+      isDarkMode && isMobile ? "#ffffff" : isDarkMode ? "#cccccc" : "#000000";
+
     const gridColor = isDarkMode
       ? "rgba(255,255,255,0.1)"
       : "rgba(0,0,0,0.1)";
@@ -23,7 +29,7 @@ export default function WeeklyRevenue({ isDarkMode }) {
       i === 0
         ? "rgba(34,197,94,1)" // green for first
         : val >= revenueData[i - 1]
-        ? "rgba(34,197,94,1)" // green if higher than prev
+        ? "rgba(34,197,94,1)" // green if higher
         : "rgba(239,68,68,1)" // red if lower
     );
 
@@ -32,18 +38,13 @@ export default function WeeklyRevenue({ isDarkMode }) {
       data: {
         labels: ["Week 1", "Week 2", "Week 3", "Week 4"],
         datasets: [
-  {
-    data: revenueData,
-    backgroundColor: isDarkMode
-      ? "rgba(255,255,255,0.8)"  // white bars in dark
-      : revenueBarColors,        // green/red bars in light
-    borderColor: isDarkMode
-      ? "#ffffff"                // white border in dark
-      : revenueBarColors.map((color) => color.replace("0.6", "1")),
-    borderWidth: 1,
-  },
-],
-
+          {
+            data: revenueData,
+            backgroundColor: revenueBarColors,
+            borderColor: revenueBarColors,
+            borderWidth: 1,
+          },
+        ],
       },
       options: {
         responsive: true,
@@ -79,17 +80,6 @@ export default function WeeklyRevenue({ isDarkMode }) {
         },
       },
     });
-// after labelColor / gridColor / tooltipBg are computed
-Chart.defaults.color = labelColor;       // makes all chart text (ticks/tooltip) respect dark/light
-Chart.defaults.borderColor = gridColor;  // grid/border color parity
-
-    /* Resize to container
-    const canvas = canvasRef.current;
-    canvas.width = 300;
-    canvas.height = 75;
-    if (chartRef.current) {
-      chartRef.current.resize();
-    }*/
 
     return () => {
       if (chartRef.current) {
@@ -99,7 +89,7 @@ Chart.defaults.borderColor = gridColor;  // grid/border color parity
   }, [isDarkMode]);
 
   return (
-    <div className="bg-black/40 backdrop-blur-md rounded-xl p-6 max-h-[75px] border-2 border-cyan-400 dashboard-column sidebar-cyan overflow-hidden transition duration-300 hover:shadow-[0_0_20px_#00ffff,_0_0_40px_#00ffff,_0_0_60px_#00ffff] hover:scale-105">
+    <div className="bg-black/40 backdrop-blur-md rounded-xl p-6 border-2 border-cyan-400 dashboard-column sidebar-cyan overflow-hidden transition duration-300 hover:shadow-[0_0_20px_#00ffff,_0_0_40px_#00ffff,_0_0_60px_#00ffff] hover:scale-105">
       <h2
         className="text-lg font-semibold mb-2"
         style={{ color: isDarkMode ? "#fff" : "#000" }}
@@ -107,9 +97,8 @@ Chart.defaults.borderColor = gridColor;  // grid/border color parity
         Weekly Revenue
       </h2>
       <div className="h-40">
-  <canvas ref={canvasRef} className="w-full h-full bg-transparent"></canvas>
-</div>
-
+        <canvas ref={canvasRef} className="w-full h-full bg-transparent"></canvas>
       </div>
+    </div>
   );
 }

@@ -12,7 +12,13 @@ export default function BalanceGraph({ isDarkMode }) {
       chartRef.current.destroy();
     }
 
-    const labelColor = isDarkMode ? "#ffffff" : "#000000";
+    // Detect mobile
+    const isMobile = window.innerWidth <= 768;
+
+    // Force white labels ONLY on mobile dark mode
+    const labelColor =
+      isDarkMode && isMobile ? "#ffffff" : isDarkMode ? "#cccccc" : "#000000";
+
     const gridColor = isDarkMode
       ? "rgba(255,255,255,0.1)"
       : "rgba(0,0,0,0.1)";
@@ -20,11 +26,7 @@ export default function BalanceGraph({ isDarkMode }) {
 
     const balanceData = [1000, 1075, 1120, 1060, 1220, 1300];
     const balancePointColors = balanceData.map((val, i) =>
-      i === 0
-        ? labelColor
-        : val >= balanceData[i - 1]
-        ? "green"
-        : "red"
+      i === 0 ? labelColor : val >= balanceData[i - 1] ? "green" : "red"
     );
 
     chartRef.current = new Chart(ctx, {
@@ -32,26 +34,19 @@ export default function BalanceGraph({ isDarkMode }) {
       data: {
         labels: ["Jul 1", "Jul 5", "Jul 10", "Jul 15", "Jul 20", "Jul 25"],
         datasets: [
-  {
-    label: "Balance",
-    data: balanceData,
-    fill: true,
-    backgroundColor: isDarkMode
-      ? "rgba(255,255,255,0.1)"   // translucent white fill in dark
-      : "rgba(59,130,246,0.1)",   // bluish fill in light
-    borderColor: isDarkMode
-      ? "#ffffff"                 // white line in dark
-      : "rgba(59,130,246,1)",     // blue line in light
-    borderWidth: 2,
-    tension: 0.4,
-    pointBackgroundColor: isDarkMode
-      ? "#ffffff"                 // white points in dark
-      : balancePointColors,       // green/red/blue points in light
-    pointRadius: 5,
-    pointHoverRadius: 6,
-  },
-],
-
+          {
+            label: "Balance",
+            data: balanceData,
+            fill: true,
+            backgroundColor: "rgba(59,130,246,0.1)",
+            borderColor: "rgba(59,130,246,1)",
+            borderWidth: 2,
+            tension: 0.4,
+            pointBackgroundColor: balancePointColors,
+            pointRadius: 5,
+            pointHoverRadius: 6,
+          },
+        ],
       },
       options: {
         responsive: true,
@@ -90,17 +85,6 @@ export default function BalanceGraph({ isDarkMode }) {
       },
     });
 
-    /* Resize to match container
-    const canvas = canvasRef.current;
-    canvas.width = 300;
-    canvas.height = 75;
-    if (chartRef.current) {
-      chartRef.current.resize();
-    }*/
-// after labelColor / gridColor / tooltipBg are computed
-Chart.defaults.color = labelColor;       // makes all chart text (ticks/tooltip) respect dark/light
-Chart.defaults.borderColor = gridColor;  // grid/border color parity
-
     return () => {
       if (chartRef.current) {
         chartRef.current.destroy();
@@ -109,18 +93,17 @@ Chart.defaults.borderColor = gridColor;  // grid/border color parity
   }, [isDarkMode]);
 
   return (
-  <div className="bg-black/40 backdrop-blur-md rounded-xl p-4 border-2 border-cyan-400 dashboard-column sidebar-cyan overflow-hidden transition duration-300 hover:shadow-[0_0_20px_#00ffff,_0_0_40px_#00ffff,_0_0_60px_#00ffff] hover:scale-105">
-    <h2
-      className="text-lg font-semibold mb-2"
-      style={{ color: isDarkMode ? "#fff" : "#000" }}
-    >
-      Balance Graph
-    </h2>
-    {/* Give a consistent height */}
-    <div className="h-40"> 
-      <canvas ref={canvasRef} className="w-full h-full bg-transparent"></canvas>
+    <div className="bg-black/40 backdrop-blur-md rounded-xl p-4 border-2 border-cyan-400 dashboard-column sidebar-cyan overflow-hidden transition duration-300 hover:shadow-[0_0_20px_#00ffff,_0_0_40px_#00ffff,_0_0_60px_#00ffff] hover:scale-105">
+      <h2
+        className="text-lg font-semibold mb-2"
+        style={{ color: isDarkMode ? "#fff" : "#000" }}
+      >
+        Balance Graph
+      </h2>
+      {/* Give a consistent height */}
+      <div className="h-40">
+        <canvas ref={canvasRef} className="w-full h-full bg-transparent"></canvas>
+      </div>
     </div>
-  </div>
-);
-
+  );
 }
