@@ -361,23 +361,17 @@ main {
     overflow-y: visible; /* allow button to show */
   }
 }
-/* ===== Fix: ensure "View All Positions" button is visible on mobile ===== */
-@media (max-width: 768px) {
-  body, html, #root {
-    height: auto !important;
-    overflow-y: auto !important;   /* allow vertical scroll */
-  }
-
-  /* Allow dashboard columns to grow fully */
-  .dashboard-column {
-    max-height: none !important;
-    overflow-x: auto;              /* table scrolls horizontally if needed */
-    overflow-y: visible !important;
-  }
-
-  /* Make sure wide tables don't break layout */
-  .dashboard-column table {
-    min-width: 700px;
-  }
+/* Force full-page scroll so the bottom button is visible */
+html, body, #root {
+  height: 100% !important;
+  overflow-y: auto !important;
 }
+
+/* Ensure the main dashboard content can expand */
+main, .dashboard-wrapper {
+  min-height: 100vh !important;
+  overflow-y: auto !important;
+}
+
+
 
