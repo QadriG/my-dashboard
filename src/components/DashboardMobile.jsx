@@ -321,19 +321,20 @@ export default function DashboardMobile() {
         </div>
 
         {/* CTA */}
-        <div className="flex justify-center mt-6 mb-10">
-        <a href="F:/crypto-dashboard-prototype/crypto-dashboard-prototype/admin/positions.html">
-          <button
-            className="dashboard-column dashboard-column-cyan p-6 text-center"
-            style={{
-              color: isDarkMode ? "#fff" : "#000",
-              textShadow: "none !important",
-            }}
-          >
-            View All Positions
-          </button>
-        </a>
-      </div>
+<div className="flex justify-center mt-6 mb-10">
+  <a href="F:/crypto-dashboard-prototype/crypto-dashboard-prototype/admin/positions.html">
+    <button
+      className="dashboard-column dashboard-column-cyan p-6 text-center"
+      style={{ color: isDarkMode ? "#fff" : "#000", textShadow: "none !important" }}
+    >
+      View All Positions
+    </button>
+  </a>
+</div>
+
+{/* Add this one tiny spacer so the bottom isn't cut off */}
+<div className="h-6" />
+
       </main>
 
    {/* Expanded modal for desktop & mobile */}

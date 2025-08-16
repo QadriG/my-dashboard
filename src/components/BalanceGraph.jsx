@@ -83,13 +83,16 @@ export default function BalanceGraph({ isDarkMode }) {
       },
     });
 
-    // Resize to match container
+    /* Resize to match container
     const canvas = canvasRef.current;
     canvas.width = 300;
     canvas.height = 75;
     if (chartRef.current) {
       chartRef.current.resize();
-    }
+    }*/
+// after labelColor / gridColor / tooltipBg are computed
+Chart.defaults.color = labelColor;       // makes all chart text (ticks/tooltip) respect dark/light
+Chart.defaults.borderColor = gridColor;  // grid/border color parity
 
     return () => {
       if (chartRef.current) {
@@ -99,19 +102,18 @@ export default function BalanceGraph({ isDarkMode }) {
   }, [isDarkMode]);
 
   return (
-    <div className="bg-black/40 backdrop-blur-md rounded-xl p-4 max-h-[75px] border-2 border-cyan-400 dashboard-column sidebar-cyan overflow-hidden transition duration-300 hover:shadow-[0_0_20px_#00ffff,_0_0_40px_#00ffff,_0_0_60px_#00ffff] hover:scale-105">
-      <h2
-        className="text-lg font-semibold mb-2"
-        style={{ color: isDarkMode ? "#fff" : "#000" }}
-      >
-        Balance Graph
-      </h2>
-      <div className="h-[75px]">
-        <canvas
-          ref={canvasRef}
-          className="w-full h-[75px] bg-transparent"
-        ></canvas>
-      </div>
+  <div className="bg-black/40 backdrop-blur-md rounded-xl p-4 border-2 border-cyan-400 dashboard-column sidebar-cyan overflow-hidden transition duration-300 hover:shadow-[0_0_20px_#00ffff,_0_0_40px_#00ffff,_0_0_60px_#00ffff] hover:scale-105">
+    <h2
+      className="text-lg font-semibold mb-2"
+      style={{ color: isDarkMode ? "#fff" : "#000" }}
+    >
+      Balance Graph
+    </h2>
+    {/* Give a consistent height */}
+    <div className="h-40"> 
+      <canvas ref={canvasRef} className="w-full h-full bg-transparent"></canvas>
     </div>
-  );
+  </div>
+);
+
 }

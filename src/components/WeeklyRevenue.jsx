@@ -74,14 +74,17 @@ export default function WeeklyRevenue({ isDarkMode }) {
         },
       },
     });
+// after labelColor / gridColor / tooltipBg are computed
+Chart.defaults.color = labelColor;       // makes all chart text (ticks/tooltip) respect dark/light
+Chart.defaults.borderColor = gridColor;  // grid/border color parity
 
-    // Resize to container
+    /* Resize to container
     const canvas = canvasRef.current;
     canvas.width = 300;
     canvas.height = 75;
     if (chartRef.current) {
       chartRef.current.resize();
-    }
+    }*/
 
     return () => {
       if (chartRef.current) {
@@ -98,12 +101,10 @@ export default function WeeklyRevenue({ isDarkMode }) {
       >
         Weekly Revenue
       </h2>
-      <div className="h-[75px]">
-        <canvas
-          ref={canvasRef}
-          className="w-full h-[75px] bg-transparent"
-        ></canvas>
+      <div className="h-40">
+  <canvas ref={canvasRef} className="w-full h-full bg-transparent"></canvas>
+</div>
+
       </div>
-    </div>
   );
 }
