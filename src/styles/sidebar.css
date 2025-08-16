@@ -1,6 +1,5 @@
 @import url('https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css');
 
-
 /* Zoom out container */
 .zoom-out-container {
   transform-origin: top left;
@@ -355,25 +354,8 @@ main {
   color: #000 !important;
   border-right: 2px solid #00d4ff; /* keep cyan border */
 }
-/* Ensure the whole page scrolls on mobile */
-@media (max-width: 768px) {
-  body, html, #root {
-    height: auto !important;
-    overflow-y: auto !important;  /* allow vertical scrolling */
-  }
-
-  .dashboard-column {
-    max-height: none !important;  /* prevent clipping */
-  }
-
-  /* Make sure tables can scroll horizontally */
-  .dashboard-column table {
-    min-width: 700px; /* force horizontal scroll instead of breaking */
-  }
-
-  .dashboard-column .overflow-x-auto {
-    overflow-x: auto;
-  }
+/* Fix: allow dashboard to scroll on mobile */
+.light-mode .dashboard-column {
+  overflow: auto; /* Allow scrolling */
 }
-
 
