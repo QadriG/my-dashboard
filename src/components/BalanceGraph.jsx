@@ -15,7 +15,7 @@ export default function BalanceGraph({ isDarkMode }) {
     // Detect mobile
     const isMobile = window.innerWidth <= 768;
 
-    // ✅ Tick label colors
+    // White text ONLY on mobile dark mode
     const labelColor =
       isDarkMode && isMobile ? "#ffffff" : isDarkMode ? "#cccccc" : "#000000";
 
@@ -54,21 +54,17 @@ export default function BalanceGraph({ isDarkMode }) {
         animation: false,
         scales: {
           y: {
-            beginAtZero: false,
             min: 900,
             max: 1400,
             ticks: {
               callback: (value) => `$${value}`,
-              color: labelColor, // ✅ axis values
+              color: labelColor,
               font: { size: 12 },
             },
             grid: { color: gridColor },
           },
           x: {
-            ticks: {
-              color: labelColor, // ✅ date labels
-              font: { size: 12 },
-            },
+            ticks: { color: labelColor, font: { size: 12 } },
             grid: { color: gridColor },
           },
         },
@@ -88,6 +84,12 @@ export default function BalanceGraph({ isDarkMode }) {
       },
     });
 
+    // ✅ Force all chart text to respect our labelColor
+    Chart.defaults.color = labelColor;
+    Chart.defaults.scale.ticks.color = labelColor;
+    Chart.defaults.plugins.tooltip.bodyColor = labelColor;
+    Chart.defaults.plugins.tooltip.titleColor = labelColor;
+
     return () => {
       if (chartRef.current) {
         chartRef.current.destroy();
@@ -103,7 +105,6 @@ export default function BalanceGraph({ isDarkMode }) {
       >
         Balance Graph
       </h2>
-      {/* Fixed height container */}
       <div className="h-40">
         <canvas ref={canvasRef} className="w-full h-full bg-transparent"></canvas>
       </div>

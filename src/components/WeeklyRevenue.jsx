@@ -7,14 +7,18 @@ export default function WeeklyRevenue({ isDarkMode }) {
   const chartRef = useRef(null);
 
   useEffect(() => {
+    const ctx = canvasRef.current.getContext("2d");
     if (chartRef.current) {
       chartRef.current.destroy();
     }
 
-    const ctx = canvasRef.current.getContext("2d");
+    // Detect mobile
+    const isMobile = window.innerWidth <= 768;
 
-    // 🔑 Always force white text in dark mode (esp. on mobile)
-    const labelColor = isDarkMode ? "#ffffff" : "#000000";
+    // White text ONLY on mobile dark mode
+    const labelColor =
+      isDarkMode && isMobile ? "#ffffff" : isDarkMode ? "#cccccc" : "#000000";
+
     const gridColor = isDarkMode
       ? "rgba(255,255,255,0.1)"
       : "rgba(0,0,0,0.1)";
@@ -23,10 +27,10 @@ export default function WeeklyRevenue({ isDarkMode }) {
     const revenueData = [120, 85, 140, 105];
     const revenueBarColors = revenueData.map((val, i) =>
       i === 0
-        ? "rgba(34,197,94,1)"
+        ? "rgba(34,197,94,1)" // green for first
         : val >= revenueData[i - 1]
-        ? "rgba(34,197,94,1)"
-        : "rgba(239,68,68,1)"
+        ? "rgba(34,197,94,1)" // green if higher than prev
+        : "rgba(239,68,68,1)" // red if lower
     );
 
     chartRef.current = new Chart(ctx, {
@@ -51,26 +55,18 @@ export default function WeeklyRevenue({ isDarkMode }) {
             min: 0,
             max: 160,
             ticks: {
-              color: labelColor, // force tick color
+              color: labelColor,
               font: { size: 12 },
             },
             grid: { color: gridColor },
           },
           x: {
-            ticks: {
-              color: labelColor, // force tick color
-              font: { size: 12 },
-            },
+            ticks: { color: labelColor, font: { size: 12 } },
             grid: { color: gridColor },
           },
         },
         plugins: {
-          legend: {
-            display: false,
-            labels: {
-              color: labelColor, // force legend text
-            },
-          },
+          legend: { display: false },
           tooltip: {
             callbacks: {
               label: (ctx) => `$${ctx.parsed.y}`,
@@ -85,12 +81,18 @@ export default function WeeklyRevenue({ isDarkMode }) {
       },
     });
 
+    // ✅ Force all chart text to respect our labelColor
+    Chart.defaults.color = labelColor;
+    Chart.defaults.scale.ticks.color = labelColor;
+    Chart.defaults.plugins.tooltip.bodyColor = labelColor;
+    Chart.defaults.plugins.tooltip.titleColor = labelColor;
+
     return () => {
       if (chartRef.current) {
         chartRef.current.destroy();
       }
     };
-  }, [isDarkMode]); // rebuild chart when mode changes
+  }, [isDarkMode]);
 
   return (
     <div className="bg-black/40 backdrop-blur-md rounded-xl p-6 border-2 border-cyan-400 dashboard-column sidebar-cyan overflow-hidden transition duration-300 hover:shadow-[0_0_20px_#00ffff,_0_0_40px_#00ffff,_0_0_60px_#00ffff] hover:scale-105">
