@@ -32,19 +32,26 @@ export default function BalanceGraph({ isDarkMode }) {
       data: {
         labels: ["Jul 1", "Jul 5", "Jul 10", "Jul 15", "Jul 20", "Jul 25"],
         datasets: [
-          {
-            label: "Balance",
-            data: balanceData,
-            fill: true,
-            backgroundColor: "rgba(59,130,246,0.1)",
-            borderColor: "rgba(59,130,246,1)",
-            borderWidth: 2,
-            tension: 0.4,
-            pointBackgroundColor: balancePointColors,
-            pointRadius: 5,
-            pointHoverRadius: 6,
-          },
-        ],
+  {
+    label: "Balance",
+    data: balanceData,
+    fill: true,
+    backgroundColor: isDarkMode
+      ? "rgba(255,255,255,0.1)"   // translucent white fill in dark
+      : "rgba(59,130,246,0.1)",   // bluish fill in light
+    borderColor: isDarkMode
+      ? "#ffffff"                 // white line in dark
+      : "rgba(59,130,246,1)",     // blue line in light
+    borderWidth: 2,
+    tension: 0.4,
+    pointBackgroundColor: isDarkMode
+      ? "#ffffff"                 // white points in dark
+      : balancePointColors,       // green/red/blue points in light
+    pointRadius: 5,
+    pointHoverRadius: 6,
+  },
+],
+
       },
       options: {
         responsive: true,

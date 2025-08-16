@@ -32,13 +32,18 @@ export default function WeeklyRevenue({ isDarkMode }) {
       data: {
         labels: ["Week 1", "Week 2", "Week 3", "Week 4"],
         datasets: [
-          {
-            data: revenueData,
-            backgroundColor: revenueBarColors,
-            borderColor: revenueBarColors,
-            borderWidth: 1,
-          },
-        ],
+  {
+    data: revenueData,
+    backgroundColor: isDarkMode
+      ? "rgba(255,255,255,0.8)"  // white bars in dark
+      : revenueBarColors,        // green/red bars in light
+    borderColor: isDarkMode
+      ? "#ffffff"                // white border in dark
+      : revenueBarColors.map((color) => color.replace("0.6", "1")),
+    borderWidth: 1,
+  },
+],
+
       },
       options: {
         responsive: true,
