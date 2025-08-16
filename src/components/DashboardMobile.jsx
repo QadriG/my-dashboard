@@ -327,7 +327,7 @@ export default function DashboardMobile() {
       className="dashboard-column dashboard-column-cyan p-6 text-center"
       style={{ color: isDarkMode ? "#fff" : "#000", textShadow: "none !important" }}
     >
-      View All Position
+      View All Positions
     </button>
   </a>
 </div>

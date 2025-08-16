@@ -12,12 +12,17 @@ export default function WeeklyRevenue({ isDarkMode }) {
       chartRef.current.destroy();
     }
 
-    // Detect mobile
+    // detect mobile
     const isMobile = window.innerWidth <= 768;
 
-    // Force text white only on mobile dark mode
-    const labelColor =
-      isDarkMode && isMobile ? "#ffffff" : isDarkMode ? "#cccccc" : "#000000";
+    // ✅ force white text only in mobile dark mode
+    const forceWhite = isDarkMode && isMobile;
+
+    const labelColor = forceWhite
+      ? "#ffffff"
+      : isDarkMode
+      ? "#cccccc"
+      : "#000000";
 
     const gridColor = isDarkMode
       ? "rgba(255,255,255,0.1)"
@@ -27,10 +32,10 @@ export default function WeeklyRevenue({ isDarkMode }) {
     const revenueData = [120, 85, 140, 105];
     const revenueBarColors = revenueData.map((val, i) =>
       i === 0
-        ? "rgba(34,197,94,1)" // green for first
+        ? "rgba(34,197,94,1)"
         : val >= revenueData[i - 1]
-        ? "rgba(34,197,94,1)" // green if higher
-        : "rgba(239,68,68,1)" // red if lower
+        ? "rgba(34,197,94,1)"
+        : "rgba(239,68,68,1)"
     );
 
     chartRef.current = new Chart(ctx, {
@@ -55,21 +60,24 @@ export default function WeeklyRevenue({ isDarkMode }) {
             min: 0,
             max: 160,
             ticks: {
-              color: labelColor,   // ✅ force tick text
+              color: labelColor, // ✅ apply text color
               font: { size: 12 },
             },
             grid: { color: gridColor },
           },
           x: {
             ticks: {
-              color: labelColor,   // ✅ force tick text
+              color: labelColor, // ✅ apply text color
               font: { size: 12 },
             },
             grid: { color: gridColor },
           },
         },
         plugins: {
-          legend: { display: false },
+          legend: {
+            display: false,
+            labels: { color: labelColor }, // ✅ legend labels
+          },
           tooltip: {
             callbacks: {
               label: (ctx) => `$${ctx.parsed.y}`,
