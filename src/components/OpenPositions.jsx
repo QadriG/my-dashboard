@@ -1,22 +1,23 @@
 import React from "react";
-
 export default function OpenPositions() {
   return (
-    <div className="dashboard-column p-4 text-center border-emerald-400">
-      <h2 className="text-lg font-semibold mb-4 text-white-300 drop-shadow">Active Positions</h2>
-      <table className="min-w-full table-auto text-sm text-left text-white">
-        <thead className="bg-gray-800 text-white-200 font-semibold">
-          <tr>
-            <th className="p-2">ID</th>
-            <th className="p-2">Symbol</th>
-            <th className="p-2">Side</th>
-            <th className="p-2">Amount</th>
-            <th className="p-2">Order Value</th>
-            <th className="p-2">Open Price</th>
-            <th className="p-2">Status</th>
-            <th className="p-2">Open Date</th>
-          </tr>
-        </thead>
+    <div className="dashboard-column open-positions p-4 text-center border-emerald-400">
+  <h2 className="text-lg font-semibold mb-4 text-white drop-shadow">
+    Active Positions
+  </h2>
+  <table className="min-w-full table-auto text-sm text-left text-white">
+    <thead className="bg-gray-800 font-semibold">
+      <tr>
+        <th className="p-2">ID</th>
+        <th className="p-2">Symbol</th>
+        <th className="p-2">Side</th>
+        <th className="p-2">Amount</th>
+        <th className="p-2">Order Value</th>
+        <th className="p-2">Open Price</th>
+        <th className="p-2">Status</th>
+        <th className="p-2">Open Date</th>
+      </tr>
+    </thead>
         <tbody className="divide-y divide-gray-700">
           <tr>
             <td className="p-2"><span className="bg-red-600 text-white px-2 py-1 rounded">2S</span></td>

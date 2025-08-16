@@ -344,4 +344,14 @@ main {
 .light-mode .dashboard-column {
   background-color: rgba(255, 255, 255, 0.2) !important;
 }
+/* Keep only table headers inside Active Positions white in light mode */
+.light-mode .open-positions thead th {
+  color: #fff !important;
+}
+/* Sidebar background switch for light mode */
+.light-mode .sidebar {
+  background: #ffffff !important;
+  color: #000 !important;
+  border-right: 2px solid #00d4ff; /* keep cyan border */
+}
 
