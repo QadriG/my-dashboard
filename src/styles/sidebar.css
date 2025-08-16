@@ -385,5 +385,22 @@ main {
   padding-bottom: 2.5rem; /* ~40px space */
 }
 
+/* sidebar.css */
+@media (prefers-color-scheme: dark) and (max-width: 768px) {
+  .dashboard-column.sidebar-cyan canvas,
+  .dashboard-column.sidebar-cyan .chartjs-text,
+  .dashboard-column.sidebar-cyan .chartjs-tooltip,
+  .dashboard-column.sidebar-cyan text {
+    color: #ffffff !important;
+    fill: #ffffff !important;
+  }
+}
 
+.dark-mode .dashboard-column.sidebar-cyan canvas,
+.dark-mode .dashboard-column.sidebar-cyan .chartjs-text,
+.dark-mode .dashboard-column.sidebar-cyan .chartjs-tooltip,
+.dark-mode .dashboard-column.sidebar-cyan text {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+}
 
