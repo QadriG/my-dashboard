@@ -321,7 +321,7 @@ export default function DashboardMobile() {
         </div>
 
         {/* CTA */}
-        <div className="flex justify-center mt-6 mb-10">
+        <div className="flex justify-center mt-6 mb-13">
         <a href="F:/crypto-dashboard-prototype/crypto-dashboard-prototype/admin/positions.html">
           <button
             className="dashboard-column dashboard-column-cyan p-6 text-center"
