@@ -15,7 +15,7 @@ export default function WeeklyRevenue({ isDarkMode }) {
     // Detect mobile
     const isMobile = window.innerWidth <= 768;
 
-    // Force white labels ONLY on mobile dark mode
+    // Force text white only on mobile dark mode
     const labelColor =
       isDarkMode && isMobile ? "#ffffff" : isDarkMode ? "#cccccc" : "#000000";
 
@@ -55,13 +55,16 @@ export default function WeeklyRevenue({ isDarkMode }) {
             min: 0,
             max: 160,
             ticks: {
-              color: labelColor,
+              color: labelColor,   // ✅ force tick text
               font: { size: 12 },
             },
             grid: { color: gridColor },
           },
           x: {
-            ticks: { color: labelColor, font: { size: 12 } },
+            ticks: {
+              color: labelColor,   // ✅ force tick text
+              font: { size: 12 },
+            },
             grid: { color: gridColor },
           },
         },
@@ -71,8 +74,8 @@ export default function WeeklyRevenue({ isDarkMode }) {
             callbacks: {
               label: (ctx) => `$${ctx.parsed.y}`,
             },
-            bodyColor: labelColor,
-            titleColor: labelColor,
+            bodyColor: labelColor,   // ✅ tooltip text
+            titleColor: labelColor,  // ✅ tooltip title
             backgroundColor: tooltipBg,
             borderColor: isDarkMode ? "#ffffff33" : "#00000033",
             borderWidth: 1,
