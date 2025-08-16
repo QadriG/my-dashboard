@@ -7,27 +7,17 @@ export default function WeeklyRevenue({ isDarkMode }) {
   const chartRef = useRef(null);
 
   useEffect(() => {
-    const ctx = canvasRef.current.getContext("2d");
     if (chartRef.current) {
       chartRef.current.destroy();
     }
 
-    // detect mobile
-    const isMobile = window.innerWidth <= 768;
-    const forceWhite = isDarkMode && isMobile;
+    const ctx = canvasRef.current.getContext("2d");
 
-    // 🔑 force Chart.js defaults for all text elements
-    Chart.defaults.color = forceWhite
-      ? "#ffffff"
-      : isDarkMode
-      ? "#cccccc"
-      : "#000000";
-    Chart.defaults.borderColor = isDarkMode
+    // 🔑 Always force white text in dark mode (esp. on mobile)
+    const labelColor = isDarkMode ? "#ffffff" : "#000000";
+    const gridColor = isDarkMode
       ? "rgba(255,255,255,0.1)"
       : "rgba(0,0,0,0.1)";
-
-    const labelColor = Chart.defaults.color;
-    const gridColor = Chart.defaults.borderColor;
     const tooltipBg = isDarkMode ? "#111827" : "#ffffff";
 
     const revenueData = [120, 85, 140, 105];
@@ -60,21 +50,31 @@ export default function WeeklyRevenue({ isDarkMode }) {
           y: {
             min: 0,
             max: 160,
-            ticks: { color: labelColor, font: { size: 12 } },
+            ticks: {
+              color: labelColor, // force tick color
+              font: { size: 12 },
+            },
             grid: { color: gridColor },
           },
           x: {
-            ticks: { color: labelColor, font: { size: 12 } },
+            ticks: {
+              color: labelColor, // force tick color
+              font: { size: 12 },
+            },
             grid: { color: gridColor },
           },
         },
         plugins: {
           legend: {
             display: false,
-            labels: { color: labelColor },
+            labels: {
+              color: labelColor, // force legend text
+            },
           },
           tooltip: {
-            callbacks: { label: (ctx) => `$${ctx.parsed.y}` },
+            callbacks: {
+              label: (ctx) => `$${ctx.parsed.y}`,
+            },
             bodyColor: labelColor,
             titleColor: labelColor,
             backgroundColor: tooltipBg,
@@ -90,7 +90,7 @@ export default function WeeklyRevenue({ isDarkMode }) {
         chartRef.current.destroy();
       }
     };
-  }, [isDarkMode]);
+  }, [isDarkMode]); // rebuild chart when mode changes
 
   return (
     <div className="bg-black/40 backdrop-blur-md rounded-xl p-6 border-2 border-cyan-400 dashboard-column sidebar-cyan overflow-hidden transition duration-300 hover:shadow-[0_0_20px_#00ffff,_0_0_40px_#00ffff,_0_0_60px_#00ffff] hover:scale-105">
