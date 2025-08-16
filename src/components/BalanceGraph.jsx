@@ -15,7 +15,7 @@ export default function BalanceGraph({ isDarkMode }) {
     // Detect mobile
     const isMobile = window.innerWidth <= 768;
 
-    // Force white labels ONLY on mobile dark mode
+    // ✅ Tick label colors
     const labelColor =
       isDarkMode && isMobile ? "#ffffff" : isDarkMode ? "#cccccc" : "#000000";
 
@@ -59,13 +59,16 @@ export default function BalanceGraph({ isDarkMode }) {
             max: 1400,
             ticks: {
               callback: (value) => `$${value}`,
-              color: labelColor,
+              color: labelColor, // ✅ axis values
               font: { size: 12 },
             },
             grid: { color: gridColor },
           },
           x: {
-            ticks: { color: labelColor, font: { size: 12 } },
+            ticks: {
+              color: labelColor, // ✅ date labels
+              font: { size: 12 },
+            },
             grid: { color: gridColor },
           },
         },
@@ -100,7 +103,7 @@ export default function BalanceGraph({ isDarkMode }) {
       >
         Balance Graph
       </h2>
-      {/* Give a consistent height */}
+      {/* Fixed height container */}
       <div className="h-40">
         <canvas ref={canvasRef} className="w-full h-full bg-transparent"></canvas>
       </div>
