@@ -14,19 +14,20 @@ export default function WeeklyRevenue({ isDarkMode }) {
 
     // detect mobile
     const isMobile = window.innerWidth <= 768;
-
-    // ✅ force white text only in mobile dark mode
     const forceWhite = isDarkMode && isMobile;
 
-    const labelColor = forceWhite
+    // 🔑 force Chart.js defaults for all text elements
+    Chart.defaults.color = forceWhite
       ? "#ffffff"
       : isDarkMode
       ? "#cccccc"
       : "#000000";
-
-    const gridColor = isDarkMode
+    Chart.defaults.borderColor = isDarkMode
       ? "rgba(255,255,255,0.1)"
       : "rgba(0,0,0,0.1)";
+
+    const labelColor = Chart.defaults.color;
+    const gridColor = Chart.defaults.borderColor;
     const tooltipBg = isDarkMode ? "#111827" : "#ffffff";
 
     const revenueData = [120, 85, 140, 105];
@@ -59,31 +60,23 @@ export default function WeeklyRevenue({ isDarkMode }) {
           y: {
             min: 0,
             max: 160,
-            ticks: {
-              color: labelColor, // ✅ apply text color
-              font: { size: 12 },
-            },
+            ticks: { color: labelColor, font: { size: 12 } },
             grid: { color: gridColor },
           },
           x: {
-            ticks: {
-              color: labelColor, // ✅ apply text color
-              font: { size: 12 },
-            },
+            ticks: { color: labelColor, font: { size: 12 } },
             grid: { color: gridColor },
           },
         },
         plugins: {
           legend: {
             display: false,
-            labels: { color: labelColor }, // ✅ legend labels
+            labels: { color: labelColor },
           },
           tooltip: {
-            callbacks: {
-              label: (ctx) => `$${ctx.parsed.y}`,
-            },
-            bodyColor: labelColor,   // ✅ tooltip text
-            titleColor: labelColor,  // ✅ tooltip title
+            callbacks: { label: (ctx) => `$${ctx.parsed.y}` },
+            bodyColor: labelColor,
+            titleColor: labelColor,
             backgroundColor: tooltipBg,
             borderColor: isDarkMode ? "#ffffff33" : "#00000033",
             borderWidth: 1,
