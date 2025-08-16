@@ -73,8 +73,8 @@ export default function DashboardMobile() {
     profit: filterVideoContent(<Profit />),
     upl: filterVideoContent(<UPL />),
     fundsDistribution: filterVideoContent(<FundsDistribution />),
-    balanceGraph: filterVideoContent(<BalanceGraph />),
-    weeklyRevenue: filterVideoContent(<WeeklyRevenue />),
+    balanceGraph: filterVideoContent(<BalanceGraph isDarkMode={isDarkMode} />),
+    weeklyRevenue: filterVideoContent(<WeeklyRevenue isDarkMode={isDarkMode} />),
     dailyPnL: filterVideoContent(<DailyPnL />),
     bestTradingPairs: filterVideoContent(<BestTradingPairs />),
     openPositions: filterVideoContent(<OpenPositions />),
@@ -327,7 +327,7 @@ export default function DashboardMobile() {
       className="dashboard-column dashboard-column-cyan p-6 text-center"
       style={{ color: isDarkMode ? "#fff" : "#000", textShadow: "none !important" }}
     >
-      View All Positions
+      View All Position
     </button>
   </a>
 </div>

@@ -148,11 +148,11 @@
   box-shadow: none;
   border: none;
   color: inherit; /* Inherit parent color */
-  transform-origin: center center; /* Ensure scaling from center */
-  margin: 0.25rem; /* Prevent overlap during scale */
+  transform-origin: center center;
+  margin: 0.25rem;
 }
 
-/* Column hover effects - reduced scale */
+/* Column hover effects */
 .dashboard-column-cyan { border: 2px solid #00ffff; }
 .dashboard-column-cyan:hover { box-shadow: 0 8px 24px 0 #00ffff, 0 2px 8px 0 #00ffff; transform: scale(1.02); }
 
@@ -177,15 +177,19 @@
 .dashboard-column-darkpurple { border: 2px solid #ff0000; }
 .dashboard-column-darkpurple:hover { box-shadow: 0 0 10px #f70707, 0 0 20px #ff0909, 0 0 30px #4f03ff; transform: scale(1.02); }
 
-
 /* Prevent horizontal scroll on small screens when scaled */
 body, html, #root {
   overflow-x: hidden;
+  height: 100% !important;
+  overflow-y: auto !important;
 }
 
-/* Optional: Smooth scaling */
+/* Smooth scaling */
 main {
   transition: transform 0.3s ease;
+  min-height: 100vh !important;
+  overflow-y: auto !important;
+  padding-bottom: 2.5rem; /* space for bottom buttons */
 }
 
 /* Neon glow */
@@ -197,7 +201,6 @@ main {
     inset 0 0 6px currentColor;
   transition: box-shadow 0.3s ease;
 }
-
 .neon-glow:hover {
   box-shadow:
     0 0 10px currentColor,
@@ -219,18 +222,17 @@ main {
   border-radius: 0.75rem;
 }
 
-/* Shimmer wrapper - adjusted for light mode */
+/* Shimmer wrapper */
 .shimmer-wrapper {
   position: relative;
   overflow: hidden;
-  background-image: none; /* Remove gradient in light mode */
+  background-image: none;
   border: 2px solid #00ffff;
   border-radius: 0.75rem;
   box-shadow: inset 4px 4px 8px rgba(255,255,255,0.08),
               inset -4px -4px 8px rgba(0,0,0,0.45),
               0 0 25px rgba(0,255,255,0.35);
 }
-
 .shimmer-wrapper::before {
   content: '';
   position: absolute;
@@ -241,29 +243,22 @@ main {
   background: linear-gradient(120deg, transparent, rgba(255,255,255,0.25), transparent);
   animation: shimmer-bar 2s infinite linear;
   pointer-events: none;
-  display: none; /* Disabled by default */
+  display: none;
 }
-
-.dark-mode .shimmer-wrapper::before {
-  display: block; /* Enable shimmer in dark mode */
-}
-
-.light-mode .shimmer-wrapper::before {
-  display: none; /* Disable shimmer in light mode */
-}
+.dark-mode .shimmer-wrapper::before { display: block; }
+.light-mode .shimmer-wrapper::before { display: none; }
 
 @keyframes shimmer-bar {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
 }
 
-/* Grid layout helpers (tailwind-like) */
+/* Grid helpers */
 .space-y-3 > div { display: contents; }
 .grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
 .grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
 .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
 .grid-cols-1 { grid-template-columns: 1fr; }
-
 .gap-3 { gap: 12px; }
 .gap-6 { gap: 1.5rem; }
 
@@ -286,15 +281,9 @@ main {
 
 /* ===== Mobile-only styles (≤ 768px) ===== */
 @media (max-width: 768px) {
-  /* Sidebar collapses off-canvas by default */
-  .sidebar {
-    left: -16rem; /* offscreen */
-  }
-  .sidebar.open {
-    left: 0; /* slide in */
-  }
+  .sidebar { left: -16rem; }
+  .sidebar.open { left: 0; }
 
-  /* Toggle button for sidebar (mobile) */
   .sidebar-toggle-btn {
     position: fixed;
     top: 1rem;
@@ -309,7 +298,6 @@ main {
     cursor: pointer;
   }
 
-  /* Backdrop behind the opened sidebar */
   .sidebar-backdrop {
     position: fixed;
     inset: 0;
@@ -317,9 +305,11 @@ main {
     z-index: 1000;
   }
 
-  /* Stack mixed flex rows when needed */
-  .mobile-stack {
-    flex-direction: column !important;
+  .mobile-stack { flex-direction: column !important; }
+
+  .dashboard-column {
+    overflow-x: auto;
+    overflow-y: visible;
   }
 }
 
@@ -331,6 +321,26 @@ main {
 .light-mode .text-gray-400 {
   color: #000 !important;
 }
+.light-mode .dashboard-column,
+.light-mode .dashboard-column * {
+  color: #000 !important;
+  text-shadow: none !important;
+  filter: none !important;
+}
+.light-mode .dashboard-column {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+}
+.light-mode .open-positions thead th {
+  color: #fff !important;
+}
+.light-mode .sidebar {
+  background: #ffffff !important;
+  color: #000 !important;
+  border-right: 2px solid #00d4ff;
+}
+.light-mode .sidebar ul li {
+  color: #000 !important;
+}
 
 /* Dark mode text overrides */
 .dark-mode .dashboard-column,
@@ -340,67 +350,16 @@ main {
   filter: none !important;
 }
 
-/* Force ALL text inside dashboard columns to be black in light mode */
-.light-mode .dashboard-column,
-.light-mode .dashboard-column * {
-  color: #000 !important;
-  text-shadow: none !important;
-  filter: none !important;
-}
-
-/* Keep background light */
-.light-mode .dashboard-column {
-  background-color: rgba(255, 255, 255, 0.2) !important;
-}
-/* Keep only table headers inside Active Positions white in light mode */
-.light-mode .open-positions thead th {
-  color: #fff !important;
-}
-/* Sidebar background switch for light mode */
-.light-mode .sidebar {
-  background: #ffffff !important;
-  color: #000 !important;
-  border-right: 2px solid #00d4ff; /* keep cyan border */
-}
-/* Fix: allow dashboard to scroll on mobile */
-@media (max-width: 768px) {
-  .dashboard-column {
-    overflow-x: auto;   /* enable table scroll */
-    overflow-y: visible; /* allow button to show */
-  }
-}
-/* Force full-page scroll so the bottom button is visible */
-html, body, #root {
-  height: 100% !important;
-  overflow-y: auto !important;
-}
-
-/* Ensure the main dashboard content can expand */
-main, .dashboard-wrapper {
-  min-height: 100vh !important;
-  overflow-y: auto !important;
-}
-/* Ensure bottom space so last button is visible */
-main {
-  padding-bottom: 2.5rem; /* ~40px space */
-}
-
-/* sidebar.css */
+/* Chart.js text fixes */
 @media (prefers-color-scheme: dark) and (max-width: 768px) {
   .dashboard-column.sidebar-cyan canvas,
-  .dashboard-column.sidebar-cyan .chartjs-text,
-  .dashboard-column.sidebar-cyan .chartjs-tooltip,
   .dashboard-column.sidebar-cyan text {
     color: #ffffff !important;
     fill: #ffffff !important;
   }
 }
-
 .dark-mode .dashboard-column.sidebar-cyan canvas,
-.dark-mode .dashboard-column.sidebar-cyan .chartjs-text,
-.dark-mode .dashboard-column.sidebar-cyan .chartjs-tooltip,
 .dark-mode .dashboard-column.sidebar-cyan text {
   color: #ffffff !important;
   fill: #ffffff !important;
 }
-

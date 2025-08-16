@@ -12,13 +12,8 @@ export default function WeeklyRevenue({ isDarkMode }) {
       chartRef.current.destroy();
     }
 
-    // Detect mobile
-    const isMobile = window.innerWidth <= 768;
-
-    // White text ONLY on mobile dark mode
-    const labelColor =
-      isDarkMode && isMobile ? "#ffffff" : isDarkMode ? "#cccccc" : "#000000";
-
+    // ✅ Simplified: white text in dark mode, black in light mode
+    const labelColor = isDarkMode ? "#ffffff" : "#000000";
     const gridColor = isDarkMode
       ? "rgba(255,255,255,0.1)"
       : "rgba(0,0,0,0.1)";
@@ -27,10 +22,10 @@ export default function WeeklyRevenue({ isDarkMode }) {
     const revenueData = [120, 85, 140, 105];
     const revenueBarColors = revenueData.map((val, i) =>
       i === 0
-        ? "rgba(34,197,94,1)" // green for first
+        ? "rgba(34,197,94,1)"
         : val >= revenueData[i - 1]
-        ? "rgba(34,197,94,1)" // green if higher than prev
-        : "rgba(239,68,68,1)" // red if lower
+        ? "rgba(34,197,94,1)"
+        : "rgba(239,68,68,1)"
     );
 
     chartRef.current = new Chart(ctx, {
@@ -54,10 +49,7 @@ export default function WeeklyRevenue({ isDarkMode }) {
           y: {
             min: 0,
             max: 160,
-            ticks: {
-              color: labelColor,
-              font: { size: 12 },
-            },
+            ticks: { color: labelColor, font: { size: 12 } },
             grid: { color: gridColor },
           },
           x: {
@@ -80,12 +72,6 @@ export default function WeeklyRevenue({ isDarkMode }) {
         },
       },
     });
-
-    // ✅ Force all chart text to respect our labelColor
-    Chart.defaults.color = labelColor;
-    Chart.defaults.scale.ticks.color = labelColor;
-    Chart.defaults.plugins.tooltip.bodyColor = labelColor;
-    Chart.defaults.plugins.tooltip.titleColor = labelColor;
 
     return () => {
       if (chartRef.current) {

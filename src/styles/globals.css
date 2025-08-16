@@ -30,6 +30,12 @@ html, body, #root {
   background-color: transparent;
 }
 
+/* Prevent transparent background inside charts */
+canvas,
+canvas * {
+  background-color: inherit !important;
+}
+
 /* Black overlay for contrast */
 .overlay {
   position: fixed;
@@ -224,6 +230,17 @@ canvas, svg, video, img {
 .light-mode main {
   color: #000 !important; /* Force pure black text for main content */
 }
+
 .light-mode .sidebar-button {
+  color: #fff !important;
+}
+
+/* ===========================
+   Chart text color fix
+   =========================== */
+
+/* Force all chart labels and ticks to white in dark mode */
+.dark-mode canvas,
+.dark-mode canvas * {
   color: #fff !important;
 }

@@ -12,13 +12,8 @@ export default function BalanceGraph({ isDarkMode }) {
       chartRef.current.destroy();
     }
 
-    // Detect mobile
-    const isMobile = window.innerWidth <= 768;
-
-    // White text ONLY on mobile dark mode
-    const labelColor =
-      isDarkMode && isMobile ? "#ffffff" : isDarkMode ? "#cccccc" : "#000000";
-
+    // ✅ Simplified: white text in dark mode, black in light mode
+    const labelColor = isDarkMode ? "#ffffff" : "#000000";
     const gridColor = isDarkMode
       ? "rgba(255,255,255,0.1)"
       : "rgba(0,0,0,0.1)";
@@ -54,6 +49,7 @@ export default function BalanceGraph({ isDarkMode }) {
         animation: false,
         scales: {
           y: {
+            beginAtZero: false,
             min: 900,
             max: 1400,
             ticks: {
@@ -83,12 +79,6 @@ export default function BalanceGraph({ isDarkMode }) {
         },
       },
     });
-
-    // ✅ Force all chart text to respect our labelColor
-    Chart.defaults.color = labelColor;
-    Chart.defaults.scale.ticks.color = labelColor;
-    Chart.defaults.plugins.tooltip.bodyColor = labelColor;
-    Chart.defaults.plugins.tooltip.titleColor = labelColor;
 
     return () => {
       if (chartRef.current) {
