@@ -355,7 +355,10 @@ main {
   border-right: 2px solid #00d4ff; /* keep cyan border */
 }
 /* Fix: allow dashboard to scroll on mobile */
-.light-mode .dashboard-column {
-  overflow: auto; /* Allow scrolling */
+@media (max-width: 768px) {
+  .dashboard-column {
+    overflow-x: auto;   /* enable table scroll */
+    overflow-y: visible; /* allow button to show */
+  }
 }
 
