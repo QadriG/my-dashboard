@@ -14,8 +14,8 @@ export default function BalanceGraph({ isDarkMode }) {
 
     const labelColor = isDarkMode ? "#ffffff" : "#000000";
     const gridColor = isDarkMode
-      ? "rgba(255,255,255,0.05)"
-      : "rgba(0,0,0,0.05)";
+      ? "rgba(255,255,255,0.1)"
+      : "rgba(0,0,0,0.1)";
     const tooltipBg = isDarkMode ? "#111827" : "#ffffff";
 
     const balanceData = [1000, 1075, 1120, 1060, 1220, 1300];
@@ -49,7 +49,6 @@ export default function BalanceGraph({ isDarkMode }) {
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        aspectRatio: 4,
         animation: false,
         scales: {
           y: {
@@ -71,16 +70,20 @@ export default function BalanceGraph({ isDarkMode }) {
         plugins: {
           legend: { display: false },
           tooltip: {
-            callbacks: { label: (ctx) => `$${ctx.parsed.y}` },
+            callbacks: {
+              label: (ctx) => `$${ctx.parsed.y}`,
+            },
             bodyColor: labelColor,
             titleColor: labelColor,
             backgroundColor: tooltipBg,
+            borderColor: isDarkMode ? "#ffffff33" : "#00000033",
+            borderWidth: 1,
           },
         },
       },
     });
 
-    // Set custom canvas dimensions
+    // Resize to match container
     const canvas = canvasRef.current;
     canvas.width = 300;
     canvas.height = 75;
@@ -93,7 +96,7 @@ export default function BalanceGraph({ isDarkMode }) {
         chartRef.current.destroy();
       }
     };
-  }, [isDarkMode]); // Re-run when theme changes
+  }, [isDarkMode]);
 
   return (
     <div className="bg-black/40 backdrop-blur-md rounded-xl p-4 max-h-[75px] border-2 border-cyan-400 dashboard-column sidebar-cyan overflow-hidden transition duration-300 hover:shadow-[0_0_20px_#00ffff,_0_0_40px_#00ffff,_0_0_60px_#00ffff] hover:scale-105">

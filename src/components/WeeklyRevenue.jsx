@@ -14,17 +14,17 @@ export default function WeeklyRevenue({ isDarkMode }) {
 
     const labelColor = isDarkMode ? "#ffffff" : "#000000";
     const gridColor = isDarkMode
-      ? "rgba(255,255,255,0.05)"
-      : "rgba(0,0,0,0.05)";
+      ? "rgba(255,255,255,0.1)"
+      : "rgba(0,0,0,0.1)";
     const tooltipBg = isDarkMode ? "#111827" : "#ffffff";
 
     const revenueData = [120, 85, 140, 105];
     const revenueBarColors = revenueData.map((val, i) =>
       i === 0
-        ? "rgba(34,197,94,1)"
+        ? "rgba(34,197,94,1)" // green for first
         : val >= revenueData[i - 1]
-        ? "rgba(34,197,94,1)"
-        : "rgba(239,68,68,1)"
+        ? "rgba(34,197,94,1)" // green if higher than prev
+        : "rgba(239,68,68,1)" // red if lower
     );
 
     chartRef.current = new Chart(ctx, {
@@ -35,9 +35,7 @@ export default function WeeklyRevenue({ isDarkMode }) {
           {
             data: revenueData,
             backgroundColor: revenueBarColors,
-            borderColor: revenueBarColors.map((color) =>
-              color.replace("0.6", "1")
-            ),
+            borderColor: revenueBarColors,
             borderWidth: 1,
           },
         ],
@@ -45,13 +43,15 @@ export default function WeeklyRevenue({ isDarkMode }) {
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        aspectRatio: 4,
         animation: false,
         scales: {
           y: {
             min: 0,
             max: 160,
-            ticks: { color: labelColor, font: { size: 12 } },
+            ticks: {
+              color: labelColor,
+              font: { size: 12 },
+            },
             grid: { color: gridColor },
           },
           x: {
@@ -62,15 +62,20 @@ export default function WeeklyRevenue({ isDarkMode }) {
         plugins: {
           legend: { display: false },
           tooltip: {
+            callbacks: {
+              label: (ctx) => `$${ctx.parsed.y}`,
+            },
             bodyColor: labelColor,
             titleColor: labelColor,
             backgroundColor: tooltipBg,
+            borderColor: isDarkMode ? "#ffffff33" : "#00000033",
+            borderWidth: 1,
           },
         },
       },
     });
 
-    // Set custom canvas dimensions
+    // Resize to container
     const canvas = canvasRef.current;
     canvas.width = 300;
     canvas.height = 75;
@@ -83,7 +88,7 @@ export default function WeeklyRevenue({ isDarkMode }) {
         chartRef.current.destroy();
       }
     };
-  }, [isDarkMode]); // Re-run when theme changes
+  }, [isDarkMode]);
 
   return (
     <div className="bg-black/40 backdrop-blur-md rounded-xl p-6 max-h-[75px] border-2 border-cyan-400 dashboard-column sidebar-cyan overflow-hidden transition duration-300 hover:shadow-[0_0_20px_#00ffff,_0_0_40px_#00ffff,_0_0_60px_#00ffff] hover:scale-105">
