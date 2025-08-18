@@ -18,7 +18,6 @@ export default function Login() {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
@@ -87,13 +86,13 @@ export default function Login() {
 
   const switchForm = (target) => setCurrentForm(target);
 
+  // ================== LOGIN ==================
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
     try {
-      const res = await fetch("http://localhost:5000/login", {
+      const res = await fetch("http://localhost:5000/api/auth/login", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
@@ -107,39 +106,56 @@ export default function Login() {
           navigate("/user");
         }
       } else {
-        setError(data.msg || "Invalid credentials");
+        setError(data.message || "Invalid credentials");
       }
     } catch {
       setError("Server error");
     }
   };
 
+  // ================== SIGNUP ==================
   const handleSignup = async (e) => {
     e.preventDefault();
     setError("");
     if (password !== confirmPassword) return setError("Passwords do not match");
 
     try {
-      const res = await fetch("http://localhost:5000/signup", {
+      const res = await fetch("http://localhost:5000/api/auth/signup", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, password, role: "user" }),
+        body: JSON.stringify({ name: username, email, password }),
       });
       const data = await res.json();
       if (res.ok) {
         setCurrentForm("login");
       } else {
-        setError(data.msg);
+        setError(data.message || "Signup failed");
       }
     } catch {
       setError("Server error");
     }
   };
 
+  // ================== FORGOT PASSWORD ==================
   const handleForgot = async (e) => {
     e.preventDefault();
-    alert("Reset link sent if email exists!");
+    setError("");
+    try {
+      const res = await fetch("http://localhost:5000/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert("Reset link sent if email exists!");
+        setCurrentForm("login");
+      } else {
+        setError(data.message || "Error sending reset link");
+      }
+    } catch {
+      setError("Server error");
+    }
   };
 
   const formClass = (form) =>
@@ -150,11 +166,7 @@ export default function Login() {
       <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full" />
       <div
         className="glass-box neon-glow p-8 w-full max-w-sm mx-auto text-center relative z-10"
-        style={{
-          minHeight: "420px",
-          background: "transparent",
-          backdropFilter: "none",
-        }}
+        style={{ minHeight: "420px", background: "transparent", backdropFilter: "none" }}
       >
         <div className="form-container">
           {/* LOGIN */}
@@ -269,6 +281,8 @@ export default function Login() {
               <input
                 type="email"
                 placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="input-field w-full mb-6 px-4 py-3 rounded-lg bg-transparent text-white placeholder-white focus:outline-none"
                 required
               />
