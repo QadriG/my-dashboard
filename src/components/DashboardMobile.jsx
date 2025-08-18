@@ -61,7 +61,6 @@ export default function DashboardMobile() {
 
   const toggleTheme = () => {
     setIsDarkMode((prev) => !prev);
-    // Alternate button text independently of theme
     setButtonText((prev) => (prev === "Light Mode" ? "Dark Mode" : "Light Mode"));
   };
 
@@ -93,10 +92,10 @@ export default function DashboardMobile() {
         position: "fixed",
         top: 0,
         left: 0,
-        backgroundColor: isDarkMode ? "#000" : "#fff", // Dynamic background
+        backgroundColor: isDarkMode ? "#000" : "#fff",
       }}
     >
-      {/* Overlay (visual only) */}
+      {/* Overlay */}
       <div
         className="overlay"
         style={{
@@ -126,30 +125,41 @@ export default function DashboardMobile() {
       </button>
 
       {/* Sidebar */}
-      <div
-        className={`sidebar ${sidebarOpen ? "open" : ""}`}
-        aria-label="Mobile sidebar"
-      >
+      <div className={`sidebar ${sidebarOpen ? "open" : ""}`} aria-label="Mobile sidebar">
         <h2 className="text-xl font-bold mb-10 text-cyan-300 drop-shadow-md">
           QuantumCopyTrading
         </h2>
         <nav className="flex flex-col space-y-3">
           {[
-            { label: "Dashboard", className: "sidebar-cyan" },
-            { label: "Settings", className: "sidebar-purple" },
-            { label: "API Details", className: "sidebar-green" },
-            { label: "Positions", className: "sidebar-yellow" },
-            { label: "Users", className: "sidebar-users" },
-            { label: "Logs", className: "sidebar-logs" },
-            { label: "Manual Push", className: "sidebar-manual-push" },
-            { label: "Logout", className: "sidebar-red" },
+            { label: "Dashboard", className: "sidebar-cyan", href: "#" },
+            { label: "Settings", className: "sidebar-purple", href: "#" },
+            { label: "API Details", className: "sidebar-green", href: "#" },
+            { label: "Positions", className: "sidebar-yellow", href: "#" },
+            { label: "Users", className: "sidebar-users", href: "#" },
+            { label: "Logs", className: "sidebar-logs", href: "#" },
+            { label: "Manual Push", className: "sidebar-manual-push", href: "#" },
+            { label: "Logout", className: "sidebar-red", href: "/login" },
           ].map((btn, i) => (
-                        <a
+            <a
               key={i}
-              href="#"
-              onMouseEnter={playHoverSound}
+              href={btn.href}
+              onClick={(e) => {
+                if (btn.label === "Logout") {
+                  e.preventDefault();
+                  localStorage.clear();
+                  sessionStorage.clear();
+                  document.cookie.split(";").forEach((c) => {
+                    document.cookie = c
+                      .replace(/^ +/, "")
+                      .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+                  });
+                  window.location.href = btn.href;
+                } else {
+                  playHoverSound();
+                }
+              }}
               className={`sidebar-button ${btn.className} px-4 py-2 bg-gray-900 text-white`}
-              style={{ color: isDarkMode ? "#fff" : "#fff" }} // Force white text in both modes for mobile
+              style={{ color: "#fff" }}
             >
               {btn.label}
             </a>
@@ -157,7 +167,7 @@ export default function DashboardMobile() {
         </nav>
       </div>
 
-      {/* Backdrop when sidebar is open (tap to close) */}
+      {/* Sidebar backdrop */}
       {sidebarOpen && (
         <div
           className="sidebar-backdrop"
@@ -177,12 +187,15 @@ export default function DashboardMobile() {
           left: 0,
           transition: "left 0.3s ease",
           zIndex: 20,
-          color: isDarkMode ? "#fff" : "#000", // Pure black text in light mode
-          backgroundColor: isDarkMode ? "rgba(0, 0, 0, 0.8)" : "rgba(255, 255, 255, 0.8)", // Dynamic background
+          color: isDarkMode ? "#fff" : "#000",
+          backgroundColor: isDarkMode ? "rgba(0, 0, 0, 0.8)" : "rgba(255, 255, 255, 0.8)",
         }}
       >
         <div className="shimmer-wrapper w-full py-4 px-6 mb-4" style={{ position: "relative" }}>
-          <h1 className="text-2xl font-semibold drop-shadow-md inline-block" style={{ color: isDarkMode ? "#fff" : "#000", paddingLeft: isMobile ? "1.5rem" : "0" }}>
+          <h1
+            className="text-2xl font-semibold drop-shadow-md inline-block"
+            style={{ color: isDarkMode ? "#fff" : "#000", paddingLeft: isMobile ? "1.5rem" : "0" }}
+          >
             Dashboard
           </h1>
           <button
@@ -193,214 +206,149 @@ export default function DashboardMobile() {
               right: 0,
               padding: "0.5rem 1rem",
               backgroundColor: isDarkMode ? "#333" : "#ddd",
-              color: isDarkMode ? "#fff" : "#000", // Black text in light mode, white in dark mode
-              border: "2px solid " + (isDarkMode ? "#00ffff" : "#0000ff"), // Add border for better visibility
+              color: isDarkMode ? "#fff" : "#000",
+              border: "2px solid " + (isDarkMode ? "#00ffff" : "#0000ff"),
               borderRadius: "4px",
               cursor: "pointer",
               textAlign: "center",
-              boxShadow: isDarkMode ? "0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff" : "0 0 10px #0000ff, 0 0 20px #0000ff, 0 0 30px #0000ff",
+              boxShadow: isDarkMode
+                ? "0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff"
+                : "0 0 10px #0000ff, 0 0 20px #0000ff, 0 0 30px #0000ff",
               transition: "all 0.3s ease",
               height: "100%",
               width: "10rem",
               display: "flex",
               alignItems: "center",
-              justifyContent: "center", // Ensure text is centered
-              fontSize: "1.5rem", // Ensure readable font size
-              opacity: 1, // Ensure no transparency
-              textShadow: isDarkMode ? "0 0 1px #ffffffff" : "0 0 1px #000000ff", // Add text shadow for contrast
+              justifyContent: "center",
+              fontSize: "1.5rem",
+              opacity: 1,
+              textShadow: isDarkMode ? "0 0 1px #ffffffff" : "0 0 1px #000000ff",
             }}
-            onMouseEnter={(e) => { e.target.style.boxShadow = isDarkMode ? "0 0 15px #00ffff, 0 0 25px #00ffff, 0 0 40px #00ffff" : "0 0 15px #0000ff, 0 0 25px #0000ff, 0 0 40px #0000ff"; }}
-            onMouseLeave={(e) => { e.target.style.boxShadow = isDarkMode ? "0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff" : "0 0 10px #0000ff, 0 0 20px #0000ff, 0 0 30px #0000ff"; }}
+            onMouseEnter={(e) => {
+              e.target.style.boxShadow = isDarkMode
+                ? "0 0 15px #00ffff, 0 0 25px #00ffff, 0 0 40px #00ffff"
+                : "0 0 15px #0000ff, 0 0 25px #0000ff, 0 0 40px #0000ff";
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.boxShadow = isDarkMode
+                ? "0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff"
+                : "0 0 10px #0000ff, 0 0 20px #0000ff, 0 0 30px #0000ff";
+            }}
           >
             {buttonText}
           </button>
         </div>
 
-        {/* Row 1 */}
+        {/* Grid Rows */}
         <div className="grid grid-cols-4 gap-2">
-          <Card
-            className="dashboard-column-cyan"
-            onClick={() => handleCardClick("activeUsers")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
-          >
+          <Card className="dashboard-column-cyan" onClick={() => handleCardClick("activeUsers")}>
             {cards.activeUsers}
           </Card>
-          <Card
-            className="dashboard-column-purple"
-            onClick={() => handleCardClick("activeExchange")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
-          >
+          <Card className="dashboard-column-purple" onClick={() => handleCardClick("activeExchange")}>
             {cards.activeExchange}
           </Card>
-          <Card
-            className="dashboard-column-green"
-            onClick={() => handleCardClick("activePositions")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
-          >
+          <Card className="dashboard-column-green" onClick={() => handleCardClick("activePositions")}>
             {cards.activePositions}
           </Card>
-          <Card
-            className="dashboard-column-yellow"
-            onClick={() => handleCardClick("totalBalances")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
-          >
+          <Card className="dashboard-column-yellow" onClick={() => handleCardClick("totalBalances")}>
             {cards.totalBalances}
           </Card>
         </div>
 
-        {/* Row 2 */}
         <div className="grid grid-cols-3 gap-2 mt-4">
-          <Card
-            className="dashboard-column-cyan"
-            onClick={() => handleCardClick("profit")}
-            style={{ color: isDarkMode ? "#fff !important" : "#000 !important" }} // Force pure black/white text
-          >
-            {cards.profit}
-          </Card>
-          <Card
-            className="dashboard-column-purple"
-            onClick={() => handleCardClick("upl")}
-            style={{ color: isDarkMode ? "#fff !important" : "#000 !important" }} // Force pure black/white text
-          >
-            {cards.upl}
-          </Card>
-          <Card
-            className="dashboard-column-green"
-            onClick={() => handleCardClick("fundsDistribution")}
-            style={{ color: isDarkMode ? "#fff !important" : "#000 !important" }} // Force pure black/white text
-          >
-            {cards.fundsDistribution}
-          </Card>
+          <Card className="dashboard-column-cyan" onClick={() => handleCardClick("profit")}>{cards.profit}</Card>
+          <Card className="dashboard-column-purple" onClick={() => handleCardClick("upl")}>{cards.upl}</Card>
+          <Card className="dashboard-column-green" onClick={() => handleCardClick("fundsDistribution")}>{cards.fundsDistribution}</Card>
         </div>
 
-        {/* Row 3 */}
         <div className="mobile-stack flex gap-2 w-full items-start mt-4 max-lg:flex-col">
-          <Card
-            className="dashboard-column-cyan w-full lg:w-1/2 p-2 max-h-[60px] h-[60px] overflow-hidden"
-            onClick={() => handleCardClick("balanceGraph")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
-          >
-            {cards.balanceGraph}
-          </Card>
-          <Card
-            className="dashboard-column-purple w-full lg:w-1/2 p-2 max-h-[60px] h-[60px] overflow-hidden"
-            onClick={() => handleCardClick("weeklyRevenue")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
-          >
-            {cards.weeklyRevenue}
-          </Card>
+          <Card className="dashboard-column-cyan w-full lg:w-1/2 p-2 max-h-[60px] h-[60px] overflow-hidden" onClick={() => handleCardClick("balanceGraph")}>{cards.balanceGraph}</Card>
+          <Card className="dashboard-column-purple w-full lg:w-1/2 p-2 max-h-[60px] h-[60px] overflow-hidden" onClick={() => handleCardClick("weeklyRevenue")}>{cards.weeklyRevenue}</Card>
         </div>
 
-        {/* Row 4 */}
         <div className="grid grid-cols-2 gap-2 mt-4 max-sm:grid-cols-1">
-          <Card
-            className="dashboard-column-cyan"
-            onClick={() => handleCardClick("dailyPnL")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
-          >
-            {cards.dailyPnL}
-          </Card>
-          <Card
-            className="dashboard-column-purple"
-            onClick={() => handleCardClick("bestTradingPairs")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
-          >
-            {cards.bestTradingPairs}
-          </Card>
+          <Card className="dashboard-column-cyan" onClick={() => handleCardClick("dailyPnL")}>{cards.dailyPnL}</Card>
+          <Card className="dashboard-column-purple" onClick={() => handleCardClick("bestTradingPairs")}>{cards.bestTradingPairs}</Card>
         </div>
 
-        {/* Row 5 */}
         <div className="mt-4">
-          <Card
-            className="dashboard-column-green"
-            onClick={() => handleCardClick("openPositions")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }} // Pure black text in light mode
-          >
-            {cards.openPositions}
-          </Card>
+          <Card className="dashboard-column-green" onClick={() => handleCardClick("openPositions")}>{cards.openPositions}</Card>
         </div>
 
-        {/* CTA */}
-<div className="flex justify-center mt-6 mb-10">
-  <a href="F:/crypto-dashboard-prototype/crypto-dashboard-prototype/admin/positions.html">
-    <button
-      className="dashboard-column dashboard-column-cyan p-6 text-center"
-      style={{ color: isDarkMode ? "#fff" : "#000", textShadow: "none !important" }}
-    >
-      View All Position
-    </button>
-  </a>
-</div>
+        <div className="flex justify-center mt-6 mb-10">
+          <a href="F:/crypto-dashboard-prototype/crypto-dashboard-prototype/admin/positions.html">
+            <button className="dashboard-column dashboard-column-cyan p-6 text-center" style={{ color: isDarkMode ? "#fff" : "#000", textShadow: "none !important" }}>
+              View All Position
+            </button>
+          </a>
+        </div>
 
-{/* Add this one tiny spacer so the bottom isn't cut off */}
-<div className="h-6" />
-
+        <div className="h-6" />
       </main>
 
-   {/* Expanded modal for desktop & mobile */}
-{expandedCard && (
-  <div
-    onClick={() => setExpandedCard(null)}
-    style={{
-      position: "fixed",
-      top: "50%",
-      left: "50%",
-      transform: "translate(-50%, -50%)",
-      backgroundColor: "transparent",
-      zIndex: 1000,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      cursor: "pointer",
-      padding: 0,
-      width: "100%", // Allow content sizing inside
-      height: "100%",
-    }}
-    aria-modal="true"
-    role="dialog"
-    tabIndex={-1}
-  >
-    <div
-      onClick={(e) => e.stopPropagation()}
-      style={{
-        backgroundColor: isDarkMode ? "#111827" : "#f9fafb",
-        borderRadius: "1rem",
-        padding: "1rem",
-        display: "inline-block",
-        maxWidth: isMobile ? "95vw" : "90vw", // Smaller max for mobile
-        maxHeight: isMobile ? "85vh" : "90vh",
-        overflow: "auto",
-        boxShadow: "0 0 20px 5px #00ffff",
-        position: "relative",
-        color: isDarkMode ? "#fff" : "#000",
-        fontSize: "2em",
-        lineHeight: "1.8",
-        transition: "font-size 0.25s ease",
-        touchAction: "pan-y", // Allow scroll on touch devices
-      }}
-    >
-      {cards[expandedCard]}
-      <button
-        onClick={() => setExpandedCard(null)}
-        style={{
-          position: "absolute",
-          top: "0.5rem",
-          right: "0.5rem",
-          background: "transparent",
-          border: "none",
-          color: "#00ffff",
-          fontSize: "2rem",
-          cursor: "pointer",
-          fontWeight: "bold",
-        }}
-        aria-label="Close expanded view"
-      >
-        &times;
-      </button>
+      {/* Expanded modal */}
+      {expandedCard && (
+        <div
+          onClick={() => setExpandedCard(null)}
+          style={{
+            position: "fixed",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            backgroundColor: "transparent",
+            zIndex: 1000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            padding: 0,
+            width: "100%",
+            height: "100%",
+          }}
+          aria-modal="true"
+          role="dialog"
+          tabIndex={-1}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: isDarkMode ? "#111827" : "#f9fafb",
+              borderRadius: "1rem",
+              padding: "1rem",
+              display: "inline-block",
+              maxWidth: isMobile ? "95vw" : "90vw",
+              maxHeight: isMobile ? "85vh" : "90vh",
+              overflow: "auto",
+              boxShadow: "0 0 20px 5px #00ffff",
+              position: "relative",
+              color: isDarkMode ? "#fff" : "#000",
+              fontSize: "2em",
+              lineHeight: "1.8",
+              transition: "font-size 0.25s ease",
+              touchAction: "pan-y",
+            }}
+          >
+            {cards[expandedCard]}
+            <button
+              onClick={() => setExpandedCard(null)}
+              style={{
+                position: "absolute",
+                top: "0.5rem",
+                right: "0.5rem",
+                background: "transparent",
+                border: "none",
+                color: "#00ffff",
+                fontSize: "2rem",
+                cursor: "pointer",
+                fontWeight: "bold",
+              }}
+              aria-label="Close expanded view"
+            >
+              &times;
+            </button>
+          </div>
+        </div>
+      )}
     </div>
-  </div>
-)}
-
-       </div>
-     );
-   }
+  );
+}

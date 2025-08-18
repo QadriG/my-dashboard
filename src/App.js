@@ -1,28 +1,28 @@
-import React, { useState, useEffect } from "react";
-import "./styles/sidebar.css"; // Styles for sidebar, title wave, and columns
-import "./styles/globals.css"; // Global styles including overlay and shimmer
-import DashboardPC from "./components/Dashboard.jsx";
-import DashboardMobile from "./components/DashboardMobile.jsx";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Login from "./components/Auth/Login";
+import AdminDashboard from "./components/Dashboard";
+import UserDashboard from "./components/Users/Dashboard";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const calculateScreenSize = () => {
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-      const diagonalPx = Math.sqrt(width ** 2 + height ** 2);
-      const dpi = 96 * (window.devicePixelRatio || 1);
-      const diagonalInches = diagonalPx / dpi;
-      setIsMobile(diagonalInches < 7);
-    };
-
-    calculateScreenSize();
-    window.addEventListener("resize", calculateScreenSize);
-    return () => window.removeEventListener("resize", calculateScreenSize);
-  }, []);
-
-  return isMobile ? <DashboardMobile /> : <DashboardPC />;
+  return (
+    <Router>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/admin" element={
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <AdminDashboard />
+          </ProtectedRoute>
+        }/>
+        <Route path="/user" element={
+          <ProtectedRoute allowedRoles={["user"]}>
+            <UserDashboard />
+          </ProtectedRoute>
+        }/>
+        <Route path="*" element={<Login />} />
+      </Routes>
+    </Router>
+  );
 }
 
 export default App;
