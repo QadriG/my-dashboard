@@ -1,185 +1,184 @@
-// server.js
-const express = require("express");
-const cors = require("cors");
-const cookieParser = require("cookie-parser");
-const bodyParser = require("body-parser");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const helmet = require("helmet");
-const rateLimit = require("express-rate-limit");
-const mongoose = require("mongoose");
-const crypto = require("crypto");
+import express from "express";
+import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+import cookieParser from "cookie-parser";
+import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import bodyParser from "body-parser";
+import crypto from "crypto";
+import { sendEmail } from "./src/utils/mailer.js";
 
-/* -------------------- Config -------------------- */
-// Frontend origins (Vite=5173, CRA=3000). Adjust as needed.
-const ALLOWED_ORIGINS = [
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-  "http://localhost:3000",
-  "http://127.0.0.1:3000",
-];
-
-// MongoDB connection (use Atlas URI or local)
-const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/quantumcopytrading";
-
-// Your fixed admin (email + hashed password only)
-const ADMIN_EMAIL = "info@tradingmachine.ai";
-// Replace with your precomputed bcrypt hash (DO NOT store the plain password)
-// Example you shared earlier (keep/update as needed):
-const ADMIN_HASHED_PASSWORD = "$2b$12$nUUzwUFI0.ItQrtFTFDmjORxnzwNzKvUrcfxPGwaB/0ENe8VXywRq";
-
-// JWT secret rotates on every restart (as you requested)
-const JWT_SECRET = crypto.randomBytes(64).toString("hex");
-
-/* -------------------- App & Middleware -------------------- */
+dotenv.config();
 const app = express();
-const PORT = process.env.PORT || 5000;
+const prisma = new PrismaClient();
 
+const PORT = process.env.PORT || 5000;
+const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
+
+// Middleware
+app.use(bodyParser.json());
+app.use(cookieParser());
 app.use(
   cors({
-    origin: (origin, cb) => {
-      if (!origin || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
-      return cb(new Error("Not allowed by CORS"));
+    origin: (origin, callback) => {
+      const allowedOrigins = process.env.CORS_WHITELIST
+        ? process.env.CORS_WHITELIST.split(",")
+        : ["http://localhost:3000"];
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
     },
     credentials: true,
   })
 );
 app.use(helmet());
-app.use(bodyParser.json());
-app.use(cookieParser());
-
-// Basic rate limiting
-const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200 });
-app.use(apiLimiter);
-
-/* -------------------- DB & Models -------------------- */
-const userSchema = new mongoose.Schema(
-  {
-    username: { type: String },
-    email: { type: String, required: true, unique: true, index: true },
-    password: { type: String, required: true }, // bcrypt hash
-    role: { type: String, enum: ["admin", "user"], default: "user" },
-  },
-  { timestamps: true }
+app.use(
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+  })
 );
 
-const User = mongoose.model("User", userSchema);
-
-/* -------------------- Helpers -------------------- */
-function signToken(payload) {
-  // 1h expiry, adjust as needed
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: "1h" });
-}
-
-function setAuthCookie(res, token) {
-  res.cookie("token", token, {
-    httpOnly: true,
-    sameSite: "Lax",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 60 * 60 * 1000,
-  });
-}
-
-/* -------------------- Startup: connect & seed admin -------------------- */
-async function start() {
-  await mongoose.connect(MONGO_URI, { autoIndex: true });
-
-  // Ensure single admin exists with your fixed email + hashed password
-  const existingAdmin = await User.findOne({ email: ADMIN_EMAIL });
-  if (!existingAdmin) {
-    await User.create({
-      username: "mainAdmin",
-      email: ADMIN_EMAIL,
-      password: ADMIN_HASHED_PASSWORD, // already hashed
-      role: "admin",
-    });
-    console.log("✅ Seeded admin account:", ADMIN_EMAIL);
-  } else {
-    // Optional: ensure the stored admin password is the exact hash you expect
-    if (existingAdmin.password !== ADMIN_HASHED_PASSWORD) {
-      existingAdmin.password = ADMIN_HASHED_PASSWORD;
-      await existingAdmin.save();
-      console.log("🔒 Admin password hash synced to configured hash.");
-    }
-  }
-
-  app.listen(PORT, () => {
-    console.log(`✅ API ready on http://localhost:${PORT}`);
-  });
-}
-
-/* -------------------- Routes -------------------- */
-// Signup (users only; admin email is reserved)
-app.post("/signup", async (req, res) => {
+// ---------- Auth Middleware ----------
+const authMiddleware = async (req, res, next) => {
+  const token = req.cookies.token;
+  if (!token) return res.status(401).json({ error: "Unauthorized" });
   try {
-    const { username, email, password } = req.body;
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = await prisma.user.findUnique({ where: { id: decoded.id } });
+    if (!req.user) return res.status(401).json({ error: "User not found" });
+    next();
+  } catch {
+    return res.status(401).json({ error: "Invalid token" });
+  }
+};
 
-    if (!username || !email || !password) {
-      return res.status(400).json({ msg: "All fields required" });
+// ---------- SIGNUP ----------
+app.post("/api/auth/signup", async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    if (!name || !email || !password)
+      return res.status(400).json({ error: "All fields required" });
+
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing)
+      return res.status(400).json({ error: "Email already registered" });
+
+    const hashed = await bcrypt.hash(password, 10);
+    const user = await prisma.user.create({
+      data: { name, email, password: hashed, role: "user" },
+    });
+
+    // Send welcome email
+    try {
+      await sendEmail(
+        user.email,
+        "Welcome to QuantumCopyTrading!",
+        `<p>Hello ${name},</p>
+         <p>Welcome to QuantumCopyTrading! Your account has been created successfully.</p>`
+      );
+    } catch (err) {
+      console.error("Failed to send welcome email:", err);
     }
 
-    if (email === ADMIN_EMAIL) {
-      return res.status(400).json({ msg: "Admin account already exists." });
-    }
-
-    const exists = await User.findOne({ email });
-    if (exists) return res.status(400).json({ msg: "User already exists" });
-
-    const hashed = await bcrypt.hash(password, 12);
-    await User.create({ username, email, password: hashed, role: "user" });
-
-    return res.status(201).json({ msg: "Signup successful. Please login." });
+    res.json({ message: "User created", user: { id: user.id, email: user.email } });
   } catch (err) {
-    console.error("Signup error:", err);
-    return res.status(500).json({ msg: "Server error" });
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
-// Login (admin or user)
-app.post("/login", async (req, res) => {
+// ---------- LOGIN ----------
+app.post("/api/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body;
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) return res.status(400).json({ error: "Invalid credentials" });
 
-    const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ msg: "Invalid credentials" });
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) return res.status(400).json({ error: "Invalid credentials" });
 
-    const ok = await bcrypt.compare(password, user.password);
-    if (!ok) return res.status(400).json({ msg: "Invalid credentials" });
-
-    const token = signToken({ id: user._id.toString(), role: user.role });
-    setAuthCookie(res, token);
-
-    return res.json({ msg: "Login successful", role: user.role });
-  } catch (err) {
-    console.error("Login error:", err);
-    return res.status(500).json({ msg: "Server error" });
+    const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: "1d" });
+    res
+      .cookie("token", token, { httpOnly: true, secure: false })
+      .json({
+        message: "Login successful",
+        user: { id: user.id, email: user.email, role: user.role },
+      });
+  } catch {
+    res.status(500).json({ error: "Server error" });
   }
 });
 
-// Auth check for ProtectedRoute
-app.get("/check-auth", async (req, res) => {
+// ---------- FORGOT PASSWORD ----------
+app.post("/api/auth/forgot-password", async (req, res) => {
   try {
-    const token = req.cookies?.token;
-    if (!token) return res.status(401).json({ msg: "Not authenticated" });
+    const { email } = req.body;
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) return res.status(400).json({ error: "Email not found" });
 
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const user = await User.findById(decoded.id).lean();
-    if (!user) return res.status(401).json({ msg: "Invalid token" });
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    const resetExp = new Date(Date.now() + 15 * 60 * 1000);
 
-    return res.json({ role: user.role });
-  } catch (err) {
-    return res.status(401).json({ msg: "Invalid token" });
+    await prisma.user.update({
+      where: { email },
+      data: { resetToken, resetTokenExp: resetExp },
+    });
+
+    const resetLink = `http://localhost:3000/my-dashboard/reset-password/${resetToken}`;
+
+    try {
+      await sendEmail(
+        email,
+        "Reset your QuantumCopyTrading password",
+        `<p>Hello ${user.name || "User"},</p>
+         <p>Click the link below to reset your password:</p>
+         <a href="${resetLink}" target="_blank">Reset Password</a>
+         <p>This link will expire in 15 minutes.</p>`
+      );
+    } catch (err) {
+      console.error("Failed to send reset email:", err);
+    }
+
+    res.json({ message: "Password reset email sent" });
+  } catch {
+    res.status(500).json({ error: "Server error" });
   }
 });
 
-// Logout
-app.post("/logout", (req, res) => {
-  res.clearCookie("token");
-  return res.json({ msg: "Logged out" });
+// ---------- RESET PASSWORD ----------
+app.post("/api/auth/reset-password/:token", async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { password } = req.body;
+
+    const user = await prisma.user.findFirst({
+      where: {
+        resetToken: token,
+        resetTokenExp: { gt: new Date() },
+      },
+    });
+
+    if (!user) return res.status(400).json({ error: "Invalid or expired token" });
+
+    const hashed = await bcrypt.hash(password, 10);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password: hashed, resetToken: null, resetTokenExp: null },
+    });
+
+    res.json({ message: "Password reset successful" });
+  } catch {
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
-/* -------------------- Boot -------------------- */
-start().catch((e) => {
-  console.error("Failed to start server:", e);
-  process.exit(1);
+// ---------- Start Server ----------
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
 });

@@ -1,4 +1,3 @@
-/* eslint-disable no-undef */
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import "../../styles/globals.css";
@@ -12,8 +11,11 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const canvasRef = useRef(null);
   const mouseRef = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+
+  const API_BASE = "http://localhost:5000/api/auth";
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -84,74 +86,78 @@ export default function Login() {
     };
   }, []);
 
-  const switchForm = (target) => setCurrentForm(target);
-
-  // ================== LOGIN ==================
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const switchForm = (target) => {
+    setCurrentForm(target);
     setError("");
-    try {
-      const res = await fetch("http://localhost:5000/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-
-      if (res.ok) {
-        // Redirect based on role
-        if (data.role === "admin") {
-          navigate("/admin");
-        } else {
-          navigate("/user");
-        }
-      } else {
-        setError(data.message || "Invalid credentials");
-      }
-    } catch {
-      setError("Server error");
-    }
+    setSuccess("");
   };
 
-  // ================== SIGNUP ==================
-  const handleSignup = async (e) => {
-    e.preventDefault();
-    setError("");
-    if (password !== confirmPassword) return setError("Passwords do not match");
+  // LOGIN
+const handleLogin = async (e) => {
+  e.preventDefault();
+  setError("");
+  try {
+    const res = await fetch(`${API_BASE}/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
 
-    try {
-      const res = await fetch("http://localhost:5000/api/auth/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: username, email, password }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setCurrentForm("login");
+    if (res.ok) {
+      if (data.user.role === "admin") {
+        navigate("/admin");
       } else {
-        setError(data.message || "Signup failed");
+        navigate("/user");
       }
-    } catch {
-      setError("Server error");
+    } else {
+      setError(data.error || "Invalid credentials");
     }
-  };
+  } catch {
+    setError("Server error");
+  }
+};
+
+// SIGNUP
+const handleSignup = async (e) => {
+  e.preventDefault();
+  setError("");
+  if (password !== confirmPassword) return setError("Passwords do not match");
+
+  try {
+    const res = await fetch(`${API_BASE}/signup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: username, email, password }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert("Signup successful! Check your email.");
+      setCurrentForm("login");
+    } else {
+      setError(data.error || "Signup failed");
+    }
+  } catch {
+    setError("Server error");
+  }
+};
 
   // ================== FORGOT PASSWORD ==================
   const handleForgot = async (e) => {
     e.preventDefault();
     setError("");
+    setSuccess("");
     try {
-      const res = await fetch("http://localhost:5000/api/auth/forgot-password", {
+      const res = await fetch(`${API_BASE}/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
       const data = await res.json();
       if (res.ok) {
-        alert("Reset link sent if email exists!");
-        setCurrentForm("login");
+        setSuccess("Reset link sent! Check your email.");
       } else {
-        setError(data.message || "Error sending reset link");
+        setError(data.error || "Error sending reset link");
       }
     } catch {
       setError("Server error");
@@ -191,29 +197,20 @@ export default function Login() {
                 className="input-field w-full mb-6 px-4 py-3 rounded-lg bg-transparent text-white placeholder-white border border-white focus:outline-none"
                 required
               />
-              <button
-                type="submit"
-                className="neon-button w-full py-3 text-white font-semibold rounded-lg"
-              >
+              <button type="submit" className="neon-button w-full py-3 text-white font-semibold rounded-lg">
                 Sign In
               </button>
             </form>
             {error && <p className="text-red-500 mt-2">{error}</p>}
+            {success && <p className="text-green-500 mt-2">{success}</p>}
             <div className="mt-4 text-sm">
-              <button
-                type="button"
-                onClick={() => switchForm("forgot")}
-                className="text-white hover:underline"
-              >
+              <button type="button" onClick={() => switchForm("forgot")} className="text-white hover:underline">
                 Forgot Password?
               </button>
             </div>
             <div className="mt-2 text-sm">
               Don't have an account?{" "}
-              <button
-                onClick={() => switchForm("signup")}
-                className="text-white underline"
-              >
+              <button onClick={() => switchForm("signup")} className="text-white underline">
                 Sign Up
               </button>
             </div>
@@ -255,20 +252,15 @@ export default function Login() {
                 className="input-field w-full mb-6 px-4 py-3 rounded-lg bg-transparent text-white placeholder-white focus:outline-none"
                 required
               />
-              <button
-                type="submit"
-                className="neon-button w-full py-3 text-white font-semibold rounded-lg"
-              >
+              <button type="submit" className="neon-button w-full py-3 text-white font-semibold rounded-lg">
                 Sign Up
               </button>
             </form>
             {error && <p className="text-red-500 mt-2">{error}</p>}
+            {success && <p className="text-green-500 mt-2">{success}</p>}
             <div className="mt-4 text-sm flex justify-center">
               Already have an account?{" "}
-              <button
-                onClick={() => switchForm("login")}
-                className="text-white underline ml-1"
-              >
+              <button onClick={() => switchForm("login")} className="text-white underline ml-1">
                 Back to Login
               </button>
             </div>
@@ -286,19 +278,15 @@ export default function Login() {
                 className="input-field w-full mb-6 px-4 py-3 rounded-lg bg-transparent text-white placeholder-white focus:outline-none"
                 required
               />
-              <button
-                type="submit"
-                className="neon-button w-full py-3 text-white font-semibold rounded-lg"
-              >
+              <button type="submit" className="neon-button w-full py-3 text-white font-semibold rounded-lg">
                 Send Reset Link
               </button>
             </form>
+            {error && <p className="text-red-500 mt-2">{error}</p>}
+            {success && <p className="text-green-500 mt-2">{success}</p>}
             <div className="mt-4 text-sm">
               Remembered your password?{" "}
-              <button
-                onClick={() => switchForm("login")}
-                className="text-white underline"
-              >
+              <button onClick={() => switchForm("login")} className="text-white underline">
                 Back to Login
               </button>
             </div>

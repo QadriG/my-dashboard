@@ -3,22 +3,39 @@ import Login from "./components/Auth/Login";
 import AdminDashboard from "./components/Dashboard";
 import UserDashboard from "./components/Users/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
+import ResetPassword from "./components/Auth/ResetPassword";
 
 function App() {
   return (
-    <Router>
+    <Router basename="/my-dashboard">
       <Routes>
+        {/* Login */}
         <Route path="/login" element={<Login />} />
-        <Route path="/admin" element={
-          <ProtectedRoute allowedRoles={["admin"]}>
-            <AdminDashboard />
-          </ProtectedRoute>
-        }/>
-        <Route path="/user" element={
-          <ProtectedRoute allowedRoles={["user"]}>
-            <UserDashboard />
-          </ProtectedRoute>
-        }/>
+
+        {/* Admin Dashboard */}
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* User Dashboard */}
+        <Route
+          path="/user"
+          element={
+            <ProtectedRoute allowedRoles={["user"]}>
+              <UserDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Reset Password */}
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
+
+        {/* Catch-all redirects to login */}
         <Route path="*" element={<Login />} />
       </Routes>
     </Router>
