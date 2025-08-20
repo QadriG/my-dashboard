@@ -30,20 +30,16 @@ export default function Login() {
     resizeCanvas();
     window.addEventListener("resize", resizeCanvas);
 
-    const dots = [];
-    for (let i = 0; i < 400; i++) {
-      dots.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        vx: (Math.random() - 0.5) * 2,
-        vy: (Math.random() - 0.5) * 2,
-        size: Math.random() * 5 + 2,
-        alpha: Math.random() * 0.8 + 0.2,
-      });
-    }
+    const dots = Array.from({ length: 400 }, () => ({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      vx: (Math.random() - 0.5) * 2,
+      vy: (Math.random() - 0.5) * 2,
+      size: Math.random() * 5 + 2,
+      alpha: Math.random() * 0.8 + 0.2,
+    }));
 
-    function animate() {
-      if (!ctx) return;
+    const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       dots.forEach((dot) => {
         const dx = mouseRef.current.x - dot.x;
@@ -52,27 +48,23 @@ export default function Login() {
         const force = distance > 100 ? 0 : (100 - distance) / 100;
         dot.vx += (dx / 50) * force;
         dot.vy += (dy / 50) * force;
-
         dot.x += dot.vx;
         dot.y += dot.vy;
-
         if (dot.x < 0 || dot.x > canvas.width) dot.vx *= -1;
         if (dot.y < 0 || dot.y > canvas.height) dot.vy *= -1;
-
         dot.vx *= 0.95;
         dot.vy *= 0.95;
 
         const gradient = ctx.createRadialGradient(dot.x, dot.y, 0, dot.x, dot.y, dot.size);
-        gradient.addColorStop(0, `rgba(255, 165, 0, ${dot.alpha})`);
-        gradient.addColorStop(1, `rgba(255, 69, 0, 0)`);
+        gradient.addColorStop(0, `rgba(255,165,0,${dot.alpha})`);
+        gradient.addColorStop(1, `rgba(255,69,0,0)`);
         ctx.fillStyle = gradient;
         ctx.beginPath();
         ctx.arc(dot.x, dot.y, dot.size, 0, Math.PI * 2);
         ctx.fill();
       });
       requestAnimationFrame(animate);
-    }
-
+    };
     animate();
 
     const handleMouseMove = (e) => {
@@ -92,7 +84,7 @@ export default function Login() {
     setSuccess("");
   };
 
-  // LOGIN
+  // Replace the handleLogin function
 const handleLogin = async (e) => {
   e.preventDefault();
   setError("");
@@ -100,25 +92,22 @@ const handleLogin = async (e) => {
     const res = await fetch(`${API_BASE}/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify({ email, password }),
     });
     const data = await res.json();
-
-    if (res.ok) {
-      if (data.user.role === "admin") {
-        navigate("/admin");
-      } else {
-        navigate("/user");
-      }
+    if (res.ok && data.user?.role) {
+      if (data.user.role === "admin") navigate("/admin", { replace: true });
+      else navigate("/user", { replace: true });
     } else {
-      setError(data.error || "Invalid credentials");
+      setError(data.message || "Invalid credentials");
     }
   } catch {
     setError("Server error");
   }
 };
 
-// SIGNUP
+  // Replace the handleSignup function
 const handleSignup = async (e) => {
   e.preventDefault();
   setError("");
@@ -132,17 +121,15 @@ const handleSignup = async (e) => {
     });
     const data = await res.json();
     if (res.ok) {
-      alert("Signup successful! Check your email.");
+      setSuccess("Signup successful! Please check your email to verify your account.");
       setCurrentForm("login");
     } else {
-      setError(data.error || "Signup failed");
+      setError(data.message || "Signup failed");
     }
   } catch {
     setError("Server error");
   }
 };
-
-  // ================== FORGOT PASSWORD ==================
   const handleForgot = async (e) => {
     e.preventDefault();
     setError("");
@@ -154,18 +141,14 @@ const handleSignup = async (e) => {
         body: JSON.stringify({ email }),
       });
       const data = await res.json();
-      if (res.ok) {
-        setSuccess("Reset link sent! Check your email.");
-      } else {
-        setError(data.error || "Error sending reset link");
-      }
+      if (res.ok) setSuccess("Reset link sent! Check your email.");
+      else setError(data.message || "Error sending reset link");
     } catch {
       setError("Server error");
     }
   };
 
-  const formClass = (form) =>
-    `form-transition ${currentForm === form ? "active" : "inactive"}`;
+  const formClass = (form) => `form-transition ${currentForm === form ? "active" : "inactive"}`;
 
   return (
     <div className="flex items-center justify-center page-glow h-screen w-screen text-white relative">
@@ -175,11 +158,10 @@ const handleSignup = async (e) => {
         style={{ minHeight: "420px", background: "transparent", backdropFilter: "none" }}
       >
         <div className="form-container">
-          {/* LOGIN */}
+
+          {/* LOGIN FORM */}
           <div className={formClass("login")}>
-            <h2 className="text-2xl font-bold mb-6">
-              Sign In to QuantumCopyTrading.com
-            </h2>
+            <h2 className="text-2xl font-bold mb-6">Sign In to QuantumCopyTrading.com</h2>
             <form onSubmit={handleLogin}>
               <input
                 type="email"
@@ -216,7 +198,7 @@ const handleSignup = async (e) => {
             </div>
           </div>
 
-          {/* SIGNUP */}
+          {/* SIGNUP FORM */}
           <div className={formClass("signup")}>
             <h2 className="text-2xl font-bold mb-6">Create an Account</h2>
             <form onSubmit={handleSignup}>
@@ -266,7 +248,7 @@ const handleSignup = async (e) => {
             </div>
           </div>
 
-          {/* FORGOT PASSWORD */}
+          {/* FORGOT PASSWORD FORM */}
           <div className={formClass("forgot")}>
             <h2 className="text-2xl font-bold mb-6">Reset Password</h2>
             <form onSubmit={handleForgot}>
@@ -275,7 +257,7 @@ const handleSignup = async (e) => {
                 placeholder="Enter your email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="input-field w-full mb-6 px-4 py-3 rounded-lg bg-transparent text-white placeholder-white focus:outline-none"
+                className="input-field w-full mb-6 px-4 py-3 rounded-lg bg-transparent text-white placeholder-white border border-white focus:outline-none"
                 required
               />
               <button type="submit" className="neon-button w-full py-3 text-white font-semibold rounded-lg">
@@ -291,6 +273,7 @@ const handleSignup = async (e) => {
               </button>
             </div>
           </div>
+
         </div>
       </div>
     </div>

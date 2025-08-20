@@ -35,6 +35,9 @@ function App() {
         {/* Reset Password */}
         <Route path="/reset-password/:token" element={<ResetPassword />} />
 
+        {/* Verify Email */}
+        <Route path="/verify-email/:token" element={<Login />} /> {/* Redirect to login after verification */}
+
         {/* Catch-all redirects to login */}
         <Route path="*" element={<Login />} />
       </Routes>

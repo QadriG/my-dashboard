@@ -3,86 +3,130 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
 import nodemailer from "nodemailer";
+import cookieParser from "cookie-parser";
 
 const router = express.Router();
 const prisma = new PrismaClient();
+const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
 
-// ✅ Signup
+// Middleware to parse cookies
+router.use(cookieParser());
+
+// ---------------- SIGNUP ----------------
 router.post("/signup", async (req, res) => {
   try {
     const { email, password, role } = req.body;
-
-    // Check if user exists
-    const existingUser = await prisma.user.findUnique({ where: { email } });
-    if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password required" });
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) return res.status(400).json({ message: "User already exists" });
 
-    // Create user
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const verificationToken = crypto.randomBytes(32).toString("hex");
     const user = await prisma.user.create({
       data: {
         email,
         password: hashedPassword,
-        role: role || "user", // default role
+        role: role || "user",
+        isVerified: false,
+        verificationToken,
       },
     });
 
-    res.json({ message: "User registered successfully", user });
-  } catch (error) {
-    console.error("Signup error:", error);
+    const verificationLink = `${process.env.CLIENT_URL}/verify-email/${verificationToken}`;
+    await sendEmail(
+      user.email,
+      "Verify Your Email",
+      `<p>Hello,</p><p>Please verify your email by clicking <a href="${verificationLink}">here</a>.</p>`
+    );
+
+    res.json({ message: "Please check your email to verify your account." });
+  } catch (err) {
+    console.error("Signup error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
 
-// ✅ Login
+// ---------------- LOGIN ----------------
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ message: "Email and password required" });
 
-    // Find user
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
-    // Compare password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
 
-    // Generate JWT
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
-    );
+    if (!user.isVerified) return res.status(403).json({ message: "Please verify your email first" });
 
-    res.json({
-      token,
-      user: { id: user.id, email: user.email, role: user.role },
-    });
-  } catch (error) {
-    console.error("Login error:", error);
+    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: "1d" });
+    res
+      .cookie("token", token, {
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax",
+      })
+      .json({ message: "Login successful", user: { id: user.id, email: user.email, role: user.role } });
+  } catch (err) {
+    console.error("Login error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
 
-// ✅ Forgot Password
+// ---------------- CHECK AUTH ----------------
+router.get("/check-auth", async (req, res) => {
+  try {
+    const token = req.cookies.token || req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "Unauthorized" });
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await prisma.user.findUnique({ where: { id: decoded.id } });
+    if (!user) return res.status(401).json({ message: "User not found" });
+
+    res.json({ id: user.id, role: user.role, email: user.email });
+  } catch (err) {
+    console.error("Check auth error:", err);
+    res.status(401).json({ message: "Invalid token" });
+  }
+});
+
+// ---------------- VERIFY EMAIL ----------------
+router.get("/verify-email/:token", async (req, res) => {
+  try {
+    const { token } = req.params;
+    const user = await prisma.user.findFirst({ where: { verificationToken: token } });
+
+    if (!user || user.isVerified) {
+      return res.status(400).json({ message: "Invalid or already verified token" });
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { isVerified: true, verificationToken: null },
+    });
+
+    res.json({ message: "Email verified successfully. You can now log in." });
+  } catch (err) {
+    console.error("Verification error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+// ---------------- FORGOT PASSWORD ----------------
 router.post("/forgot-password", async (req, res) => {
   try {
     const { email } = req.body;
+    if (!email) return res.status(400).json({ message: "Email required" });
 
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) return res.status(400).json({ message: "User not found" });
 
-    // Create reset token (expires in 15 min)
-    const resetToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
-      expiresIn: "15m",
-    });
-
+    const resetToken = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: "15m" });
     const resetLink = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
 
-    // Send email
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
@@ -99,8 +143,8 @@ router.post("/forgot-password", async (req, res) => {
     });
 
     res.json({ message: "Password reset email sent" });
-  } catch (error) {
-    console.error("Forgot password error:", error);
+  } catch (err) {
+    console.error("Forgot password error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });

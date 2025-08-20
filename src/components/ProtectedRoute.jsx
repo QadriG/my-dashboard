@@ -8,16 +8,17 @@ export default function ProtectedRoute({ children, allowedRoles }) {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await fetch("http://localhost:5000/check-auth", {
+        const res = await fetch("http://localhost:5000/api/auth/check-auth", {
           credentials: "include",
         });
         const data = await res.json();
+
         if (res.ok && allowedRoles.includes(data.role)) {
           setAuthorized(true);
         } else {
           setAuthorized(false);
         }
-      } catch {
+      } catch (err) {
         setAuthorized(false);
       } finally {
         setLoading(false);

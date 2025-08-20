@@ -10,17 +10,19 @@ datasource db {
 }
 
 model User {
-  id            Int      @id @default(autoincrement())
-  email         String   @unique
-  password      String
-  name          String?
-  role          String   @default("user") // "admin" or "user"
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  resetToken    String?   // For forgot password flow
-  resetTokenExp DateTime?
+  id                Int       @id @default(autoincrement())
+  email             String    @unique
+  password          String
+  name              String?
+  role              String    @default("user")
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  resetToken        String?
+  resetTokenExp     DateTime?
+  isVerified        Boolean   @default(false)
+  verificationToken String?
   
-  trades        Trade[]   // Relation to trades
+  trades            Trade[]
 }
 
 model Trade {
