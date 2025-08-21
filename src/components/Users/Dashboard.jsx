@@ -1,6 +1,7 @@
 /* eslint no-undef: "off" */
 import React, { useRef, useState, useEffect } from "react";
 import { isMobile } from "react-device-detect";
+import { useNavigate } from "react-router-dom";   // ✅ added
 import "../../styles/sidebar.css";
 import "../../styles/globals.css";
 import hoverSound from "../../assets/click.mp3";
@@ -21,6 +22,63 @@ export default function UserDashboard() {
   const [expandedCard, setExpandedCard] = useState(null);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [buttonText, setButtonText] = useState("Light Mode");
+  const navigate = useNavigate();   // ✅ added
+
+  // ✅ JWT Check on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch("http://localhost:5000/api/auth/check-auth", {
+          method: "GET",
+          credentials: "include",
+        });
+        const data = await res.json();
+        if (!res.ok || data.role !== "user") {
+          navigate("/login");
+        }
+      } catch (err) {
+        console.error(err);
+        navigate("/login");
+      }
+    };
+
+    checkAuth();
+  }, [navigate]);
+
+  // ✅ Logout handler
+  const handleLogout = async () => {
+  try {
+    await fetch("http://localhost:5000/api/auth/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+
+    // Clear any cached tokens/state
+    localStorage.clear();
+    sessionStorage.clear();
+
+    // Redirect & prevent back navigation
+    navigate("/login", { replace: true });
+
+    // Force refresh to drop any cached UI
+    window.location.reload();
+  } catch (err) {
+    console.error("Logout failed:", err);
+  }
+};
+
+  // ✅ Prevent going back after logout
+  useEffect(() => {
+    const handlePopState = () => {
+      navigate("/login", { replace: true });
+    };
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [navigate]);
 
   const playHoverSound = () => {
     if (audioRef.current) {
@@ -80,7 +138,7 @@ export default function UserDashboard() {
       </audio>
 
       {/* Sidebar */}
-      <UserSidebar isOpen={true} playHoverSound={playHoverSound} />
+      <UserSidebar isOpen={true} playHoverSound={playHoverSound} onLogout={handleLogout} /> {/* ✅ pass logout */}
 
       <main
         className="relative z-20 p-6 overflow-y-auto md:ml-64"

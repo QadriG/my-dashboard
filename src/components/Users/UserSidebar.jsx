@@ -6,12 +6,17 @@ export default function UserSidebar({ isOpen, playHoverSound }) {
   const navigate = useNavigate(); // for redirecting after logout
 
   const handleLogout = () => {
-    // Clear auth tokens or session info
-    localStorage.removeItem("authToken");
-    sessionStorage.clear();
-    // Redirect to login page
-    navigate("/login");
-  };
+  // Clear all stored auth/session data
+  localStorage.clear();
+  sessionStorage.clear();
+
+  // (Optional) If you want extra safety:
+  document.cookie = "authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+
+  // Redirect to login
+  navigate("/login", { replace: true });
+};
+
 
   const buttons = [
     { label: "Dashboard", className: "sidebar-cyan" },

@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { isMobile } from "react-device-detect";
 import "../styles/sidebar.css";
 import "../styles/globals.css";
@@ -33,11 +34,63 @@ const Card = ({ className = "", onClick, children }) => (
 );
 
 export default function DashboardMobile() {
+  const navigate = useNavigate();
   const audioRef = useRef(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedCard, setExpandedCard] = useState(null);
   const [isDarkMode, setIsDarkMode] = useState(true); // Default to dark mode
   const [buttonText, setButtonText] = useState("Light Mode"); // State for alternating text
+
+  /* JWT Check on mount */
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch("http://localhost:5000/check-auth", {
+          method: "GET",
+          credentials: "include",
+        });
+        const data = await res.json();
+        if (!res.ok || data.role !== "admin") {
+          navigate("/login", { replace: true });
+        }
+      } catch (err) {
+        console.error(err);
+        navigate("/login", { replace: true });
+      }
+    };
+
+    checkAuth();
+  }, [navigate]);
+
+  /* Logout handler */
+  /* Logout handler */
+const handleLogout = async () => {
+  try {
+    await fetch("http://localhost:5000/api/auth/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+  } catch (err) {
+    console.error("Logout failed:", err);
+  } finally {
+    localStorage.clear();
+    sessionStorage.clear();
+    navigate("/login", { replace: true });
+  }
+};
+
+/* Prevent going back after logout */
+useEffect(() => {
+  const handlePopState = () => {
+    if (!localStorage.getItem("authToken")) {
+      navigate("/login", { replace: true });
+    }
+  };
+
+  window.addEventListener("popstate", handlePopState);
+  return () => window.removeEventListener("popstate", handlePopState);
+}, [navigate]);
+
 
   /* Compute a smooth per-component scale for small screens */
   useEffect(() => {
@@ -138,7 +191,7 @@ export default function DashboardMobile() {
             { label: "Users", className: "sidebar-users", href: "#" },
             { label: "Logs", className: "sidebar-logs", href: "#" },
             { label: "Manual Push", className: "sidebar-manual-push", href: "#" },
-            { label: "Logout", className: "sidebar-red", href: "/login" },
+            { label: "Logout", className: "sidebar-red", href: "#" },
           ].map((btn, i) => (
             <a
               key={i}
@@ -146,14 +199,7 @@ export default function DashboardMobile() {
               onClick={(e) => {
                 if (btn.label === "Logout") {
                   e.preventDefault();
-                  localStorage.clear();
-                  sessionStorage.clear();
-                  document.cookie.split(";").forEach((c) => {
-                    document.cookie = c
-                      .replace(/^ +/, "")
-                      .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-                  });
-                  window.location.href = btn.href;
+                  handleLogout();
                 } else {
                   playHoverSound();
                 }

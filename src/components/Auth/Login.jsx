@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import "../../styles/globals.css";
 import "../../styles/sidebar.css";
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+
   const [currentForm, setCurrentForm] = useState("login");
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
@@ -17,6 +19,24 @@ export default function Login() {
 
   const API_BASE = "http://localhost:5000/api/auth";
 
+  // ✅ Prevent browser caching of protected pages
+  useEffect(() => {
+    window.history.pushState(null, "", window.location.href);
+    window.onpopstate = () => {
+      window.history.go(1); // disable back button
+    };
+  }, []);
+
+  // Show success if redirected after verification
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("verified") === "success") {
+      setSuccess("✅ Your email is verified! Please log in.");
+      setCurrentForm("login");
+    }
+  }, [location]);
+
+  // background animation
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -84,52 +104,69 @@ export default function Login() {
     setSuccess("");
   };
 
-  // Replace the handleLogin function
-const handleLogin = async (e) => {
-  e.preventDefault();
-  setError("");
-  try {
-    const res = await fetch(`${API_BASE}/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ email, password }),
-    });
-    const data = await res.json();
-    if (res.ok && data.user?.role) {
-      if (data.user.role === "admin") navigate("/admin", { replace: true });
-      else navigate("/user", { replace: true });
-    } else {
-      setError(data.message || "Invalid credentials");
-    }
-  } catch {
-    setError("Server error");
-  }
-};
+  // LOGIN
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setError("");
 
-  // Replace the handleSignup function
-const handleSignup = async (e) => {
-  e.preventDefault();
-  setError("");
-  if (password !== confirmPassword) return setError("Passwords do not match");
+    try {
+      const res = await fetch(`${API_BASE}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, password }),
+      });
 
-  try {
-    const res = await fetch(`${API_BASE}/signup`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: username, email, password }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      setSuccess("Signup successful! Please check your email to verify your account.");
-      setCurrentForm("login");
-    } else {
-      setError(data.message || "Signup failed");
+      const data = await res.json();
+
+      if (res.ok && data.user?.role) {
+        // ✅ Clear any old session
+        localStorage.clear();
+        sessionStorage.clear();
+
+        // optional: store role if needed
+        localStorage.setItem("role", data.user.role);
+
+        // Redirect and force reload to prevent cached dashboard
+        if (data.user.role === "admin") {
+          navigate("/admin", { replace: true });
+        } else {
+          navigate("/user", { replace: true });
+        }
+        window.location.reload(); // 🔹 force full reload
+      } else {
+        setError(data.message || "Invalid credentials");
+      }
+    } catch {
+      setError("Server error");
     }
-  } catch {
-    setError("Server error");
-  }
-};
+  };
+
+  // SIGNUP
+  const handleSignup = async (e) => {
+    e.preventDefault();
+    setError("");
+    if (password !== confirmPassword) return setError("Passwords do not match");
+
+    try {
+      const res = await fetch(`${API_BASE}/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: username, email, password }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSuccess("Signup successful! Please check your email to verify your account.");
+        setCurrentForm("login");
+      } else {
+        setError(data.message || "Signup failed");
+      }
+    } catch {
+      setError("Server error");
+    }
+  };
+
+  // FORGOT
   const handleForgot = async (e) => {
     e.preventDefault();
     setError("");
@@ -148,7 +185,24 @@ const handleSignup = async (e) => {
     }
   };
 
-  const formClass = (form) => `form-transition ${currentForm === form ? "active" : "inactive"}`;
+  // LOGOUT
+  const handleLogout = async () => {
+    try {
+      await fetch(`${API_BASE}/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+      setEmail("");
+      setPassword("");
+      navigate("/login", { replace: true });
+    } catch (err) {
+      console.error("Logout error:", err);
+      setError("Logout failed");
+    }
+  };
+
+  const formClass = (form) =>
+    `form-transition ${currentForm === form ? "active" : "inactive"}`;
 
   return (
     <div className="flex items-center justify-center page-glow h-screen w-screen text-white relative">
@@ -158,7 +212,6 @@ const handleSignup = async (e) => {
         style={{ minHeight: "420px", background: "transparent", backdropFilter: "none" }}
       >
         <div className="form-container">
-
           {/* LOGIN FORM */}
           <div className={formClass("login")}>
             <h2 className="text-2xl font-bold mb-6">Sign In to QuantumCopyTrading.com</h2>
@@ -186,7 +239,11 @@ const handleSignup = async (e) => {
             {error && <p className="text-red-500 mt-2">{error}</p>}
             {success && <p className="text-green-500 mt-2">{success}</p>}
             <div className="mt-4 text-sm">
-              <button type="button" onClick={() => switchForm("forgot")} className="text-white hover:underline">
+              <button
+                type="button"
+                onClick={() => switchForm("forgot")}
+                className="text-white hover:underline"
+              >
                 Forgot Password?
               </button>
             </div>
@@ -196,6 +253,18 @@ const handleSignup = async (e) => {
                 Sign Up
               </button>
             </div>
+            {/* Logout button when logged in (simplified check; enhance with state if needed) */}
+            {localStorage.getItem("role") && (
+              <div className="mt-4 text-sm">
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="text-white hover:underline"
+                >
+                  Logout
+                </button>
+              </div>
+            )}
           </div>
 
           {/* SIGNUP FORM */}
@@ -272,8 +341,19 @@ const handleSignup = async (e) => {
                 Back to Login
               </button>
             </div>
+            {/* Logout button when logged in (simplified check; enhance with state if needed) */}
+            {localStorage.getItem("role") && (
+              <div className="mt-4 text-sm">
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="text-white hover:underline"
+                >
+                  Logout
+                </button>
+              </div>
+            )}
           </div>
-
         </div>
       </div>
     </div>

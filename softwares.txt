@@ -1,0 +1,30 @@
+Name                                                            Version
+Office 16 Click-to-Run Extensibility Component                  16.0.11029.20108  
+Office 16 Click-to-Run Localization Component                   16.0.11029.20108  
+Office 16 Click-to-Run Licensing Component                      16.0.11029.20108  
+Update for x64-based Windows Systems (KB5001716)                8.94.0.0
+Python 3.13.5 Add to Path (64-bit)                              3.13.5150.0       
+Microsoft Visual C++ 2022 X64 Minimum Runtime - 14.44.35211     14.44.35211       
+Python 3.13.5 Core Interpreter (64-bit)                         3.13.5150.0       
+Python 3.13.5 pip Bootstrap (64-bit)                            3.13.5150.0       
+iTunes                                                          12.13.7.1
+Oracle VirtualBox 7.1.4                                         7.1.4
+Microsoft Update Health Tools                                   3.74.0.0
+Microsoft Visual C++ 2022 X86 Additional Runtime - 14.44.35211  14.44.35211
+Python Launcher                                                 3.13.5150.0
+Python 3.13.5 Executables (64-bit)                              3.13.5150.0
+Intel(R) Chipset Device Software                                10.1.18267.8194
+Microsoft Visual C++ 2022 X86 Minimum Runtime - 14.44.35211     14.44.35211
+Node.js                                                         24.5.0
+Adobe Reader XI (11.0.06)                                       11.0.06
+iCloud                                                          7.21.0.23
+Windows PC Health Check                                         3.6.2204.08001
+Python 3.13.5 Standard Library (64-bit)                         3.13.5150.0
+Bonjour                                                         3.1.0.1
+
+Microsoft Visual C++ 2022 X64 Additional Runtime - 14.44.35211  14.44.35211
+Python 3.13.5 Tcl/Tk Support (64-bit)                           3.13.5150.0
+Windows Subsystem for Linux                                     2.5.9.0
+Python 3.13.5 Documentation (64-bit)                            3.13.5150.0
+Python 3.13.5 Test Suite (64-bit)                               3.13.5150.0
+Python 3.13.5 Development Libraries (64-bit)                    3.13.5150.0

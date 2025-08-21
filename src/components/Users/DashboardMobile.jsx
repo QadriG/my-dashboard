@@ -1,6 +1,7 @@
 /* eslint no-undef: "off" */
 import React, { useRef, useState, useEffect } from "react";
 import { isMobile } from "react-device-detect";
+import { useNavigate } from "react-router-dom";   // ✅ added
 import "../../styles/sidebar.css";
 import "../../styles/globals.css";
 import hoverSound from "../../assets/click.mp3";
@@ -38,6 +39,64 @@ export default function DashboardMobile() {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [buttonText, setButtonText] = useState("Light Mode");
 
+  const navigate = useNavigate();   // ✅ added
+
+  // ✅ JWT Check on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch("http://localhost:5000/api/auth/check-auth", {
+          method: "GET",
+          credentials: "include",
+        });
+        const data = await res.json();
+        if (!res.ok || data.role !== "user") {
+          navigate("/login");
+        }
+      } catch (err) {
+        console.error(err);
+        navigate("/login");
+      }
+    };
+    checkAuth();
+  }, [navigate]);
+
+  // ✅ Logout handler
+  const handleLogout = async () => {
+  try {
+    await fetch("http://localhost:5000/api/auth/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+
+    // Clear any cached tokens/state
+    localStorage.clear();
+    sessionStorage.clear();
+
+    // Redirect & prevent going back
+    navigate("/login", { replace: true });
+
+    // Force refresh to drop any cached UI
+    window.location.reload();
+  } catch (err) {
+    console.error("Logout failed:", err);
+  }
+};
+
+  // ✅ Prevent going back after logout
+  useEffect(() => {
+    const handlePopState = () => {
+      navigate("/login", { replace: true });
+    };
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [navigate]);
+
+  // ✅ Existing code continues unchanged
   useEffect(() => {
     const setScale = () => {
       const designWidth = 390;
@@ -94,7 +153,7 @@ export default function DashboardMobile() {
       </audio>
 
       {/* Mobile Sidebar */}
-      <UserSidebar isOpen={sidebarOpen} playHoverSound={playHoverSound} />
+      <UserSidebar isOpen={sidebarOpen} playHoverSound={playHoverSound} onLogout={handleLogout} /> {/* ✅ pass logout */}
 
       <button
         className={`sidebar-toggle-btn ${sidebarOpen ? "open" : ""}`}

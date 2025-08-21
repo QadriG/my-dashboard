@@ -1,4 +1,5 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { useEffect } from "react";
 import Login from "./components/Auth/Login";
 import AdminDashboard from "./components/Dashboard";
 import UserDashboard from "./components/Users/Dashboard";
@@ -6,13 +7,20 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import ResetPassword from "./components/Auth/ResetPassword";
 
 function App() {
+  // Optional: Prevent browser caching (move to ProtectedRoute if needed)
+  useEffect(() => {
+    // This can be removed or handled in ProtectedRoute for better control
+  }, []);
+
   return (
     <Router basename="/my-dashboard">
       <Routes>
-        {/* Login */}
+        {/* Public routes */}
         <Route path="/login" element={<Login />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route path="/verify-email/:token" element={<Navigate to="/login" replace />} />
 
-        {/* Admin Dashboard */}
+        {/* Protected Admin Dashboard */}
         <Route
           path="/admin"
           element={
@@ -22,7 +30,7 @@ function App() {
           }
         />
 
-        {/* User Dashboard */}
+        {/* Protected User Dashboard */}
         <Route
           path="/user"
           element={
@@ -32,14 +40,8 @@ function App() {
           }
         />
 
-        {/* Reset Password */}
-        <Route path="/reset-password/:token" element={<ResetPassword />} />
-
-        {/* Verify Email */}
-        <Route path="/verify-email/:token" element={<Login />} /> {/* Redirect to login after verification */}
-
-        {/* Catch-all redirects to login */}
-        <Route path="*" element={<Login />} />
+        {/* Catch-all redirects */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>
   );

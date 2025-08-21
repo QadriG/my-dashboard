@@ -1,9 +1,11 @@
 /* eslint no-undef: "off" */
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { isMobile } from "react-device-detect";
 import { useNavigate } from "react-router-dom";
 import "../styles/sidebar.css";
 import hoverSound from "../assets/click.mp3";
+
+// ✅ Dashboard Components
 import ActiveUsers from "../components/ActiveUsers.jsx";
 import ActiveExchange from "../components/ActiveExchange.jsx";
 import ActivePositions from "../components/ActivePositions.jsx";
@@ -20,42 +22,86 @@ import OpenPositions from "../components/OpenPositions.jsx";
 export default function Dashboard() {
   const audioRef = useRef(null);
   const navigate = useNavigate();
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedCard, setExpandedCard] = useState(null);
   const [isDarkMode, setIsDarkMode] = useState(true);
 
-  // JWT Check on mount
+  // ✅ Disable caching for dashboard pages
+  useEffect(() => {
+    const metaPragma = document.createElement("meta");
+    metaPragma.httpEquiv = "Pragma";
+    metaPragma.content = "no-cache";
+    document.head.appendChild(metaPragma);
+
+    const metaCache = document.createElement("meta");
+    metaCache.httpEquiv = "Cache-Control";
+    metaCache.content = "no-store";
+    document.head.appendChild(metaCache);
+
+    return () => {
+      document.head.removeChild(metaPragma);
+      document.head.removeChild(metaCache);
+    };
+  }, []);
+
+  // ✅ JWT check on mount
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await fetch("http://localhost:5000/check-auth", {
+        const res = await fetch("http://localhost:5000/api/auth/check-auth", {
           method: "GET",
           credentials: "include",
+          headers: { "Cache-Control": "no-store" }, // prevent cached responses
         });
         const data = await res.json();
+
         if (!res.ok || data.role !== "admin") {
-          navigate("/login");
+          // force logout if auth fails
+          localStorage.clear();
+          sessionStorage.clear();
+          navigate("/login", { replace: true });
         }
       } catch (err) {
         console.error(err);
-        navigate("/login");
+        localStorage.clear();
+        sessionStorage.clear();
+        navigate("/login", { replace: true });
       }
     };
+
     checkAuth();
   }, [navigate]);
 
+  // ✅ Handle Logout
   const handleLogout = async () => {
     try {
-      await fetch("http://localhost:5000/logout", {
+      await fetch("http://localhost:5000/api/auth/logout", {
         method: "POST",
         credentials: "include",
       });
-      navigate("/login");
+
+      // Clear local + session storage
+      localStorage.clear();
+      sessionStorage.clear();
+
+      // Force reload to prevent cached page
+      window.location.href = "/my-dashboard/login";
     } catch (err) {
       console.error("Logout failed:", err);
     }
   };
 
+  // ✅ Prevent back navigation after logout
+  useEffect(() => {
+    const handlePopState = () => {
+      navigate("/login", { replace: true });
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [navigate]);
+
+  // ✅ Play hover sound
   const playHoverSound = () => {
     if (audioRef.current) {
       audioRef.current.currentTime = 0;

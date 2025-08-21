@@ -5,6 +5,9 @@ import { PrismaClient } from "@prisma/client";
 import nodemailer from "nodemailer";
 import cookieParser from "cookie-parser";
 
+// Add in-memory blacklist
+const tokenBlacklist = new Set();
+
 const router = express.Router();
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
@@ -13,6 +16,8 @@ const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
 router.use(cookieParser());
 
 // ---------------- SIGNUP ----------------
+// [Existing signup code remains unchanged]
+
 router.post("/signup", async (req, res) => {
   try {
     const { email, password, role } = req.body;
@@ -63,12 +68,13 @@ router.post("/login", async (req, res) => {
 
     if (!user.isVerified) return res.status(403).json({ message: "Please verify your email first" });
 
-    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: "1d" });
+    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: "5s" });
     res
       .cookie("token", token, {
         httpOnly: true,
         secure: false,
         sameSite: "lax",
+        maxAge: 5000, // 5 seconds in milliseconds
       })
       .json({ message: "Login successful", user: { id: user.id, email: user.email, role: user.role } });
   } catch (err) {
@@ -78,10 +84,16 @@ router.post("/login", async (req, res) => {
 });
 
 // ---------------- CHECK AUTH ----------------
+// [Existing check-auth code remains unchanged]
+
 router.get("/check-auth", async (req, res) => {
   try {
     const token = req.cookies.token || req.headers.authorization?.split(" ")[1];
     if (!token) return res.status(401).json({ message: "Unauthorized" });
+
+    if (tokenBlacklist.has(token)) {
+      return res.status(401).json({ message: "Invalid token" });
+    }
 
     const decoded = jwt.verify(token, JWT_SECRET);
     const user = await prisma.user.findUnique({ where: { id: decoded.id } });
@@ -95,6 +107,8 @@ router.get("/check-auth", async (req, res) => {
 });
 
 // ---------------- VERIFY EMAIL ----------------
+// [Existing verify-email code remains unchanged]
+
 router.get("/verify-email/:token", async (req, res) => {
   try {
     const { token } = req.params;
@@ -115,7 +129,24 @@ router.get("/verify-email/:token", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
+// ---------------- LOGOUT ----------------
+router.post("/logout", (req, res) => {
+  const token = req.cookies.token;
+  if (token) {
+    tokenBlacklist.add(token);
+    console.log("Blacklisting token:", token);
+  }
+  res.status(200).set({
+    "Set-Cookie": "token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax",
+  });
+  console.log("Setting cookie header, response headers:", res.getHeaders());
+  res.json({ message: "Logged out successfully" });
+});
+
 // ---------------- FORGOT PASSWORD ----------------
+// [Existing forgot-password code remains unchanged]
+
 router.post("/forgot-password", async (req, res) => {
   try {
     const { email } = req.body;
