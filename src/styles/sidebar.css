@@ -1,12 +1,12 @@
+/* Tailwind (if your project already builds Tailwind locally, you can remove this) */
 @import url('https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css');
 
-/* Zoom out container */
+/* ===== Containers / Layout helpers ===== */
 .zoom-out-container {
   transform-origin: top left;
   transition: transform 0.3s ease;
 }
 
-/* Expanded and sidebar styles remain (desktop defaults) */
 .expanded {
   position: fixed;
   top: 5vh;
@@ -20,23 +20,22 @@
   overflow: auto;
 }
 
-/* Sidebar styles */
+/* ===== Sidebar (desktop pinned, mobile slide-in) ===== */
 .sidebar {
   position: fixed;
   top: 0;
-  left: 0; /* Desktop is visible */
+  left: 0; /* Desktop visible */
   height: 100%;
-  width: 16rem;
-  background: #1a1a2e49;
+  width: 250px; /* Match Admin main margin-left */
+  background: rgba(26, 26, 46, 0.45);
   color: white;
-  padding: 20px 20px 20px;
+  padding: 20px;
   z-index: 1001;
   transition: left 0.3s ease;
   border-radius: 0 0.75rem 0.75rem 0;
-  border-right: 2px solid cyan;
+  border-right: 2px solid #00d4ff;
 }
 
-/* Fix: Pin sidebar title at the very top */
 .sidebar h2 {
   margin-top: 0 !important;
   margin-bottom: 2.5rem !important;
@@ -45,7 +44,6 @@
   color: #00d4ff;
 }
 
-/* Sidebar list */
 .sidebar ul {
   list-style: none;
   padding: 0;
@@ -53,7 +51,7 @@
 }
 
 .sidebar ul li {
-  padding: 10px;
+  padding: 10px 0;
   color: #00d4ff;
   cursor: pointer;
   border-radius: 0.5rem;
@@ -70,13 +68,13 @@
   padding: 10px 20px;
   color: white;
   text-align: center;
-  border-radius: 4px;
+  border-radius: 8px;
   background: linear-gradient(145deg, #2b2e3c, #1c1f2a);
   box-shadow:
     inset 3px 3px 7px rgba(255, 255, 255, 0.1),
     inset -3px -3px 7px rgba(0, 0, 0, 0.7),
     6px 6px 12px rgba(0, 0, 0, 0.9);
-  transition: all 0.3s ease;
+  transition: all 0.25s ease;
   cursor: pointer;
   user-select: none;
   font-weight: 600;
@@ -96,10 +94,7 @@
   transition: left 0.3s ease;
   z-index: 0;
 }
-
-.sidebar-button:hover::before {
-  left: 0;
-}
+.sidebar-button:hover::before { left: 0; }
 
 .sidebar-button:hover {
   background: linear-gradient(145deg, #1c1f2a, #2b2e3c);
@@ -107,11 +102,11 @@
     inset 2px 2px 6px rgba(255, 255, 255, 0.15),
     inset -2px -2px 6px rgba(0, 0, 0, 0.9),
     8px 8px 16px rgba(0, 0, 0, 1);
-  transform: translateY(-4px) scale(1.05);
+  transform: translateY(-2px) scale(1.02);
   z-index: 2;
 }
 
-/* Neon glow colors */
+/* Neon glow variants */
 .sidebar-cyan { border: 2px solid #00ffff !important; }
 .sidebar-cyan:hover { box-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff !important; }
 
@@ -136,7 +131,7 @@
 .sidebar-red { border: 2px solid #ef4444 !important; }
 .sidebar-red:hover { box-shadow: 0 0 10px #ef4444, 0 0 20px #ef4444, 0 0 30px #ef4444 !important; }
 
-/* Dashboard column styles */
+/* ===== Dashboard card shells ===== */
 .dashboard-column {
   position: relative;
   padding: 1.5rem;
@@ -147,12 +142,10 @@
   text-align: center;
   box-shadow: none;
   border: none;
-  color: inherit; /* Inherit parent color */
+  color: inherit;
   transform-origin: center center;
   margin: 0.25rem;
 }
-
-/* Column hover effects */
 .dashboard-column-cyan { border: 2px solid #00ffff; }
 .dashboard-column-cyan:hover { box-shadow: 0 8px 24px 0 #00ffff, 0 2px 8px 0 #00ffff; transform: scale(1.02); }
 
@@ -177,14 +170,14 @@
 .dashboard-column-darkpurple { border: 2px solid #ff0000; }
 .dashboard-column-darkpurple:hover { box-shadow: 0 0 10px #f70707, 0 0 20px #ff0909, 0 0 30px #4f03ff; transform: scale(1.02); }
 
-/* Prevent horizontal scroll on small screens when scaled */
+/* Prevent horizontal scroll */
 body, html, #root {
   overflow-x: hidden;
   height: 100% !important;
   overflow-y: auto !important;
 }
 
-/* Smooth scaling */
+/* Smooth scaling for main area */
 main {
   transition: transform 0.3s ease;
   min-height: 100vh !important;
@@ -192,7 +185,7 @@ main {
   padding-bottom: 2.5rem; /* space for bottom buttons */
 }
 
-/* Neon glow */
+/* Neon glow utility */
 .neon-glow {
   box-shadow:
     0 0 2px currentColor,
@@ -262,7 +255,7 @@ main {
 .gap-3 { gap: 12px; }
 .gap-6 { gap: 1.5rem; }
 
-/* Text styles */
+/* Text helpers */
 .text-white-300 { color: #d1d5db; }
 .text-white-200 { color: #e5e7eb; }
 .text-white-400 { color: #9ca3af; }
@@ -279,9 +272,9 @@ main {
 .mt-2 { margin-top: 0.5rem; }
 .drop-shadow { filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.1)) drop-shadow(0 1px 1px rgb(0 0 0 / 0.06)); }
 
-/* ===== Mobile-only styles (≤ 768px) ===== */
-@media (max-width: 768px) {
-  .sidebar { left: -16rem; }
+/* ===== Mobile-only (≤ 1023px) ===== */
+@media (max-width: 1023px) {
+  .sidebar { left: -250px; }
   .sidebar.open { left: 0; }
 
   .sidebar-toggle-btn {
@@ -296,6 +289,7 @@ main {
     border: 1px solid #22d3ee;
     font-size: 1.25rem;
     cursor: pointer;
+    display: block;
   }
 
   .sidebar-backdrop {
@@ -303,6 +297,7 @@ main {
     inset: 0;
     background: rgba(0,0,0,0.45);
     z-index: 1000;
+    display: block;
   }
 
   .mobile-stack { flex-direction: column !important; }
@@ -313,7 +308,7 @@ main {
   }
 }
 
-/* Light mode text overrides */
+/* Light mode overrides */
 .light-mode .text-white,
 .light-mode .text-white-200,
 .light-mode .text-white-300,
@@ -350,8 +345,8 @@ main {
   filter: none !important;
 }
 
-/* Chart.js text fixes */
-@media (prefers-color-scheme: dark) and (max-width: 768px) {
+/* Chart canvas text fixes (dark) */
+@media (prefers-color-scheme: dark) and (max-width: 1023px) {
   .dashboard-column.sidebar-cyan canvas,
   .dashboard-column.sidebar-cyan text {
     color: #ffffff !important;
@@ -364,20 +359,22 @@ main {
   fill: #ffffff !important;
 }
 
+/* Glassy frame */
 .glass-box {
   backdrop-filter: none;
   background: transparent;
   overflow: hidden;
-  border: 5px solid #00ffff; /* Increased thickness from 2px to 5px */
+  border: 5px solid #00ffff;
   border-radius: 0.75rem;
   box-shadow:
-    0 0 10px #00ffff, /* Increased from 4px */
-    0 0 20px #00ffff, /* Increased from 8px */
-    0 0 40px #00ffff, /* Increased from 12px */
-    inset 0 0 10px #00ffff; /* Increased from 4px */
+    0 0 10px #00ffff,
+    0 0 20px #00ffff,
+    0 0 40px #00ffff,
+    inset 0 0 10px #00ffff;
   transition: box-shadow 0.3s ease;
 }
 
+/* Form transition helper */
 .form-transition {
   position: absolute;
   top: 0;
@@ -390,20 +387,18 @@ main {
   word-wrap: break-word;
   padding: 0 10px;
 }
-
 .form-transition.active {
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;
 }
-
 .form-transition.inactive {
   opacity: 0;
   transform: translateY(20px);
   pointer-events: none;
 }
 
-/* Video and layout adjustments */
+/* Background video layer */
 .bg-video {
   position: absolute;
   top: 0;
@@ -415,6 +410,7 @@ main {
   z-index: -1;
 }
 
+/* Page glow wrapper */
 .page-glow {
   position: relative;
 }

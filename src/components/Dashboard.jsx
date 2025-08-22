@@ -1,8 +1,8 @@
 /* eslint no-undef: "off" */
 import React, { useRef, useEffect, useState } from "react";
-import { isMobile } from "react-device-detect";
 import { useNavigate } from "react-router-dom";
 import "../styles/sidebar.css";
+import "../styles/globals.css";
 import hoverSound from "../assets/click.mp3";
 
 // ✅ Dashboard Components
@@ -23,9 +23,14 @@ export default function Dashboard() {
   const audioRef = useRef(null);
   const navigate = useNavigate();
 
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [expandedCard, setExpandedCard] = useState(null);
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false); // mobile only
+  const [expandedCard, setExpandedCard] = useState(null); // desktop modal
+  const [isDarkMode] = useState(true);
+  const getIsDesktop = () =>
+    typeof window !== "undefined"
+      ? window.matchMedia("(min-width: 1024px)").matches
+      : true;
+  const [isDesktop, setIsDesktop] = useState(getIsDesktop());
 
   // ✅ Disable caching for dashboard pages
   useEffect(() => {
@@ -36,7 +41,7 @@ export default function Dashboard() {
 
     const metaCache = document.createElement("meta");
     metaCache.httpEquiv = "Cache-Control";
-    metaCache.content = "no-store";
+    metaCache.content = "no-store, no-cache, must-revalidate, max-age=0";
     document.head.appendChild(metaCache);
 
     return () => {
@@ -52,18 +57,17 @@ export default function Dashboard() {
         const res = await fetch("http://localhost:5000/api/auth/check-auth", {
           method: "GET",
           credentials: "include",
-          headers: { "Cache-Control": "no-store" }, // prevent cached responses
+          headers: { "Cache-Control": "no-store" },
         });
         const data = await res.json();
 
         if (!res.ok || data.role !== "admin") {
-          // force logout if auth fails
           localStorage.clear();
           sessionStorage.clear();
           navigate("/login", { replace: true });
         }
       } catch (err) {
-        console.error(err);
+        console.error("Auth check error:", err);
         localStorage.clear();
         sessionStorage.clear();
         navigate("/login", { replace: true });
@@ -73,6 +77,19 @@ export default function Dashboard() {
     checkAuth();
   }, [navigate]);
 
+  // ✅ Width-based desktop detection (no device sniffing)
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 1024px)");
+    const handler = () => setIsDesktop(media.matches);
+    handler();
+    media.addEventListener?.("change", handler);
+    window.addEventListener("resize", handler);
+    return () => {
+      media.removeEventListener?.("change", handler);
+      window.removeEventListener("resize", handler);
+    };
+  }, []);
+
   // ✅ Handle Logout
   const handleLogout = async () => {
     try {
@@ -81,11 +98,8 @@ export default function Dashboard() {
         credentials: "include",
       });
 
-      // Clear local + session storage
       localStorage.clear();
       sessionStorage.clear();
-
-      // Force reload to prevent cached page
       window.location.href = "/my-dashboard/login";
     } catch (err) {
       console.error("Logout failed:", err);
@@ -126,7 +140,7 @@ export default function Dashboard() {
 
   return (
     <div
-      className={`zoom-out-container relative h-screen w-screen overflow-x-hidden overflow-y-auto ${
+      className={`relative min-h-screen w-full overflow-x-hidden overflow-y-auto ${
         isDarkMode ? "dark-mode" : "light-mode"
       }`}
       style={{ backgroundColor: isDarkMode ? "#000" : "#fff" }}
@@ -138,24 +152,28 @@ export default function Dashboard() {
           zIndex: 1,
           pointerEvents: "none",
         }}
-      ></div>
+      />
 
       <audio ref={audioRef} preload="auto">
         <source src={hoverSound} type="audio/mpeg" />
       </audio>
 
-      <button
-        className="sidebar-toggle-btn md:hidden"
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        aria-label="Toggle sidebar"
-      >
-        ☰
-      </button>
+      {/* Mobile toggle only when not desktop */}
+      {!isDesktop && (
+        <button
+          className="sidebar-toggle-btn"
+          onClick={() => setSidebarOpen((s) => !s)}
+          aria-label="Toggle sidebar"
+        >
+          ☰
+        </button>
+      )}
 
-      <div
-        className={`sidebar bg-black/70 text-white pt-8 px-4 pb-4 rounded-r-xl border-2 border-cyan-400 ${
-          sidebarOpen ? "open" : ""
-        }`}
+      {/* Sidebar: pinned on desktop; slide-in on mobile */}
+      <aside
+        className={`sidebar ${
+          isDesktop || sidebarOpen ? "open" : ""
+        } bg-black/70 text-white`}
       >
         <h2 className="text-xl font-bold mb-10 text-cyan-300 drop-shadow-md">
           QuantumCopyTrading
@@ -186,21 +204,42 @@ export default function Dashboard() {
             </li>
           ))}
         </ul>
-      </div>
+      </aside>
 
+      {/* Tap-to-close backdrop for mobile sidebar */}
+      {!isDesktop && sidebarOpen && (
+        <div
+          className="sidebar-backdrop"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Main */}
       <main
-        className="relative z-20 p-6 overflow-y-auto animate-fade-in md:ml-64"
+        className="relative z-20 p-6 overflow-y-auto animate-fade-in"
         style={{
+          marginLeft: isDesktop ? "250px" : 0,
           height: "100vh",
-          width: "100%",
-          maxWidth: "calc(100vw - 16rem)",
+          width: isDesktop ? "calc(100% - 250px)" : "100%",
           color: isDarkMode ? "#fff" : "#000",
         }}
       >
-        {/* ... your existing main content ... */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 w-full">
+          {Object.entries(cards).map(([key, component]) => (
+            <div
+              key={key}
+              onClick={() => setExpandedCard(key)}
+              className="cursor-pointer p-4 bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transition-shadow"
+            >
+              {component}
+            </div>
+          ))}
+        </div>
       </main>
 
-      {!isMobile && expandedCard && (
+      {/* Expanded modal only on desktop */}
+      {isDesktop && expandedCard && (
         <div
           onClick={() => setExpandedCard(null)}
           style={{

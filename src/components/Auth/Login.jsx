@@ -27,7 +27,7 @@ export default function Login() {
     };
   }, []);
 
-  // Show success if redirected after verification
+  // ✅ Show success if redirected after verification
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get("verified") === "success") {
@@ -104,7 +104,7 @@ export default function Login() {
     setSuccess("");
   };
 
-  // LOGIN
+  // ✅ LOGIN (fixed)
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
@@ -120,20 +120,22 @@ export default function Login() {
       const data = await res.json();
 
       if (res.ok && data.user?.role) {
-        // ✅ Clear any old session
+        // Clear old sessions
         localStorage.clear();
         sessionStorage.clear();
 
-        // optional: store role if needed
+        // Save role
         localStorage.setItem("role", data.user.role);
 
-        // Redirect and force reload to prevent cached dashboard
+        // Redirect correctly
         if (data.user.role === "admin") {
           navigate("/admin", { replace: true });
         } else {
           navigate("/user", { replace: true });
         }
-        window.location.reload(); // 🔹 force full reload
+
+        // ✅ Delay reload so navigation applies first
+        setTimeout(() => window.location.reload(), 100);
       } else {
         setError(data.message || "Invalid credentials");
       }
@@ -142,11 +144,14 @@ export default function Login() {
     }
   };
 
-  // SIGNUP
+  // ✅ SIGNUP
   const handleSignup = async (e) => {
     e.preventDefault();
     setError("");
-    if (password !== confirmPassword) return setError("Passwords do not match");
+
+    if (password !== confirmPassword) {
+      return setError("Passwords do not match");
+    }
 
     try {
       const res = await fetch(`${API_BASE}/signup`, {
@@ -154,7 +159,9 @@ export default function Login() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: username, email, password }),
       });
+
       const data = await res.json();
+
       if (res.ok) {
         setSuccess("Signup successful! Please check your email to verify your account.");
         setCurrentForm("login");
@@ -194,6 +201,8 @@ export default function Login() {
       });
       setEmail("");
       setPassword("");
+      localStorage.clear();
+      sessionStorage.clear();
       navigate("/login", { replace: true });
     } catch (err) {
       console.error("Logout error:", err);
@@ -253,7 +262,6 @@ export default function Login() {
                 Sign Up
               </button>
             </div>
-            {/* Logout button when logged in (simplified check; enhance with state if needed) */}
             {localStorage.getItem("role") && (
               <div className="mt-4 text-sm">
                 <button
@@ -341,7 +349,6 @@ export default function Login() {
                 Back to Login
               </button>
             </div>
-            {/* Logout button when logged in (simplified check; enhance with state if needed) */}
             {localStorage.getItem("role") && (
               <div className="mt-4 text-sm">
                 <button

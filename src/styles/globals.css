@@ -94,35 +94,6 @@ canvas * {
 }
 
 /* ===========================
-   Mobile scaling utilities
-   =========================== */
-
-/* JS will set this between ~0.85–1 on small screens */
-:root {
-  --card-scale: 1;
-}
-
-/* Wrap each dashboard card with this for crisp scaling */
-.scaled-card {
-  transform: scale(var(--card-scale));
-  transform-origin: top center;
-  width: calc(100% / max(var(--card-scale), 0.0001)); /* keep full logical width */
-  transition: transform 220ms ease, width 220ms ease;
-  will-change: transform;
-}
-
-/* Small helper for stacked sections on mobile */
-.mobile-stack {
-  gap: 0.5rem;
-}
-
-/* Ensure charts/media never overflow their card */
-canvas, svg, video, img {
-  max-width: 100% !important;
-  height: auto !important;
-}
-
-/* ===========================
    Mobile-only refinements
    (≤ ~7" screens)
    =========================== */
@@ -149,23 +120,20 @@ canvas, svg, video, img {
     padding: clamp(10px, 3vw, 18px) !important;
   }
 
-  .shimmer-wrapper {
-    border-radius: 0.5rem;
-  }
-
-  /* Stack any grid into a single column on mobile */
-  .grid.grid-cols-4,
-  .grid.grid-cols-3,
-  .grid.grid-cols-2 {
+  /* ✅ Only collapse grids inside .admin-dashboard (not globally) */
+  .admin-dashboard .grid.grid-cols-4,
+  .admin-dashboard .grid.grid-cols-3,
+  .admin-dashboard .grid.grid-cols-2 {
     grid-template-columns: 1fr !important;
   }
 
-  /* Force mixed flex rows to stack vertically on mobile */
-  .mobile-stack {
+  /* ✅ Keep flex stack scoped to dashboard only */
+  .admin-dashboard .mobile-stack {
     display: flex;
     flex-direction: column !important;
   }
 }
+
 
 /* Dark mode styles */
 .dark-mode {
