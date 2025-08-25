@@ -9,6 +9,7 @@ body {
   overflow: hidden; /* Prevent scrollbars */
   background-color: #000; /* Solid background to eliminate black screen */
   transform-origin: top left; /* Support landscape transform */
+  color: #fff; /* Default text color */
 }
 
 /* Code font */
@@ -24,6 +25,7 @@ html, body, #root {
   height: 100%;
   background-color: #000 !important; /* Match body background */
   position: relative; /* Ensure proper stacking context */
+  color: #fff; /* Default text color */
 }
 
 /* Force landscape dimensions for mobile (<7 inches approx.) */
@@ -37,4 +39,23 @@ html, body, #root {
     width: 100vw;
     height: 100vh;
   }
+}
+
+/* Ensure chart text visibility in dark mode */
+canvas,
+canvas *,
+text {
+  color: #fff !important;
+  fill: #fff !important;
+  -webkit-text-fill-color: #fff !important; /* Override internal styles */
+}
+
+/* Dark mode specific fixes */
+.dark-mode canvas,
+.dark-mode canvas *,
+.dark-mode text {
+  color: #fff !important;
+  fill: #fff !important;
+  filter: none !important;
+  background-color: transparent !important;
 }

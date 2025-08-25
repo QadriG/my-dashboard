@@ -1,5 +1,6 @@
 /* eslint no-undef: "off" */
 import React, { useRef, useEffect, useState } from "react";
+import { isMobile } from "react-device-detect"; // Added for consistency with user dashboard
 import { useNavigate } from "react-router-dom";
 import "../styles/sidebar.css";
 import "../styles/globals.css";
@@ -23,32 +24,10 @@ export default function Dashboard() {
   const audioRef = useRef(null);
   const navigate = useNavigate();
 
-  const [sidebarOpen, setSidebarOpen] = useState(false); // mobile only
+  const [sidebarOpen, setSidebarOpen] = useState(false); // mobile only, kept for consistency
   const [expandedCard, setExpandedCard] = useState(null); // desktop modal
-  const [isDarkMode] = useState(true);
-  const getIsDesktop = () =>
-    typeof window !== "undefined"
-      ? window.matchMedia("(min-width: 1024px)").matches
-      : true;
-  const [isDesktop, setIsDesktop] = useState(getIsDesktop());
-
-  // ✅ Disable caching for dashboard pages
-  useEffect(() => {
-    const metaPragma = document.createElement("meta");
-    metaPragma.httpEquiv = "Pragma";
-    metaPragma.content = "no-cache";
-    document.head.appendChild(metaPragma);
-
-    const metaCache = document.createElement("meta");
-    metaCache.httpEquiv = "Cache-Control";
-    metaCache.content = "no-store, no-cache, must-revalidate, max-age=0";
-    document.head.appendChild(metaCache);
-
-    return () => {
-      document.head.removeChild(metaPragma);
-      document.head.removeChild(metaCache);
-    };
-  }, []);
+  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [buttonText, setButtonText] = useState("Light Mode");
 
   // ✅ JWT check on mount
   useEffect(() => {
@@ -76,19 +55,6 @@ export default function Dashboard() {
 
     checkAuth();
   }, [navigate]);
-
-  // ✅ Width-based desktop detection (no device sniffing)
-  useEffect(() => {
-    const media = window.matchMedia("(min-width: 1024px)");
-    const handler = () => setIsDesktop(media.matches);
-    handler();
-    media.addEventListener?.("change", handler);
-    window.addEventListener("resize", handler);
-    return () => {
-      media.removeEventListener?.("change", handler);
-      window.removeEventListener("resize", handler);
-    };
-  }, []);
 
   // ✅ Handle Logout
   const handleLogout = async () => {
@@ -138,9 +104,44 @@ export default function Dashboard() {
     openPositions: <OpenPositions />,
   };
 
+  // Force desktop dimensions
+  useEffect(() => {
+    document.body.style.width = "auto";
+    document.body.style.height = "auto";
+    document.body.style.transform = "none";
+  }, []);
+
+  const handleCardClick = (key) => {
+    if (!isMobile) setExpandedCard(expandedCard === key ? null : key);
+  };
+
+  const toggleTheme = () => {
+    setIsDarkMode((prev) => !prev);
+    setButtonText((prev) => (prev === "Light Mode" ? "Dark Mode" : "Light Mode"));
+  };
+
+  const buttonStyle = {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    padding: "0.5rem 1rem",
+    backgroundColor: isDarkMode ? "#333" : "#ddd",
+    color: isDarkMode ? "#fff" : "#000",
+    border: "2px solid " + (isDarkMode ? "#00ffff" : "#0000ff"),
+    borderRadius: "4px",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "1.5rem",
+    boxShadow: isDarkMode
+      ? "0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff"
+      : "0 0 10px #0000ff, 0 0 20px #0000ff, 0 0 30px #0000ff",
+  };
+
   return (
     <div
-      className={`relative min-h-screen w-full overflow-x-hidden overflow-y-auto ${
+      className={`zoom-out-container relative h-screen w-screen overflow-x-hidden overflow-y-auto ${
         isDarkMode ? "dark-mode" : "light-mode"
       }`}
       style={{ backgroundColor: isDarkMode ? "#000" : "#fff" }}
@@ -158,23 +159,8 @@ export default function Dashboard() {
         <source src={hoverSound} type="audio/mpeg" />
       </audio>
 
-      {/* Mobile toggle only when not desktop */}
-      {!isDesktop && (
-        <button
-          className="sidebar-toggle-btn"
-          onClick={() => setSidebarOpen((s) => !s)}
-          aria-label="Toggle sidebar"
-        >
-          ☰
-        </button>
-      )}
-
-      {/* Sidebar: pinned on desktop; slide-in on mobile */}
-      <aside
-        className={`sidebar ${
-          isDesktop || sidebarOpen ? "open" : ""
-        } bg-black/70 text-white`}
-      >
+      {/* Sidebar: Fixed and always open like user dashboard */}
+      <aside className="sidebar open bg-black/70 text-white" style={{ marginLeft: 0 }}>
         <h2 className="text-xl font-bold mb-10 text-cyan-300 drop-shadow-md">
           QuantumCopyTrading
         </h2>
@@ -206,40 +192,115 @@ export default function Dashboard() {
         </ul>
       </aside>
 
-      {/* Tap-to-close backdrop for mobile sidebar */}
-      {!isDesktop && sidebarOpen && (
-        <div
-          className="sidebar-backdrop"
-          onClick={() => setSidebarOpen(false)}
-          aria-hidden="true"
-        />
-      )}
-
       {/* Main */}
       <main
-        className="relative z-20 p-6 overflow-y-auto animate-fade-in"
+        className="relative z-20 p-6 overflow-y-auto md:ml-64"
         style={{
-          marginLeft: isDesktop ? "250px" : 0,
           height: "100vh",
-          width: isDesktop ? "calc(100% - 250px)" : "100%",
+          width: "100%",
+          maxWidth: "calc(100vw - 16rem)",
           color: isDarkMode ? "#fff" : "#000",
         }}
       >
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 w-full">
-          {Object.entries(cards).map(([key, component]) => (
-            <div
-              key={key}
-              onClick={() => setExpandedCard(key)}
-              className="cursor-pointer p-4 bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transition-shadow"
-            >
-              {component}
+        {/* Title Bar with Toggle Button */}
+        <div className="shimmer-wrapper w-full py-4 px-6 mb-6" style={{ position: "relative" }}>
+          <h1 className="text-4xl font-semibold drop-shadow-md inline-block" style={{ color: isDarkMode ? "#fff" : "#000" }}>
+            Dashboard
+          </h1>
+          <button
+            onClick={toggleTheme}
+            style={buttonStyle}
+            onMouseEnter={(e) => {
+              e.target.style.boxShadow = isDarkMode
+                ? "0 0 15px #00ffff, 0 0 25px #00ffff, 0 0 40px #00ffff"
+                : "0 0 15px #0000ff, 0 0 25px #0000ff, 0 0 40px #0000ff";
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.boxShadow = isDarkMode
+                ? "0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff"
+                : "0 0 10px #0000ff, 0 0 20px #0000ff, 0 0 30px #0000ff";
+            }}
+          >
+            {buttonText}
+          </button>
+        </div>
+
+        {/* First row: Extra cards for admin */}
+        {!isMobile && (
+          <div className="grid grid-cols-4 gap-7 max-lg:grid-cols-2 max-sm:grid-cols-1 mb-6">
+            <div className="dashboard-column dashboard-column-cyan" onClick={() => handleCardClick("activeUsers")}>
+              {cards.activeUsers}
             </div>
-          ))}
+            <div className="dashboard-column dashboard-column-purple" onClick={() => handleCardClick("activeExchange")}>
+              {cards.activeExchange}
+            </div>
+            <div className="dashboard-column dashboard-column-green" onClick={() => handleCardClick("activePositions")}>
+              {cards.activePositions}
+            </div>
+            <div className="dashboard-column dashboard-column-teal" onClick={() => handleCardClick("totalBalances")}>
+              {cards.totalBalances}
+            </div>
+          </div>
+        )}
+
+        {/* Second row */}
+        <div className="grid grid-cols-3 gap-7 max-lg:grid-cols-1">
+          <div className="dashboard-column dashboard-column-cyan" onClick={() => handleCardClick("profit")}>
+            {cards.profit}
+          </div>
+          <div className="dashboard-column dashboard-column-purple" onClick={() => handleCardClick("upl")}>
+            {cards.upl}
+          </div>
+          <div className="dashboard-column dashboard-column-green" onClick={() => handleCardClick("fundsDistribution")}>
+            {cards.fundsDistribution}
+          </div>
+        </div>
+
+        {/* Third row */}
+        <div className="flex gap-4 w-full items-start mt-8 max-lg:flex-col">
+          <div
+            className="dashboard-column dashboard-column-cyan balance-graph w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden"
+            onClick={() => handleCardClick("balanceGraph")}
+          >
+            {cards.balanceGraph}
+          </div>
+          <div
+            className="dashboard-column dashboard-column-purple weekly-revenue w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden"
+            onClick={() => handleCardClick("weeklyRevenue")}
+          >
+            {cards.weeklyRevenue}
+          </div>
+        </div>
+
+        {/* Fourth row */}
+        <div className="grid grid-cols-2 gap-7 mt-8 max-sm:grid-cols-1">
+          <div className="dashboard-column dashboard-column-cyan" onClick={() => handleCardClick("dailyPnL")}>
+            {cards.dailyPnL}
+          </div>
+          <div className="dashboard-column dashboard-column-purple" onClick={() => handleCardClick("bestTradingPairs")}>
+            {cards.bestTradingPairs}
+          </div>
+        </div>
+
+        {/* Fifth row */}
+        <div className="mt-8">
+          <div className="dashboard-column dashboard-column-green" onClick={() => handleCardClick("openPositions")}>
+            {cards.openPositions}
+          </div>
+        </div>
+
+        {/* CTA: View All Positions */}
+        <div className="flex justify-center mt-6 mb-10">
+          <a href="/admin/positions">
+            <button className="dashboard-column dashboard-column-cyan p-6 text-center" style={{ color: isDarkMode ? "#fff" : "#000" }}>
+              View All Positions
+            </button>
+          </a>
         </div>
       </main>
 
-      {/* Expanded modal only on desktop */}
-      {isDesktop && expandedCard && (
+      {/* Expanded modal for desktop */}
+      {!isMobile && expandedCard && (
         <div
           onClick={() => setExpandedCard(null)}
           style={{
@@ -253,11 +314,9 @@ export default function Dashboard() {
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            padding: 0,
           }}
           aria-modal="true"
           role="dialog"
-          tabIndex={-1}
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -274,7 +333,6 @@ export default function Dashboard() {
               color: isDarkMode ? "#fff" : "#000",
               fontSize: "2em",
               lineHeight: "1.2",
-              transition: "font-size 0.25s ease",
             }}
           >
             {cards[expandedCard]}

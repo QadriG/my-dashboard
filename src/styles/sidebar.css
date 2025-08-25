@@ -253,7 +253,7 @@ main {
 .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
 .grid-cols-1 { grid-template-columns: 1fr; }
 .gap-3 { gap: 12px; }
-.gap-6 { gap: 1.5rem; }
+.gap-7 { gap: 1.75rem; }
 
 /* Text helpers */
 .text-white-300 { color: #d1d5db; }
@@ -269,6 +269,7 @@ main {
 .tracking-wide { letter-spacing: 0.025em; }
 .mb-2 { margin-bottom: 0.5rem; }
 .mb-4 { margin-bottom: 1rem; }
+.mb-6 { margin-bottom: 1.5rem; }
 .mt-2 { margin-top: 0.5rem; }
 .drop-shadow { filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.1)) drop-shadow(0 1px 1px rgb(0 0 0 / 0.06)); }
 
@@ -346,17 +347,14 @@ main {
 }
 
 /* Chart canvas text fixes (dark) */
-@media (prefers-color-scheme: dark) and (max-width: 1023px) {
-  .dashboard-column.sidebar-cyan canvas,
-  .dashboard-column.sidebar-cyan text {
-    color: #ffffff !important;
-    fill: #ffffff !important;
-  }
-}
-.dark-mode .dashboard-column.sidebar-cyan canvas,
-.dark-mode .dashboard-column.sidebar-cyan text {
-  color: #ffffff !important;
-  fill: #ffffff !important;
+.dark-mode canvas,
+.dark-mode canvas *,
+.dark-mode text {
+  color: #fff !important;
+  fill: #fff !important;
+  -webkit-text-fill-color: #fff !important; /* Override internal styles */
+  filter: none !important;
+  background-color: transparent !important;
 }
 
 /* Glassy frame */

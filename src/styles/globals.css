@@ -134,7 +134,6 @@ canvas * {
   }
 }
 
-
 /* Dark mode styles */
 .dark-mode {
   background-color: #000;
@@ -206,9 +205,18 @@ canvas * {
 /* ===========================
    Chart text color fix
    =========================== */
-
 /* Force all chart labels and ticks to white in dark mode */
 .dark-mode canvas,
-.dark-mode canvas * {
+.dark-mode canvas *,
+.dark-mode text {
   color: #fff !important;
+  fill: #fff !important;
+  -webkit-text-fill-color: #fff !important; /* Override any internal fill */
+}
+
+/* Ensure chart text is not hidden by backdrop-filter */
+.dark-mode .dashboard-column canvas,
+.dark-mode .dashboard-column text {
+  filter: none !important;
+  background-color: transparent !important;
 }
