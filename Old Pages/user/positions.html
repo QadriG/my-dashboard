@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en" class="bg-black text-white">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuantumCopyTrading</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+      /* Shimmer for hover on buttons and sections */
+    @keyframes shimmer-hover {
+      0% { background-position: -500px 0; }
+      100% { background-position: 500px 0; }
+    }
+
+    .hover\:animate-shimmer:hover {
+      background-image: linear-gradient(
+        110deg,
+        rgba(255,255,255,0.05) 0%,
+        rgba(255,255,255,0.2) 20%,
+        rgba(255,255,255,0.05) 40%,
+        rgba(255,255,255,0.0) 100%
+      );
+      background-size: 1000px 100%;
+      animation: shimmer-hover 1.5s infinite linear;
+    }
+
+    /* Shimmer Bar Background Animation */
+    @keyframes shimmer-bar {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .shimmer-wrapper {
+      position: relative;
+      overflow: hidden;
+      background-image: linear-gradient(to right, #1e293b, #334155, #1e293b);
+      border: 2px solid #00ffff;
+      border-radius: 0.75rem;
+      box-shadow:
+        inset 4px 4px 8px rgba(255,255,255,.08),
+        inset -4px -4px 8px rgba(0,0,0,.45),
+        0 0 25px rgba(0,255,255,.35);
+    }
+
+    .shimmer-wrapper::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -150%;
+      width: 150%;
+      height: 100%;
+      background: linear-gradient(
+        120deg,
+        transparent,
+        rgba(255,255,255,0.25),
+        transparent
+      );
+      animation: shimmer-bar 2s infinite linear;
+      pointer-events: none;
+    }
+ .sidebar-button {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .sidebar-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -150%;
+    height: 100%;
+    width: 150%;
+    background: linear-gradient(
+      120deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.2) 50%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    transform: skewX(-20deg);
+    transition: left 0.5s;
+  }
+
+  .sidebar-button:hover::before {
+    left: 100%;
+    transition: left 0.5s;
+  }
+
+    .neon-box {
+      border: 2px solid #00ffff;
+      box-shadow: 0 0 15px #00ffff;
+      border-radius: 1rem;
+      background-color: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(6px);
+    }
+
+    .neon-border {
+      border: 2px solid #00ffff;
+      box-shadow: 0 0 10px #00ffff;
+      border-radius: 0.5rem;
+    }
+
+    .toggle-container {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      z-index: 50;
+    }
+
+    .dark .text-black { color: white !important; }
+    .dark .bg-white { background-color: #1f2937 !important; }
+    .dark .bg-gray-200 { background-color: #374151 !important; }
+  </style>
+<style>
+  /* Bounce / Spring (4D bump) effect */
+  .hover\:bump:hover {
+    transform: translateY(-4px) scale(1.05);
+    transition: all 0.2s ease-out;
+  }
+
+  .sidebar-button {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .sidebar-button:hover {
+    transform: translateY(-4px) scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 255, 255, 0.4);
+  }
+</style>
+</head>
+
+<body class="font-sans relative text-white">
+
+  <audio id="hover-sound" preload="auto">
+    <source src="assets/click.mp3" type="audio/mpeg">
+  </audio>
+  
+  <!-- 🌌 Background Video -->
+  <video autoplay muted loop playsinline class="fixed top-0 left-0 w-full h-full object-cover z-[-10] brightness-90 blur-sm">
+    <source src="assets/bg.mp4" type="video/mp4" />
+    Your browser does not support the video tag.
+  </video>
+
+  <!-- Optional Dark Overlay (for contrast) -->
+  <div class="fixed top-0 left-0 w-full h-full bg-black opacity-40 z-[-9]"></div>
+
+  <!-- 📦 Main Content -->
+  <div class="relative z-10">
+<audio id="hoverSound" src="assets/click.mp3" preload="auto"></audio>
+
+<!-- Sidebar -->
+<div class="fixed left-0 top-0 h-full w-64 bg-black/70 text-white p-4 z-50 rounded-r-xl border-r-4 border-cyan-400 shadow-[0_0_15px_#22d3ee]">
+  <h2 class="text-xl font-bold mb-6 text-cyan-300 drop-shadow-md">QuantumCopyTrading</h2>
+  <nav class="flex flex-col space-y-3">
+
+ <!-- Cyan - Dashboard -->
+<a href="dashboard.html" class="sidebar-button px-4 py-2 rounded bg-gray-900 text-white border border-cyan-400 
+          shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_4px_6px_rgba(0,0,0,0.4)] 
+	  hover:shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_0_20px_5px_rgba(34,211,238,0.8)] 
+          transition-all duration-300 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 hover:bump onmouseenter="playHoverSound()"">
+Dashboard
+</a>
+
+
+<!-- Purple - Settings -->
+<a href="settings.html"
+   class="sidebar-button px-4 py-2 rounded bg-gray-900 text-white border border-purple-400 
+          shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_4px_6px_rgba(0,0,0,0.4)] 
+          hover:shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_0_20px_5px_rgba(192,132,252,0.8)] 
+          transition-all duration-300 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 hover:bump">
+  Settings
+</a>
+
+
+<!-- Green - Api -->
+<a href="api.html"
+   class="sidebar-button px-4 py-2 rounded bg-gray-900 text-white border border-green-400 
+          shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_4px_6px_rgba(0,0,0,0.4)] 
+          hover:shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_0_20px_5px_rgba(74,222,128,0.8)] 
+          transition-all duration-300 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 hover:bump">
+  API Details
+</a>
+
+<!-- Yellow - Positions -->
+<a href="positions.html"
+   class="sidebar-button px-4 py-2 rounded bg-gray-900 text-white border border-yellow-300 
+          shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_4px_6px_rgba(0,0,0,0.4)] 
+          hover:shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_0_20px_5px_rgba(253,224,71,0.8)] 
+          transition-all duration-300 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 hover:bump">
+  Positions
+</a>
+
+<!-- Pink - Support -->
+<a href="support.html"
+   class="sidebar-button px-4 py-2 rounded bg-gray-900 text-white border border-pink-400 
+          shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_4px_6px_rgba(0,0,0,0.4)] 
+          hover:shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_0_20px_5px_rgba(244,114,182,0.8)] 
+          transition-all duration-300 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 hover:bump">
+  Support Chat
+</a>
+
+<!-- Red - Logout -->
+<a href="logout.html"
+   class="sidebar-button px-4 py-2 rounded bg-gray-900 text-white border border-red-500 
+          shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_4px_6px_rgba(0,0,0,0.4)] 
+          hover:shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_0_20px_5px_rgba(239,68,68,0.8)] 
+          transition-all duration-300 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 hover:bump">
+  Logout
+</a>
+
+
+  </nav>
+</div>
+
+   <!-- Dashboard Content -->
+    <main class="ml-64 flex-1 p-8 overflow-y-auto animate-fade-in space-y-10 bg-gray text-white">
+      <div class="shimmer-wrapper w-full py-4 px-6 mb-6">
+  <h1 class="text-3xl font-semibold drop-shadow-md">Positions</h1>
+</div>
+
+
+      <!-- Dropdown -->
+      <div class="mb-4">
+        <label for="symbolFilter" class="block text-sm font-medium mb-1">Filter by Pair:</label>
+        <select id="symbolFilter" class="px-3 py-2 rounded border border-black-300 bg-black w-48">
+          <option>All</option>
+          <option>XMR/USDT:USDT</option>
+          <option>UNI/USDT:USDT</option>
+          <option>AVAX/USDT:USDT</option>
+          <option>1000PEPE/USDT:USDT</option>
+          <option>XRP/USDT:USDT</option>
+          <option>SOL/USDT:USDT</option>
+        </select>
+      </div>
+
+     <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Positions Table</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-black p-6 text-white">
+
+  <!-- Toggle Buttons -->
+  <div class="mb-4 space-x-2">
+    <button onclick="showTable('open')" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-full text-sm">Open Positions</button>
+    <button onclick="showTable('closed')" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full text-sm">Closed Positions</button>
+  </div>  
+
+  <!-- Shared Table Wrapper -->
+  <div class="p-[2px] rounded-xl bg-gradient-to-r from-green-400 to-red-500 shadow-[0_0_12px_4px_rgba(34,197,94,0.6)]">
+    <!-- Open Positions -->
+    <div id="openTable" class="rounded-xl bg-black/30 backdrop-blur-md p-6 transition-transform duration-300 hover:scale-[1.01]">
+      <table class="w-full text-white">
+        <thead class="bg-gray-200 text-black rounded-xl">
+          <tr>
+            <th class="px-4 py-2 w-1/12 text-left">ID</th>
+            <th class="px-4 py-2 w-1/12 text-left">Symbol</th>
+            <th class="px-4 py-2 w-1/12 text-left">Side</th>
+            <th class="px-4 py-2 w-1/12 text-left">Amount</th>
+            <th class="px-4 py-2 w-1/12 text-left">Order Value</th>
+            <th class="px-4 py-2 w-1/12 text-left">Open Price</th>
+            <th class="px-4 py-2 w-1/12 text-left">Status</th>
+            <th class="px-4 py-2 w-1/12 text-left">Open Date</th>
+          </tr>
+        </thead>
+        <tbody id="openPositions" class="bg-black/20">
+          <!-- Dummy Open Positions -->
+          <tr class="border-t border-gray-600">
+            <td class="px-4 py-2"><span class="bg-red-100 text-red-700 text-xs font-semibold rounded px-2 py-1">2S</span></td>
+            <td class="px-4 py-2">XMR/USDT</td>
+            <td class="px-4 py-2"><span class="bg-red-100 text-red-700 text-xs font-semibold rounded px-2 py-1">Short</span></td>
+            <td class="px-4 py-2">0.0800</td>
+            <td class="px-4 py-2">26.3104</td>
+            <td class="px-4 py-2">328.8800</td>
+            <td class="px-4 py-2 text-green-400">Open</td>
+            <td class="px-4 py-2">2025-03-25</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+<!-- Controls for Open Positions -->
+<div id="openControls" class="flex justify-between items-center px-4 py-2 mt-2">
+  <select id="openPageSize" class="text-black px-2 py-1 rounded border">
+    <option value="10" selected>10</option>
+    <option value="20">20</option>
+    <option value="30">30</option>
+    <option value="40">40</option>
+  </select>
+  <div id="openPagination" class="text-white flex gap-1"></div>
+</div>
+
+    <!-- Closed Positions -->
+    <div id="closedTable" class="rounded-xl bg-black/30 backdrop-blur-md p-6 transition-transform duration-300 hover:scale-[1.01] hidden">
+      <table class="table-fixed w-full text-white">
+
+        <thead class="bg-gray-200 text-black rounded-xl">
+          <tr>
+            <th class="px-4 py-2 w-1/12 text-left">ID</th>
+            <th class="px-4 py-2 w-1/12 text-left">Symbol</th>
+            <th class="px-4 py-2 w-1/12 text-left">Side</th>
+            <th class="px-4 py-2 w-1/12 text-left">Amount</th>
+            <th class="px-4 py-2 w-1/12 text-left">Order Value</th>
+            <th class="px-4 py-2 w-1/12 text-left">Open Price</th>
+            <th class="px-4 py-2 w-1/12 text-left">Close Price</th>
+            <th class="px-4 py-2 w-1/12 text-left">Profit (USDT)</th>
+            <th class="px-4 py-2 w-1/12 text-left">PnL (%)</th>
+            <th class="px-4 py-2 w-1/12 text-left">Status</th>
+            <th class="px-4 py-2 w-1/12 text-left">Open Date</th>
+            <th class="px-4 py-2 w-1/12 text-left">Close Date</th>
+          </tr>
+        </thead>
+        <tbody id="closedPositions" class="bg-black/20">
+          <tr class="border-t border-gray-600">
+            <td class="px-4 py-2">001</td>
+            <td class="px-4 py-2">BTCUSDT</td>
+            <td class="px-4 py-2">Long</td>
+            <td class="px-4 py-2">0.5</td>
+            <td class="px-4 py-2">13000</td>
+            <td class="px-4 py-2">26000</td>
+            <td class="px-4 py-2">27000</td>
+            <td class="px-4 py-2 text-green-700 font-semibold">500.00</td>
+            <td class="px-4 py-2 text-green-700 font-semibold">3.85%</td>
+            <td class="px-4 py-2 text-red-600 font-semibold">Closed</td>
+            <td class="px-4 py-2">2025-08-01</td>
+            <td class="px-4 py-2">2025-08-03</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<!-- Controls for Closed Positions -->
+<div id="closedControls" class="flex justify-between items-center px-4 py-2 mt-2 hidden">
+  <select id="closedPageSize" class="text-black px-2 py-1 rounded border">
+    <option value="10" selected>10</option>
+    <option value="20">20</option>
+    <option value="30">30</option>
+    <option value="40">40</option>
+  </select>
+  <div id="closedPagination" class="text-white flex gap-1"></div>
+</div>
+
+
+  <script>
+  function showTable(type) {
+    const isOpen = type === 'open';
+
+    document.getElementById('openTable').classList.toggle('hidden', !isOpen);
+    document.getElementById('openControls').classList.toggle('hidden', !isOpen);
+
+    document.getElementById('closedTable').classList.toggle('hidden', isOpen);
+    document.getElementById('closedControls').classList.toggle('hidden', isOpen);
+
+    paginateTable(isOpen ? 'open' : 'closed');
+  }
+
+  function paginateTable(tableType) {
+    const tableBody = document.querySelector(`#${tableType}Positions`);
+    const pagination = document.getElementById(`${tableType}Pagination`);
+    const pageSize = parseInt(document.getElementById(`${tableType}PageSize`).value);
+
+    const rows = Array.from(tableBody.querySelectorAll('tr'));
+    const totalPages = Math.ceil(rows.length / pageSize);
+
+    let currentPage = pagination.dataset.page ? parseInt(pagination.dataset.page) : 1;
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+
+    // Show only current page rows
+    rows.forEach((row, index) => {
+      row.style.display = (index >= (currentPage - 1) * pageSize && index < currentPage * pageSize) ? '' : 'none';
+    });
+
+    // Update pagination UI
+    pagination.innerHTML = '';
+    pagination.dataset.page = currentPage;
+
+    const prev = document.createElement('button');
+    prev.innerText = '« Prev';
+    prev.disabled = currentPage === 1;
+    prev.className = 'px-2 py-1 bg-gray-700 text-white rounded text-sm';
+    prev.onclick = () => {
+      pagination.dataset.page = currentPage - 1;
+      paginateTable(tableType);
+    };
+    pagination.appendChild(prev);
+
+    const startPage = Math.max(1, currentPage - 2);
+    const endPage = Math.min(totalPages, startPage + 4);
+
+    for (let i = startPage; i <= endPage; i++) {
+      const btn = document.createElement('button');
+      btn.innerText = i;
+      btn.className = `px-2 py-1 rounded text-sm ${i === currentPage ? 'bg-blue-600' : 'bg-gray-700'} text-white`;
+      btn.onclick = () => {
+        pagination.dataset.page = i;
+        paginateTable(tableType);
+      };
+      pagination.appendChild(btn);
+    }
+
+    const next = document.createElement('button');
+    next.innerText = 'Next »';
+    next.disabled = currentPage === totalPages;
+    next.className = 'px-2 py-1 bg-gray-700 text-white rounded text-sm';
+    next.onclick = () => {
+      pagination.dataset.page = currentPage + 1;
+      paginateTable(tableType);
+    };
+    pagination.appendChild(next);
+  }
+
+  // Attach event listeners
+  window.addEventListener('DOMContentLoaded', () => {
+    showTable('open');
+    ['open', 'closed'].forEach(type => {
+      document.getElementById(`${type}PageSize`).addEventListener('change', () => paginateTable(type));
+    });
+  });
+</script>

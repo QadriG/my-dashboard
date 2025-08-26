@@ -2,40 +2,28 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import { useEffect } from "react";
 import Login from "./components/Auth/Login";
 import AdminDashboard from "./components/Dashboard";
-import UserDashboard from "./components/Users/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ResetPassword from "./components/Auth/ResetPassword";
 
 function App() {
-  // Optional: Prevent browser caching (move to ProtectedRoute if needed)
   useEffect(() => {
-    // This can be removed or handled in ProtectedRoute for better control
+    // Remove or handle caching here if needed
   }, []);
 
   return (
-    <Router basename="/my-dashboard">
+    <Router>
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route path="/verify-email/:token" element={<Navigate to="/login" replace />} />
 
-        {/* Protected Admin Dashboard */}
+        {/* Protected Admin Dashboard with nested pages */}
         <Route
-          path="/admin"
+          path="/admin/*"
           element={
             <ProtectedRoute allowedRoles={["admin"]}>
               <AdminDashboard />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Protected User Dashboard */}
-        <Route
-          path="/user"
-          element={
-            <ProtectedRoute allowedRoles={["user"]}>
-              <UserDashboard />
             </ProtectedRoute>
           }
         />

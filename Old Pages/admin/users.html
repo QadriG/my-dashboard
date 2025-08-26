@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en" class="bg-black text-white">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuantumCopyTrading</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    /* Shimmer for hover on buttons and sections */
+    @keyframes shimmer-hover {
+      0% { background-position: -500px 0; }
+      100% { background-position: 500px 0; }
+    }
+
+    .hover\:animate-shimmer:hover {
+      background-image: linear-gradient(
+        110deg,
+        rgba(255,255,255,0.05) 0%,
+        rgba(255,255,255,0.2) 20%,
+        rgba(255,255,255,0.05) 40%,
+        rgba(255,255,255,0.0) 100%
+      );
+      background-size: 1000px 100%;
+      animation: shimmer-hover 1.5s infinite linear;
+    }
+
+
+
+    /* Shimmer Bar Background Animation */
+    @keyframes shimmer-bar {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .shimmer-wrapper {
+      position: relative;
+      overflow: hidden;
+      background-image: linear-gradient(to right, #1e293b, #334155, #1e293b);
+      border: 2px solid #00ffff;
+      border-radius: 0.75rem;
+      box-shadow:
+        inset 4px 4px 8px rgba(255,255,255,.08),
+        inset -4px -4px 8px rgba(0,0,0,.45),
+        0 0 25px rgba(0,255,255,.35);
+    }
+
+    .shimmer-wrapper::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -150%;
+      width: 150%;
+      height: 100%;
+      background: linear-gradient(
+        120deg,
+        transparent,
+        rgba(255,255,255,0.25),
+        transparent
+      );
+      animation: shimmer-bar 2s infinite linear;
+      pointer-events: none;
+    }
+ .sidebar-button {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .sidebar-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -150%;
+    height: 100%;
+    width: 150%;
+    background: linear-gradient(
+      120deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.2) 50%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    transform: skewX(-20deg);
+    transition: left 0.5s;
+  }
+
+  .sidebar-button:hover::before {
+    left: 100%;
+    transition: left 0.5s;
+  }
+
+    .neon-box {
+      border: 2px solid #00ffff;
+      box-shadow: 0 0 15px #00ffff;
+      border-radius: 1rem;
+      background-color: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(6px);
+    }
+
+    .neon-border {
+      border: 2px solid #00ffff;
+      box-shadow: 0 0 10px #00ffff;
+      border-radius: 0.5rem;
+    }
+
+    .toggle-container {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      z-index: 50;
+    }
+
+    .dark .text-black { color: white !important; }
+    .dark .bg-white { background-color: #1f2937 !important; }
+    .dark .bg-gray-200 { background-color: #374151 !important; }
+  </style>
+<style>
+  /* Bounce / Spring (4D bump) effect */
+  .hover\:bump:hover {
+    transform: translateY(-4px) scale(1.05);
+    transition: all 0.2s ease-out;
+  }
+
+  .sidebar-button {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .sidebar-button:hover {
+    transform: translateY(-4px) scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 255, 255, 0.4);
+  }
+</style>
+</head>
+
+<body class="font-sans relative text-white">
+
+  <audio id="hover-sound" preload="auto">
+    <source src="assets/click.mp3" type="audio/mpeg">
+  </audio>
+  
+  <!-- 🌌 Background Video -->
+  <video autoplay muted loop playsinline class="fixed top-0 left-0 w-full h-full object-cover z-[-10] brightness-90 blur-sm">
+    <source src="assets\bg.mp4" type="video/mp4" />
+    Your browser does not support the video tag.
+  </video>
+
+  <!-- Optional Dark Overlay (for contrast) -->
+  <div class="fixed top-0 left-0 w-full h-full bg-black opacity-40 z-[-9]"></div>
+
+  <!-- 📦 Main Content -->
+  <div class="relative z-10">
+<audio id="hoverSound" src="assets/click.mp3" preload="auto"></audio>
+
+<!-- Sidebar -->
+<div class="fixed left-0 top-0 h-full w-64 bg-black/70 text-white p-4 z-50 rounded-r-xl border-r-4 border-cyan-400 shadow-[0_0_15px_#22d3ee]">
+  <h2 class="text-xl font-bold mb-6 text-cyan-300 drop-shadow-md">QuantumCopyTrading</h2>
+  <nav class="flex flex-col space-y-3">
+
+ <!-- Cyan - Dashboard -->
+<a href="dashboard.html" class="sidebar-button px-4 py-2 rounded bg-gray-900 text-white border border-cyan-400 
+          shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_4px_6px_rgba(0,0,0,0.4)] 
+	  hover:shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_0_20px_5px_rgba(34,211,238,0.8)] 
+          transition-all duration-300 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 hover:bump onmouseenter="playHoverSound()"">
+Dashboard
+</a>
+
+
+<!-- Purple - Settings -->
+<a href="settings.html"
+   class="sidebar-button px-4 py-2 rounded bg-gray-900 text-white border border-purple-400 
+          shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_4px_6px_rgba(0,0,0,0.4)] 
+          hover:shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_0_20px_5px_rgba(192,132,252,0.8)] 
+          transition-all duration-300 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 hover:bump">
+  Settings
+</a>
+
+
+<!-- Green - Api -->
+<a href="api.html"
+   class="sidebar-button px-4 py-2 rounded bg-gray-900 text-white border border-green-400 
+          shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_4px_6px_rgba(0,0,0,0.4)] 
+          hover:shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_0_20px_5px_rgba(74,222,128,0.8)] 
+          transition-all duration-300 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 hover:bump">
+  API Details
+</a>
+
+<!-- Yellow - Positions -->
+<a href="positions.html"
+   class="sidebar-button px-4 py-2 rounded bg-gray-900 text-white border border-yellow-300 
+          shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_4px_6px_rgba(0,0,0,0.4)] 
+          hover:shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_0_20px_5px_rgba(253,224,71,0.8)] 
+          transition-all duration-300 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 hover:bump">
+  Positions
+</a>
+
+<!-- Pink - Users -->
+<a href="users.html"
+   class="sidebar-button px-4 py-2 rounded bg-gray-900 text-white border border-pink-400 
+          shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_4px_6px_rgba(0,0,0,0.4)] 
+          hover:shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_0_20px_5px_rgba(244,114,182,0.8)] 
+          transition-all duration-300 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 hover:bump">
+  Users
+</a>
+
+<!-- Pink - Logs -->
+<a href="logs.html"
+   class="sidebar-button px-4 py-2 rounded bg-gray-900 text-white border border-pink-400 
+          shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_4px_6px_rgba(0,0,0,0.4)] 
+          hover:shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_0_20px_5px_rgba(244,114,182,0.8)] 
+          transition-all duration-300 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 hover:bump">
+  Logs
+</a>
+
+<!-- Pink - Manual Push -->
+<a href="manual.html"
+   class="sidebar-button px-4 py-2 rounded bg-gray-900 text-white border border-pink-400 
+          shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_4px_6px_rgba(0,0,0,0.4)] 
+          hover:shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_0_20px_5px_rgba(244,114,182,0.8)] 
+          transition-all duration-300 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 hover:bump">
+  Manual Push
+</a>
+
+<!-- Red - Logout -->
+<a href="logout.html"
+   class="sidebar-button px-4 py-2 rounded bg-gray-900 text-white border border-red-500 
+          shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_4px_6px_rgba(0,0,0,0.4)] 
+          hover:shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_0_20px_5px_rgba(239,68,68,0.8)] 
+          transition-all duration-300 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 hover:bump">
+  Logout
+</a>
+
+
+  </nav>
+</div>
+
+   <!-- Dashboard Content -->
+    <main class="ml-64 flex-1 p-8 overflow-y-auto animate-fade-in space-y-10 bg-gray text-white">
+      <div class="shimmer-wrapper w-full py-4 px-6 mb-6">
+  <h1 class="text-3xl font-semibold drop-shadow-md">Users</h1>
+</div>
+
+
+   <!-- Search Field with Button -->
+<div class="flex justify-left items-center mb-2 text-black">
+  <div></div> <!-- Placeholder to preserve layout -->
+  <div class="flex space-x-2">
+    <input
+      id="searchInput"
+      type="text"
+      placeholder="Search"
+      class="border border-gray-300 rounded px-3 py-2 w-50 focus:outline-none focus:ring focus:border-blue-300"
+    />
+    <button
+      id="searchBtn"
+      class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded"
+      type="button"
+    >
+      Search
+    </button>
+  </div>
+</div>
+
+<!-- Table Wrapper with Border -->
+<div class="bg-white/10 backdrop-blur-xl rounded-xl p-6 shadow-xl w-full border border-cyan-400 shadow-white-500/50 text-white hover:shadow-white-400 transition duration-300 hover:bump hover:scale-[1.01]">
+  <table class="min-w-full text-sm table-fixed border-collapse">
+    <!-- Glassy titles row with no internal borders -->
+    <thead class="bg-black/40 backdrop-blur-md text-white rounded-xl">
+      <tr class="border border-cyan-400 rounded-xl">
+        <th class="text-left px-4 py-3 font-semibold">ID</th>
+        <th class="text-left px-4 py-3 font-semibold">Email</th>
+        <th class="text-left px-4 py-3 font-semibold">Name</th>
+        <th class="text-left px-4 py-3 font-semibold">API</th>
+        <th class="text-left px-4 py-3 font-semibold">Free</th>
+        <th class="text-left px-4 py-3 font-semibold">Used</th>
+        <th class="text-left px-4 py-3 font-semibold">Total USDT</th>
+        <th class="text-left px-4 py-3 font-semibold">Created At</th>
+        <th class="text-left px-4 py-3 font-semibold">Status</th>
+        <th class="text-center px-4 py-4 font-semibold">Manage</th>
+      </tr>
+    </thead>
+
+    <tbody id="userTable">
+      <tr class="bg-gray-80 border-t" data-last-activity="2025-07-27T10:00:00Z">
+        <td class="px-4 py-3 font-semibold">3</td>
+        <td class="px-4 py-3">
+          alice@example.com
+          <div><span class="bg-green-600 text-white text-xs font-medium px-2 py-0.5 rounded">Email Verified</span></div>
+        </td>
+        <td class="px-4 py-3">Alice</td>
+        <td class="px-4 py-3">Binance</td>
+        <td class="px-4 py-3">50.00</td>
+        <td class="px-4 py-3">15.00</td>
+        <td class="px-4 py-3">65.00</td>
+        <td class="px-4 py-3">7/11/2025</td>
+        <td class="px-4 py-3"><div class="text-xs font-medium status"></div></td>
+        <td class="px-4 py-3 space-y-1 text-center">
+          <button class="w-32 bg-yellow-400 text-black px-4 py-1.5 rounded text-sm">Pause</button>
+          <button class="w-32 bg-blue-600 text-white px-4 py-1.5 rounded text-sm">Disable Email</button>
+          <button class="w-32 bg-blue-500 text-white px-4 py-1.5 rounded text-sm">Stats</button>
+          <button class="w-32 bg-yellow-500 text-black px-4 py-1.5 rounded text-sm">Positions</button>
+          <button class="w-32 bg-red-500 text-white px-4 py-1.5 rounded text-sm">Delete</button>
+        </td>
+      </tr>
+      <tr class="bg-gray border-t" data-last-activity="2025-07-26T09:30:00Z">
+        <td class="px-4 py-3 font-semibold">2</td>
+        <td class="px-4 py-3">
+          bob@example.com
+          <div><span class="bg-green-600 text-white text-xs font-medium px-2 py-0.5 rounded">Email Verified</span></div>
+        </td>
+        <td class="px-4 py-3">Bob</td>
+        <td class="px-4 py-3">OKX</td>
+        <td class="px-4 py-3">30.00</td>
+        <td class="px-4 py-3">10.00</td>
+        <td class="px-4 py-3">40.00</td>
+        <td class="px-4 py-3">7/12/2025</td>
+        <td class="px-4 py-3"><div class="text-xs font-medium status"></div></td>
+        <td class="px-4 py-3 space-y-1 text-center">
+          <button class="w-32 bg-yellow-400 text-black px-4 py-1.5 rounded text-sm">Pause</button>
+          <button class="w-32 bg-blue-600 text-white px-4 py-1.5 rounded text-sm">Disable Email</button>
+          <button class="w-32 bg-blue-500 text-white px-4 py-1.5 rounded text-sm">Stats</button>
+          <button class="w-32 bg-yellow-500 text-black px-4 py-1.5 rounded text-sm">Positions</button>
+          <button class="w-32 bg-red-500 text-white px-4 py-1.5 rounded text-sm">Delete</button>
+        </td>
+      </tr>
+      <tr class="bg-gray-80 border-t" data-last-activity="2025-07-24T17:30:00Z">
+        <td class="px-4 py-3 font-semibold">1</td>
+        <td class="px-4 py-3">
+          eve@example.com
+          <div><span class="bg-green-600 text-white text-xs font-medium px-2 py-0.5 rounded">Email Verified</span></div>
+        </td>
+        <td class="px-4 py-3">Eve</td>
+        <td class="px-4 py-3">Binance</td>
+        <td class="px-4 py-3">18.00</td>
+        <td class="px-4 py-3">7.00</td>
+        <td class="px-4 py-3">25.00</td>
+        <td class="px-4 py-3">7/13/2025</td>
+        <td class="px-4 py-3"><div class="text-xs font-medium status"></div></td>
+        <td class="px-4 py-3 space-y-1 text-center">
+          <button class="w-32 bg-yellow-400 text-black px-4 py-1.5 rounded text-sm">Pause</button>
+          <button class="w-32 bg-blue-600 text-white px-4 py-1.5 rounded text-sm">Disable Email</button>
+          <button class="w-32 bg-blue-500 text-white px-4 py-1.5 rounded text-sm">Stats</button>
+          <button class="w-32 bg-yellow-500 text-black px-4 py-1.5 rounded text-sm">Positions</button>
+          <button class="w-32 bg-red-500 text-white px-4 py-1.5 rounded text-sm">Delete</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const rows = document.querySelectorAll("tbody tr");
+
+    rows.forEach(row => {
+      row.classList.add(
+        "relative",                      // Needed for visual stacking
+        "overflow-hidden",               // Keeps it neat
+        "rounded-xl",                    // Smooth card edges
+        "border", "border-cyan-400",     // Border only at outer edge
+        "bg-white/5",                    // Semi-transparent background
+        "backdrop-blur-xl",              // Frosted glass effect
+        "shadow-xl", "shadow-cyan-500/50", // Outer glow
+        "hover:shadow-cyan-400",         // Glow on hover
+        "text-white",                    // White text
+        "transition", "duration-300",    // Smooth hover effect
+        "hover:bump",                    // Custom animation if you have it
+        "mb-6", "hover:scale-[1.01]"     // Margin between cards & subtle scale on hover
+      );
+
+      // Optional: remove any inner borders if table has default styling
+      row.querySelectorAll("td").forEach(td => {
+        td.classList.add("border-none");
+      });
+    });
+  });
+</script>
+
+<script>
+  // Update user status based on last activity
+  document.querySelectorAll('#userTable tr').forEach(row => {
+    const activity = row.getAttribute('data-last-activity');
+    const statusEl = row.querySelector('.status');
+    if (activity && statusEl) {
+      const last = new Date(activity);
+      const now = new Date();
+      const diffHours = (now - last) / 36e5;
+      statusEl.textContent = diffHours <= 24 ? "Active" : "Inactive";
+      statusEl.classList.add(diffHours <= 24 ? "text-green-600" : "text-red-600");
+    }
+  });
+
+  // Search functionality
+  function searchUsers() {
+    const searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
+    const rows = document.querySelectorAll('#userTable tr');
+
+    rows.forEach(row => {
+      const email = row.cells[1]?.textContent.toLowerCase();
+      const name = row.cells[2]?.textContent.toLowerCase();
+      const exchange = row.cells[3]?.textContent.toLowerCase();
+      const free = parseFloat(row.cells[4]?.textContent) || 0;
+      const status = row.cells[8]?.querySelector('.status')?.textContent.toLowerCase();
+
+      let match = false;
+
+      if (!searchTerm) {
+        match = true;
+      } else if (searchTerm === 'free' && free > 0) {
+        match = true;
+      } else if (searchTerm === 'active' && status === 'active') {
+        match = true;
+      } else if (searchTerm === 'inactive' && status === 'inactive') {
+        match = true;
+      } else if (
+        email.includes(searchTerm) ||
+        name.includes(searchTerm) ||
+        exchange.includes(searchTerm)
+      ) {
+        match = true;
+      }
+
+      row.style.display = match ? '' : 'none';
+    });
+  }
+
+  // Bind button and Enter key to trigger search
+  document.getElementById('searchBtn').addEventListener('click', searchUsers);
+  document.getElementById('searchInput').addEventListener('input', searchUsers);
+</script>
+
+
+</body>
+</html>

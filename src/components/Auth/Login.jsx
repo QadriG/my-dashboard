@@ -135,8 +135,7 @@ export default function Login() {
         }
 
         // ✅ Delay reload so navigation applies first
-        setTimeout(() => window.location.reload(), 100);
-      } else {
+              } else {
         setError(data.message || "Invalid credentials");
       }
     } catch {

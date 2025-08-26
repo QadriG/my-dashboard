@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en" class="bg-black text-white">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuantumCopyTrading</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    /* Shimmer for hover on buttons and sections */
+    @keyframes shimmer-hover {
+      0% { background-position: -500px 0; }
+      100% { background-position: 500px 0; }
+    }
+
+    .hover\:animate-shimmer:hover {
+      background-image: linear-gradient(
+        110deg,
+        rgba(255,255,255,0.05) 0%,
+        rgba(255,255,255,0.2) 20%,
+        rgba(255,255,255,0.05) 40%,
+        rgba(255,255,255,0.0) 100%
+      );
+      background-size: 1000px 100%;
+      animation: shimmer-hover 1.5s infinite linear;
+    }
+
+    /* Shimmer Bar Background Animation */
+    @keyframes shimmer-bar {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .shimmer-wrapper {
+      position: relative;
+      overflow: hidden;
+      background-image: linear-gradient(to right, #1e293b, #334155, #1e293b);
+      border: 2px solid #00ffff;
+      border-radius: 0.75rem;
+      box-shadow:
+        inset 4px 4px 8px rgba(255,255,255,.08),
+        inset -4px -4px 8px rgba(0,0,0,.45),
+        0 0 25px rgba(0,255,255,.35);
+    }
+
+    .shimmer-wrapper::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -150%;
+      width: 150%;
+      height: 100%;
+      background: linear-gradient(
+        120deg,
+        transparent,
+        rgba(255,255,255,0.25),
+        transparent
+      );
+      animation: shimmer-bar 2s infinite linear;
+      pointer-events: none;
+    }
+ .sidebar-button {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .sidebar-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -150%;
+    height: 100%;
+    width: 150%;
+    background: linear-gradient(
+      120deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.2) 50%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    transform: skewX(-20deg);
+    transition: left 0.5s;
+  }
+
+  .sidebar-button:hover::before {
+    left: 100%;
+    transition: left 0.5s;
+  }
+
+    .neon-box {
+      border: 2px solid #00ffff;
+      box-shadow: 0 0 15px #00ffff;
+      border-radius: 1rem;
+      background-color: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(6px);
+    }
+
+    .neon-border {
+      border: 2px solid #00ffff;
+      box-shadow: 0 0 10px #00ffff;
+      border-radius: 0.5rem;
+    }
+
+    .toggle-container {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      z-index: 50;
+    }
+
+    .dark .text-black { color: white !important; }
+    .dark .bg-white { background-color: #1f2937 !important; }
+    .dark .bg-gray-200 { background-color: #374151 !important; }
+  </style>
+<style>
+  /* Bounce / Spring (4D bump) effect */
+  .hover\:bump:hover {
+    transform: translateY(-4px) scale(1.05);
+    transition: all 0.2s ease-out;
+  }
+
+  .sidebar-button {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .sidebar-button:hover {
+    transform: translateY(-4px) scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 255, 255, 0.4);
+  }
+</style>
+</head>
+
+<body class="font-sans relative text-white">
+
+  <audio id="hover-sound" preload="auto">
+    <source src="assets/click.mp3" type="audio/mpeg">
+  </audio>
+  
+  <!-- 🌌 Background Video -->
+  <video autoplay muted loop playsinline class="fixed top-0 left-0 w-full h-full object-cover z-[-10] brightness-90 blur-sm">
+    <source src="assets\bg.mp4" type="video/mp4" />
+    Your browser does not support the video tag.
+  </video>
+
+  <!-- Optional Dark Overlay (for contrast) -->
+  <div class="fixed top-0 left-0 w-full h-full bg-black opacity-40 z-[-9]"></div>
+
+  <!-- 📦 Main Content -->
+  <div class="relative z-10">
+<audio id="hoverSound" src="assets/click.mp3" preload="auto"></audio>
+
+<!-- Sidebar -->
+<div class="fixed left-0 top-0 h-full w-64 bg-black/70 text-white p-4 z-50 rounded-r-xl border-r-4 border-cyan-400 shadow-[0_0_15px_#22d3ee]">
+  <h2 class="text-xl font-bold mb-6 text-cyan-300 drop-shadow-md">QuantumCopyTrading</h2>
+  <nav class="flex flex-col space-y-3">
+
+ <!-- Cyan - Dashboard -->
+<a href="dashboard.html" class="sidebar-button px-4 py-2 rounded bg-gray-900 text-white border border-cyan-400 
+          shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_4px_6px_rgba(0,0,0,0.4)] 
+	  hover:shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_0_20px_5px_rgba(34,211,238,0.8)] 
+          transition-all duration-300 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 hover:bump onmouseenter="playHoverSound()"">
+Dashboard
+</a>
+
+
+<!-- Purple - Settings -->
+<a href="settings.html"
+   class="sidebar-button px-4 py-2 rounded bg-gray-900 text-white border border-purple-400 
+          shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_4px_6px_rgba(0,0,0,0.4)] 
+          hover:shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_0_20px_5px_rgba(192,132,252,0.8)] 
+          transition-all duration-300 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 hover:bump">
+  Settings
+</a>
+
+
+<!-- Green - Api -->
+<a href="api.html"
+   class="sidebar-button px-4 py-2 rounded bg-gray-900 text-white border border-green-400 
+          shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_4px_6px_rgba(0,0,0,0.4)] 
+          hover:shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_0_20px_5px_rgba(74,222,128,0.8)] 
+          transition-all duration-300 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 hover:bump">
+  API Details
+</a>
+
+<!-- Yellow - Positions -->
+<a href="positions.html"
+   class="sidebar-button px-4 py-2 rounded bg-gray-900 text-white border border-yellow-300 
+          shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_4px_6px_rgba(0,0,0,0.4)] 
+          hover:shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_0_20px_5px_rgba(253,224,71,0.8)] 
+          transition-all duration-300 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 hover:bump">
+  Positions
+</a>
+
+<!-- Pink - Support -->
+<a href="support.html"
+   class="sidebar-button px-4 py-2 rounded bg-gray-900 text-white border border-pink-400 
+          shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_4px_6px_rgba(0,0,0,0.4)] 
+          hover:shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_0_20px_5px_rgba(244,114,182,0.8)] 
+          transition-all duration-300 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 hover:bump">
+  Support Chat
+</a>
+
+<!-- Red - Logout -->
+<a href="logout.html"
+   class="sidebar-button px-4 py-2 rounded bg-gray-900 text-white border border-red-500 
+          shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_4px_6px_rgba(0,0,0,0.4)] 
+          hover:shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_0_20px_5px_rgba(239,68,68,0.8)] 
+          transition-all duration-300 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 hover:bump">
+  Logout
+</a>
+
+
+  </nav>
+</div>
+
+
+
+   <!-- Dashboard Content -->
+    <main class="ml-64 flex-1 p-8 overflow-y-auto animate-fade-in space-y-10 bg-gray text-white">
+      <div class="shimmer-wrapper w-full py-4 px-6 mb-6">
+  <h1 class="text-3xl font-semibold drop-shadow-md">Dashboard</h1>
+</div>
+
+
+
+
+       <!-- Stats Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+  <!-- Profit Box -->
+  <div class="bg-white/10 backdrop-blur-xl rounded-xl p-6 shadow-xl w-full border border-cyan-400 shadow-cyan-500/50 text-white hover:shadow-cyan-400 transition duration-300 hover:bump">
+    <h2 class="text-lg font-semibold mb-4 text-white-300 drop-shadow">Profit</h2>
+    <div class="space-y-2">
+      <div class="flex justify-between">
+        <span>Total</span>
+        <span class="text-white-300 drop-shadow">$245.12</span>
+      </div>
+      <div class="flex justify-between">
+        <span>
+          <span class="bg-green-400/30 text-white-200 text-xs font-semibold px-2 py-0.5 rounded border border-green-300">Long</span>
+        </span>
+        <span class="text-white-300">$112.50</span>
+      </div>
+      <div class="flex justify-between">
+        <span>
+          <span class="bg-red-400/30 text-white-200 text-xs font-semibold px-2 py-0.5 rounded border border-red-300">Short</span>
+        </span>
+        <span class="text-white-300">$132.62</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- uP&L Box -->
+  <div class="bg-white/10 backdrop-blur-xl rounded-xl p-6 shadow-xl w-full border border-pink-400 shadow-pink-500/50 text-white hover:shadow-pink-400 transition duration-300 hover:bump">
+    <h2 class="text-lg font-semibold mb-4 text-white-300 drop-shadow">uP&amp;L</h2>
+    <div class="space-y-2">
+      <div class="flex justify-between">
+        <span>Total</span>
+        <span class="text-white-300">$-3.77 <span class="text-sm text-gray-400">(-0.02%)</span></span>
+      </div>
+      <div class="flex justify-between">
+        <span>
+          <span class="bg-green-400/30 text-white-200 text-xs font-semibold px-2 py-0.5 rounded border border-green-300">Long</span>
+        </span>
+        <span class="text-white-300">$-6.35 <span class="text-sm text-gray-400">(-0.03%)</span></span>
+      </div>
+      <div class="flex justify-between">
+        <span>
+          <span class="bg-red-400/30 text-white-200 text-xs font-semibold px-2 py-0.5 rounded border border-red-300">Short</span>
+        </span>
+        <span class="text-white-300">$2.58 <span class="text-sm text-gray-400">(0.01%)</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Funds Distribution Box -->
+  <div class="bg-white/10 backdrop-blur-xl rounded-xl p-6 shadow-xl w-full border border-yellow-400 shadow-yellow-500/40 text-white hover:shadow-yellow-300 transition duration-300 hover:bump">
+    <h2 class="text-lg font-semibold mb-4 text-white-300 drop-shadow">Funds Distribution (USDT)</h2>
+    <div class="space-y-2">
+      <div class="flex justify-between">
+        <span>Total Balance</span>
+        <span>$1973.48 <span class="text-sm text-white-400">(100.00%)</span></span>
+      </div>
+      <div class="flex justify-between">
+        <span>Available</span>
+        <span>$553.33 <span class="text-sm text-white-400">(28.04%)</span></span>
+      </div>
+      <div class="flex justify-between">
+        <span><span class="bg-green-200/30 text-white-200 text-xs font-semibold px-2 py-0.5 rounded border border-green-300">Long</span></span>
+        <span>$63.39 <span class="text-sm text-white-400">(3.21%)</span></span>
+      </div>
+      <div class="flex justify-between">
+        <span><span class="bg-red-200/30 text-white-200 text-xs font-semibold px-2 py-0.5 rounded border border-red-300">Short</span></span>
+        <span>$72.42 <span class="text-sm text-white-400">(3.67%)</span></span>
+      </div>
+      <div class="flex justify-between">
+        <span>Total Positions</span>
+        <span>$1420.15 <span class="text-sm text-white-400">(71.96%)</span></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+     <!-- Charts Grid -->
+<div class="flex gap-4 w-full">
+
+  <!-- Balance Graph -->
+  <div class="flex-1 bg-black/40 backdrop-blur-md rounded-xl p-4 h-[300px] border-2 border-cyan-400 shadow-cyan-500/50 text-white transition duration-300 hover:shadow-[0_0_25px_5px_rgba(34,211,238,0.8)] hover:bump">
+    <h2 class="text-lg font-semibold mb-2 text-white">Balance Graph</h2>
+    <canvas id="balanceChart" class="w-full h-full bg-transparent text-white"></canvas>
+  </div>
+
+  <!-- Weekly Revenue Chart -->
+  <div class="flex-1 bg-black/40 backdrop-blur-md rounded-xl p-4 h-[300px] border-2 border-purple-400 text-white transition duration-300 hover:shadow-[0_0_25px_5px_rgba(192,132,252,0.8)] hover:bump">
+    <h2 class="text-lg font-semibold mb-2 text-white">Weekly Revenue</h2>
+    <canvas id="revenueChart" class="w-full h-full bg-transparent text-white"></canvas>
+  </div>
+
+</div>
+
+<div class="flex gap-4 mt-4 w-full">
+
+  <!-- Daily Balance & PnL Table -->
+  <div class="flex-1 bg-black/40 backdrop-blur-md text-white rounded-xl p-4 h-[300px] overflow-y-auto border-2 border-emerald-400 transition duration-300 hover:shadow-[0_0_25px_5px_rgba(52,211,153,0.7)] hover:bump">
+    <h2 class="text-lg font-semibold mb-2 text-white">Daily Balance &amp; P&amp;L</h2>
+    <table class="w-full text-sm text-left">
+      <thead class="bg-emerald-900/80 text-white font-semibold">
+        <tr>
+          <th class="py-1 px-2">Coin</th>
+          <th class="py-1 px-2">Balance</th>
+          <th class="py-1 px-2">PnL</th>
+          <th class="py-1 px-2">PnL%</th>
+          <th class="py-1 px-2">Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="py-1 px-2">USDT</td><td class="py-1 px-2">1973.48</td><td class="py-1 px-2">1.42</td><td class="py-1 px-2">0.07 %</td><td class="py-1 px-2">06/20/2025</td></tr>
+        <tr><td class="py-1 px-2">USDT</td><td class="py-1 px-2">1970.84</td><td class="py-1 px-2">0.00</td><td class="py-1 px-2">0.00 %</td><td class="py-1 px-2">06/19/2025</td></tr>
+        <tr><td class="py-1 px-2">USDT</td><td class="py-1 px-2">1966.83</td><td class="py-1 px-2">0.00</td><td class="py-1 px-2">0.00 %</td><td class="py-1 px-2">06/18/2025</td></tr>
+        <tr><td class="py-1 px-2">USDT</td><td class="py-1 px-2">1978.63</td><td class="py-1 px-2">-4.19</td><td class="py-1 px-2">-0.21 %</td><td class="py-1 px-2">06/17/2025</td></tr>
+        <tr><td class="py-1 px-2">USDT</td><td class="py-1 px-2">1976.90</td><td class="py-1 px-2">-5.89</td><td class="py-1 px-2">-0.30 %</td><td class="py-1 px-2">06/16/2025</td></tr>
+        <tr><td class="py-1 px-2">USDT</td><td class="py-1 px-2">1977.22</td><td class="py-1 px-2">0.00</td><td class="py-1 px-2">0.00 %</td><td class="py-1 px-2">06/15/2025</td></tr>
+        <tr><td class="py-1 px-2">USDT</td><td class="py-1 px-2">1972.42</td><td class="py-1 px-2">-1.13</td><td class="py-1 px-2">-0.06 %</td><td class="py-1 px-2">06/14/2025</td></tr>
+        <tr><td class="py-1 px-2">USDT</td><td class="py-1 px-2">1968.23</td><td class="py-1 px-2">0.00</td><td class="py-1 px-2">0.00 %</td><td class="py-1 px-2">06/13/2025</td></tr>
+        <tr><td class="py-1 px-2">USDT</td><td class="py-1 px-2">1968.90</td><td class="py-1 px-2">-4.89</td><td class="py-1 px-2">-0.25 %</td><td class="py-1 px-2">06/12/2025</td></tr>
+        <tr><td class="py-1 px-2">USDT</td><td class="py-1 px-2">1968.95</td><td class="py-1 px-2">3.56</td><td class="py-1 px-2">0.18 %</td><td class="py-1 px-2">06/11/2025</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+       <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const rows = document.querySelectorAll("table tbody tr");
+        for (let i = 0; i < rows.length - 1; i++) {
+          const current = parseFloat(rows[i].children[1].textContent);
+          const next = parseFloat(rows[i + 1].children[1].textContent);
+          if (current > next) {
+            rows[i].classList.add("bg-green-600", "text-white");
+          } else if (current < next) {
+            rows[i].classList.add("bg-red-600", "text-white");
+          }
+        }
+      });
+    </script>
+ 
+
+  <!-- Best Trading Pairs -->
+  <div class="flex-1 bg-black/40 backdrop-blur-md text-white rounded-xl p-4 h-[300px] overflow-y-auto border-2 border-emerald-400 transition duration-300 hover:shadow-[0_0_25px_5px_rgba(52,211,153,0.7)] hover:bump">
+    <h2 class="text-lg font-semibold mb-2 text-white-300">Best Trading Pairs</h2>
+    <ul class="text-sm space-y-2">
+      <li class="flex justify-between"><span>BTC/USDT:USDT</span><span class="text-white-300">$125.28</span></li>
+      <li class="flex justify-between"><span>AVAX/USDT:USDT</span><span class="text-white-300">$57.68</span></li>
+      <li class="flex justify-between"><span>LINK/USDT:USDT</span><span class="text-white-300">$39.69</span></li>
+      <li class="flex justify-between"><span>HYPE/USDT:USDT</span><span class="text-white-300">$38.25</span></li>
+      <li class="flex justify-between"><span>ICP/USDT:USDT</span><span class="text-white-300">$24.82</span></li>
+    </ul>
+  </div>
+
+</div>
+<!-- Active Positions (full-width) -->
+<div class="flex-1 bg-black/40 backdrop-blur-md text-white rounded-xl p-4 h-[300px] overflow-y-auto border-2 border-emerald-400 transition duration-300 hover:shadow-[0_0_25px_5px_rgba(52,211,153,0.7)] hover:bump">
+  <h2 class="text-lg font-semibold mb-4 text-white-300 drop-shadow">Active Positions</h2>
+  <table class="min-w-full table-auto text-sm text-left text-white">
+    <thead class="bg-gray-800 text-white-200 font-semibold">
+      <tr>
+        <th class="p-2">ID</th>
+        <th class="p-2">Symbol</th>
+        <th class="p-2">Side</th>
+        <th class="p-2">Amount</th>
+        <th class="p-2">Order Value</th>
+        <th class="p-2">Open Price</th>
+        <th class="p-2">Status</th>
+        <th class="p-2">Open Date</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-700">
+      <tr>
+        <td class="p-2"><span class="bg-red-600 text-white px-2 py-1 rounded">2S</span></td>
+        <td class="p-2">XMR/USDT:USDT</td>
+        <td class="p-2"><span class="bg-red-600 text-white px-2 py-1 rounded">Short</span></td>
+        <td class="p-2">0.0800</td>
+        <td class="p-2">0.0000</td>
+        <td class="p-2">328.8800</td>
+        <td class="p-2 text-green-400">Open</td>
+        <td class="p-2">03/25/2025</td>
+      </tr>
+      <tr>
+        <td class="p-2"><span class="bg-green-600 text-white px-2 py-1 rounded">1L</span></td>
+        <td class="p-2">UNI/USDT:USDT</td>
+        <td class="p-2"><span class="bg-green-600 text-white px-2 py-1 rounded">Long</span></td>
+        <td class="p-2">2.7000</td>
+        <td class="p-2">0.0000</td>
+        <td class="p-2">10.5086</td>
+        <td class="p-2 text-green-400">Open</td>
+        <td class="p-2">05/13/2025</td>
+      </tr>
+      <tr>
+        <td class="p-2"><span class="bg-green-600 text-white px-2 py-1 rounded">1L</span></td>
+        <td class="p-2">AVAX/USDT:USDT</td>
+        <td class="p-2"><span class="bg-green-600 text-white px-2 py-1 rounded">Long</span></td>
+        <td class="p-2">1.1000</td>
+        <td class="p-2">0.0000</td>
+        <td class="p-2">25.9260</td>
+        <td class="p-2 text-green-400">Open</td>
+        <td class="p-2">06/07/2023</td>
+      </tr>
+      <tr>
+        <td class="p-2"><span class="bg-red-600 text-white px-2 py-1 rounded">2S</span></td>
+        <td class="p-2">1000PEPE/USDT:USDT</td>
+        <td class="p-2"><span class="bg-red-600 text-white px-2 py-1 rounded">Short</span></td>
+        <td class="p-2">2100.0000</td>
+        <td class="p-2">0.0000</td>
+        <td class="p-2">0.0130</td>
+        <td class="p-2 text-green-400">Open</td>
+        <td class="p-2">06/07/2023</td>
+      </tr>
+      <tr>
+        <td class="p-2"><span class="bg-green-600 text-white px-2 py-1 rounded">1L</span></td>
+        <td class="p-2">XRP/USDT:USDT</td>
+        <td class="p-2"><span class="bg-green-600 text-white px-2 py-1 rounded">Long</span></td>
+        <td class="p-2">10.0000</td>
+        <td class="p-2">0.0000</td>
+        <td class="p-2">3.4871</td>
+        <td class="p-2 text-green-400">Open</td>
+        <td class="p-2">06/07/2023</td>
+      </tr>
+      <tr>
+        <td class="p-2"><span class="bg-red-600 text-white px-2 py-1 rounded">2S</span></td>
+        <td class="p-2">SOL/USDT:USDT</td>
+        <td class="p-2"><span class="bg-red-600 text-white px-2 py-1 rounded">Short</span></td>
+        <td class="p-2">0.1000</td>
+        <td class="p-2">0.0000</td>
+        <td class="p-2">187.6700</td>
+        <td class="p-2 text-green-400">Open</td>
+        <td class="p-2">06/07/2023</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- View All Positions Button -->
+<div class="flex justify-center mt-4">
+  <a href="F:/crypto-dashboard-prototype/crypto-dashboard-prototype/admin/positions.html">
+    <button class="bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2 px-6 rounded shadow border border-blue-200 shadow-blue-500/50 hover:shadow-[0_0_15px_6px_rgba(59,130,246,0.7)] transition-shadow duration-300 hover:bump">
+      View All Positions
+    </button>
+  </a>
+</div>
+
+<!-- Chart.js Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  // Prepare Balance Data
+  const balanceData = [1000, 1075, 1120, 1060, 1220, 1300];
+  const balancePointColors = balanceData.map((val, i) => {
+    if (i === 0) return 'white';
+    return val >= balanceData[i - 1] ? 'green' : 'red';
+  });
+
+  // Balance Chart
+  const balanceCtx = document.getElementById('balanceChart').getContext('2d');
+new Chart(balanceCtx, {
+  type: 'line',
+  data: {
+    labels: ['Jul 1', 'Jul 5', 'Jul 10', 'Jul 15', 'Jul 20', 'Jul 25'],
+    datasets: [{
+      label: 'Balance',
+      data: balanceData,
+      fill: true,
+      backgroundColor: 'rgba(59,130,246,0.1)',
+      borderColor: 'rgba(59,130,246,1)',
+      borderWidth: 2,
+      tension: 0.4,
+      pointBackgroundColor: balancePointColors,
+      pointRadius: 5,
+      pointHoverRadius: 6
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+      y: {
+        beginAtZero: false,
+        ticks: {
+          callback: value => `$${value}`,
+          color: '#ffffff'  // 🟩 White Y-axis ticks
+        },
+        grid: {
+          color: 'rgba(255,255,255,0.05)' // subtle grid lines for dark mode
+        }
+      },
+      x: {
+        ticks: {
+          color: '#ffffff'  // 🟩 White X-axis ticks
+        },
+        grid: {
+          color: 'rgba(255,255,255,0.05)' // subtle grid lines
+        }
+      }
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: ctx => `$${ctx.parsed.y}`
+        },
+        bodyColor: '#ffffff',  // Tooltip text white
+        titleColor: '#ffffff'  // Tooltip title white
+      }
+    }
+  }
+});
+
+
+  // Prepare Revenue Data
+  const revenueData = [120, 85, 140, 105];
+  const revenueBarColors = revenueData.map((val, i) => {
+    if (i === 0) return 'rgba(34,197,94,1)';
+    return val >= revenueData[i - 1]
+      ? 'rgba(34,197,94,1)'  // green
+      : 'rgba(239,68,68,1)'; // red
+  });
+
+  // Weekly Revenue Chart
+  const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+new Chart(revenueCtx, {
+  type: 'bar',
+  data: {
+    labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+    datasets: [{
+      data: revenueData,
+      backgroundColor: revenueBarColors,
+      borderColor: revenueBarColors.map(color => color.replace('0.6', '1')),
+      borderWidth: 1
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false  // 🚫 Hides "Weekly Profit" label completely
+      },
+      tooltip: {
+        bodyColor: '#ffffff',
+        titleColor: '#ffffff'
+      }
+    },
+    scales: {
+      x: {
+        ticks: {
+          color: '#ffffff'
+        },
+        grid: {
+          color: 'rgba(255,255,255,0.05)'
+        }
+      },
+      y: {
+        ticks: {
+          color: '#ffffff'
+        },
+        grid: {
+          color: 'rgba(255,255,255,0.05)'
+        }
+      }
+    }
+  }
+});
+  const audio = document.getElementById("hover-sound");
+
+    // User must click at least once to allow sound (browser rule)
+    document.body.addEventListener('click', () => {
+      audio.play().then(() => {
+        audio.pause();
+        audio.currentTime = 0;
+      }).catch(e => console.log('Interaction required for audio'));
+    }, { once: true });
+
+    function playSound() {
+      if (audio) {
+        audio.currentTime = 0;
+        audio.play().catch(() => {});
+      }
+    }
+
+    // Apply to all hover targets
+    const targets = document.querySelectorAll("button, a, tr");
+    targets.forEach(el => {
+      el.addEventListener("mouseenter", playSound);
+    });
+
+</script>
+
+</body>
+</html>
+
+
+
+
+
+
+
+

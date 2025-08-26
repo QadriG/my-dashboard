@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en" class="bg-black text-white">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Crystal Login</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+    }
+    .bg-video {
+      position: fixed;
+      top: 0;
+      left: 0;
+      min-width: 100vw;
+      min-height: 100vh;
+      object-fit: cover;
+      z-index: -3;
+      filter: blur(8px) brightness(0.9);
+    }
+    .glass-box {
+      backdrop-filter: blur(16px) saturate(180%);
+      -webkit-backdrop-filter: blur(16px) saturate(180%);
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 0 25px rgba(255, 255, 255, 0.3);
+    }
+    .neon-glow {
+      box-shadow: 0 0 40px 10px rgba(255, 255, 255, 0.4);
+    }
+    .page-glow::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      box-shadow:
+        inset 0 0 80px rgba(255, 255, 255, 0.3),
+        0 0 80px rgba(255, 255, 255, 0.3);
+      z-index: -1;
+    }
+    .input-field::placeholder {
+      color: #ccc;
+    }
+    .neon-button {
+      border: 1px solid white;
+      transition: all 0.3s ease;
+    }
+    .neon-button:hover {
+      box-shadow: 0 0 12px white, 0 0 20px white;
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Slide + Fade Animations */
+    .form-transition {
+      opacity: 0;
+      position: absolute;
+      width: 100%;
+      transition: opacity 0.5s ease, transform 0.5s ease;
+      transform: translateX(100%);
+      pointer-events: none;
+    }
+    .form-transition.active {
+      opacity: 1;
+      transform: translateX(0);
+      position: relative;
+      pointer-events: auto;
+    }
+    .slide-left {
+      transform: translateX(-100%);
+    }
+    .slide-right {
+      transform: translateX(100%);
+    }
+  </style>
+</head>
+<body class="flex items-center justify-center page-glow">
+
+  <!-- Background Video -->
+  <video autoplay muted loop class="bg-video">
+    <source src="assets/bg.mp4" type="video/mp4" />
+    Your browser does not support the video tag.
+  </video>
+
+  <!-- Login Interface Container -->
+  <div class="glass-box neon-glow p-8 w-full max-w-sm mx-auto text-center relative" id="form-container" style="min-height: 420px;">
+    
+    <!-- Login Form -->
+    <div id="login-form" class="form-transition active">
+      <h2 class="text-2xl font-bold mb-6">Sign In to QuantumCopyTrading.com</h2>
+      <form>
+        <input type="text" placeholder="Username or Email"
+  class="input-field w-full mb-8 px-4 py-3 rounded-lg bg-white bg-opacity-10 text-white placeholder-white focus:outline-none border border-white" />
+
+<input type="password" placeholder="Password"
+  class="input-field w-full mb-6 px-4 py-3 rounded-lg bg-white bg-opacity-10 text-white placeholder-white focus:outline-none border border-white" />
+
+        <button type="submit" class="neon-button w-full py-3 text-white font-semibold rounded-lg">Sign In</button>
+      </form>
+      <div class="mt-4 text-sm">
+        <a href="#" onclick="showForm('forgot')" class="text-white hover:underline">Forgot Password?</a>
+      </div>
+      <div class="mt-2 text-sm">
+        Don't have an account? <a href="#" onclick="showForm('signup')" class="text-white underline">Sign Up</a>
+      </div>
+    </div>
+
+    <!-- Signup Form -->
+    <div id="signup-form" class="form-transition">
+      <h2 class="text-2xl font-bold mb-6">Create an Account</h2>
+      <form>
+        <input type="text" placeholder="Username" class="input-field w-full mb-4 px-4 py-3 rounded-lg bg-white bg-opacity-10 text-white placeholder-white focus:outline-none" />
+        <input type="email" placeholder="Email" class="input-field w-full mb-4 px-4 py-3 rounded-lg bg-white bg-opacity-10 text-white placeholder-white focus:outline-none" />
+        <input type="password" placeholder="Password" class="input-field w-full mb-4 px-4 py-3 rounded-lg bg-white bg-opacity-10 text-white placeholder-white focus:outline-none" />
+        <input type="password" placeholder="Confirm Password" class="input-field w-full mb-6 px-4 py-3 rounded-lg bg-white bg-opacity-10 text-white placeholder-white focus:outline-none" />
+        <button type="submit" class="neon-button w-full py-3 text-white font-semibold rounded-lg">Sign Up</button>
+      </form>
+      <div class="mt-4 text-sm">
+        Already have an account? <a href="#" onclick="showForm('login')" class="text-white underline">Back to Login</a>
+      </div>
+    </div>
+
+    <!-- Forgot Password Form -->
+    <div id="forgot-form" class="form-transition">
+      <h2 class="text-2xl font-bold mb-6">Reset Password</h2>
+      <form>
+        <input type="email" placeholder="Enter your email" class="input-field w-full mb-6 px-4 py-3 rounded-lg bg-white bg-opacity-10 text-white placeholder-white focus:outline-none" />
+        <button type="submit" class="neon-button w-full py-3 text-white font-semibold rounded-lg">Send Reset Link</button>
+      </form>
+      <div class="mt-4 text-sm">
+        Remembered your password? <a href="#" onclick="showForm('login')" class="text-white underline">Back to Login</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toggle Logic with Fade + Slide -->
+  <script>
+    let currentForm = 'login';
+
+    function showForm(target) {
+      if (target === currentForm) return;
+
+      const current = document.getElementById(`${currentForm}-form`);
+      const next = document.getElementById(`${target}-form`);
+
+      // Prepare current form to slide out
+      current.classList.remove('active');
+      current.classList.add(target === 'login' && currentForm === 'signup' ? 'slide-right' : 'slide-left');
+
+      // Prepare next form to slide in
+      next.classList.remove('slide-left', 'slide-right');
+      next.classList.add('active');
+
+      // Update current form tracker
+      currentForm = target;
+    }
+  </script>
+
+</body>
+</html>

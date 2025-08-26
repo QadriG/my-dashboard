@@ -97,11 +97,11 @@ export default function Dashboard() {
     profit: <Profit />,
     upl: <UPL />,
     fundsDistribution: <FundsDistribution />,
-    balanceGraph: <BalanceGraph />,
-    weeklyRevenue: <WeeklyRevenue />,
-    dailyPnL: <DailyPnL />,
-    bestTradingPairs: <BestTradingPairs />,
-    openPositions: <OpenPositions />,
+    balanceGraph: React.cloneElement(<BalanceGraph />, { isDarkMode }), // Pass isDarkMode like user dashboard
+    weeklyRevenue: React.cloneElement(<WeeklyRevenue />, { isDarkMode }), // Pass isDarkMode
+    dailyPnL: React.cloneElement(<DailyPnL />, { isDarkMode }),
+    bestTradingPairs: React.cloneElement(<BestTradingPairs />, { isDarkMode }),
+    openPositions: React.cloneElement(<OpenPositions />, { isDarkMode }),
   };
 
   // Force desktop dimensions
@@ -167,7 +167,7 @@ export default function Dashboard() {
         <ul>
           {[
             { label: "Dashboard", className: "sidebar-cyan" },
-            { label: "Settings", className: "sidebar-purple" },
+            { label: "Settings", className: "sidebar-purple", path: "/settings" }, // ✅ Added path
             { label: "API Details", className: "sidebar-green" },
             { label: "Positions", className: "sidebar-yellow" },
             { label: "Users", className: "sidebar-users" },
@@ -180,7 +180,11 @@ export default function Dashboard() {
                 href="#"
                 onClick={(e) => {
                   e.preventDefault();
-                  if (btn.action) btn.action();
+                  if (btn.action) {
+                    btn.action();
+                  } else if (btn.path) {
+                    navigate(btn.path); // ✅ Navigate if path exists
+                  }
                 }}
                 onMouseEnter={playHoverSound}
                 className={`sidebar-button ${btn.className}`}
@@ -204,7 +208,10 @@ export default function Dashboard() {
       >
         {/* Title Bar with Toggle Button */}
         <div className="shimmer-wrapper w-full py-4 px-6 mb-6" style={{ position: "relative" }}>
-          <h1 className="text-4xl font-semibold drop-shadow-md inline-block" style={{ color: isDarkMode ? "#fff" : "#000" }}>
+          <h1
+            className="text-4xl font-semibold drop-shadow-md inline-block"
+            style={{ color: isDarkMode ? "#fff" : "#000" }}
+          >
             Dashboard
           </h1>
           <button
@@ -228,16 +235,32 @@ export default function Dashboard() {
         {/* First row: Extra cards for admin */}
         {!isMobile && (
           <div className="grid grid-cols-4 gap-7 max-lg:grid-cols-2 max-sm:grid-cols-1 mb-6">
-            <div className="dashboard-column dashboard-column-cyan" onClick={() => handleCardClick("activeUsers")}>
+            <div
+              className="dashboard-column dashboard-column-cyan"
+              onClick={() => handleCardClick("activeUsers")}
+              style={{ color: isDarkMode ? "#fff" : "#000" }}
+            >
               {cards.activeUsers}
             </div>
-            <div className="dashboard-column dashboard-column-purple" onClick={() => handleCardClick("activeExchange")}>
+            <div
+              className="dashboard-column dashboard-column-purple"
+              onClick={() => handleCardClick("activeExchange")}
+              style={{ color: isDarkMode ? "#fff" : "#000" }}
+            >
               {cards.activeExchange}
             </div>
-            <div className="dashboard-column dashboard-column-green" onClick={() => handleCardClick("activePositions")}>
+            <div
+              className="dashboard-column dashboard-column-green"
+              onClick={() => handleCardClick("activePositions")}
+              style={{ color: isDarkMode ? "#fff" : "#000" }}
+            >
               {cards.activePositions}
             </div>
-            <div className="dashboard-column dashboard-column-teal" onClick={() => handleCardClick("totalBalances")}>
+            <div
+              className="dashboard-column dashboard-column-teal"
+              onClick={() => handleCardClick("totalBalances")}
+              style={{ color: isDarkMode ? "#fff" : "#000" }}
+            >
               {cards.totalBalances}
             </div>
           </div>
@@ -245,13 +268,25 @@ export default function Dashboard() {
 
         {/* Second row */}
         <div className="grid grid-cols-3 gap-7 max-lg:grid-cols-1">
-          <div className="dashboard-column dashboard-column-cyan" onClick={() => handleCardClick("profit")}>
+          <div
+            className="dashboard-column dashboard-column-cyan"
+            onClick={() => handleCardClick("profit")}
+            style={{ color: isDarkMode ? "#fff" : "#000" }}
+          >
             {cards.profit}
           </div>
-          <div className="dashboard-column dashboard-column-purple" onClick={() => handleCardClick("upl")}>
+          <div
+            className="dashboard-column dashboard-column-purple"
+            onClick={() => handleCardClick("upl")}
+            style={{ color: isDarkMode ? "#fff" : "#000" }}
+          >
             {cards.upl}
           </div>
-          <div className="dashboard-column dashboard-column-green" onClick={() => handleCardClick("fundsDistribution")}>
+          <div
+            className="dashboard-column dashboard-column-green"
+            onClick={() => handleCardClick("fundsDistribution")}
+            style={{ color: isDarkMode ? "#fff" : "#000" }}
+          >
             {cards.fundsDistribution}
           </div>
         </div>
@@ -261,12 +296,20 @@ export default function Dashboard() {
           <div
             className="dashboard-column dashboard-column-cyan balance-graph w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden"
             onClick={() => handleCardClick("balanceGraph")}
+            style={{
+              color: isDarkMode ? "#fff" : "#000",
+              "--chart-text-color": isDarkMode ? "#fff" : "#000",
+            }}
           >
             {cards.balanceGraph}
           </div>
           <div
             className="dashboard-column dashboard-column-purple weekly-revenue w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden"
             onClick={() => handleCardClick("weeklyRevenue")}
+            style={{
+              color: isDarkMode ? "#fff" : "#000",
+              "--chart-text-color": isDarkMode ? "#fff" : "#000",
+            }}
           >
             {cards.weeklyRevenue}
           </div>
@@ -274,17 +317,29 @@ export default function Dashboard() {
 
         {/* Fourth row */}
         <div className="grid grid-cols-2 gap-7 mt-8 max-sm:grid-cols-1">
-          <div className="dashboard-column dashboard-column-cyan" onClick={() => handleCardClick("dailyPnL")}>
+          <div
+            className="dashboard-column dashboard-column-cyan"
+            onClick={() => handleCardClick("dailyPnL")}
+            style={{ color: isDarkMode ? "#fff" : "#000" }}
+          >
             {cards.dailyPnL}
           </div>
-          <div className="dashboard-column dashboard-column-purple" onClick={() => handleCardClick("bestTradingPairs")}>
+          <div
+            className="dashboard-column dashboard-column-purple"
+            onClick={() => handleCardClick("bestTradingPairs")}
+            style={{ color: isDarkMode ? "#fff" : "#000" }}
+          >
             {cards.bestTradingPairs}
           </div>
         </div>
 
         {/* Fifth row */}
         <div className="mt-8">
-          <div className="dashboard-column dashboard-column-green" onClick={() => handleCardClick("openPositions")}>
+          <div
+            className="dashboard-column dashboard-column-green"
+            onClick={() => handleCardClick("openPositions")}
+            style={{ color: isDarkMode ? "#fff" : "#000" }}
+          >
             {cards.openPositions}
           </div>
         </div>
@@ -292,7 +347,10 @@ export default function Dashboard() {
         {/* CTA: View All Positions */}
         <div className="flex justify-center mt-6 mb-10">
           <a href="/admin/positions">
-            <button className="dashboard-column dashboard-column-cyan p-6 text-center" style={{ color: isDarkMode ? "#fff" : "#000" }}>
+            <button
+              className="dashboard-column dashboard-column-cyan p-6 text-center"
+              style={{ color: isDarkMode ? "#fff" : "#000" }}
+            >
               View All Positions
             </button>
           </a>

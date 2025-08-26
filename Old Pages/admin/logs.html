@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en" class="bg-black text-white">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuantumCopyTrading</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    /* Shimmer for hover on buttons and sections */
+    @keyframes shimmer-hover {
+      0% { background-position: -500px 0; }
+      100% { background-position: 500px 0; }
+    }
+
+    .hover\:animate-shimmer:hover {
+      background-image: linear-gradient(
+        110deg,
+        rgba(255,255,255,0.05) 0%,
+        rgba(255,255,255,0.2) 20%,
+        rgba(255,255,255,0.05) 40%,
+        rgba(255,255,255,0.0) 100%
+      );
+      background-size: 1000px 100%;
+      animation: shimmer-hover 1.5s infinite linear;
+    }
+
+    /* Shimmer Bar Background Animation */
+    @keyframes shimmer-bar {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .shimmer-wrapper {
+      position: relative;
+      overflow: hidden;
+      background-image: linear-gradient(to right, #1e293b, #334155, #1e293b);
+      border: 2px solid #00ffff;
+      border-radius: 0.75rem;
+      box-shadow:
+        inset 4px 4px 8px rgba(255,255,255,.08),
+        inset -4px -4px 8px rgba(0,0,0,.45),
+        0 0 25px rgba(0,255,255,.35);
+    }
+
+    .shimmer-wrapper::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -150%;
+      width: 150%;
+      height: 100%;
+      background: linear-gradient(
+        120deg,
+        transparent,
+        rgba(255,255,255,0.25),
+        transparent
+      );
+      animation: shimmer-bar 2s infinite linear;
+      pointer-events: none;
+    }
+ .sidebar-button {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .sidebar-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -150%;
+    height: 100%;
+    width: 150%;
+    background: linear-gradient(
+      120deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.2) 50%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    transform: skewX(-20deg);
+    transition: left 0.5s;
+  }
+
+  .sidebar-button:hover::before {
+    left: 100%;
+    transition: left 0.5s;
+  }
+
+    .neon-box {
+      border: 2px solid #00ffff;
+      box-shadow: 0 0 15px #00ffff;
+      border-radius: 1rem;
+      background-color: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(6px);
+    }
+
+    .neon-border {
+      border: 2px solid #00ffff;
+      box-shadow: 0 0 10px #00ffff;
+      border-radius: 0.5rem;
+    }
+
+    .toggle-container {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      z-index: 50;
+    }
+
+    .dark .text-black { color: white !important; }
+    .dark .bg-white { background-color: #1f2937 !important; }
+    .dark .bg-gray-200 { background-color: #374151 !important; }
+  </style>
+<style>
+  /* Bounce / Spring (4D bump) effect */
+  .hover\:bump:hover {
+    transform: translateY(-4px) scale(1.05);
+    transition: all 0.2s ease-out;
+  }
+
+  .sidebar-button {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .sidebar-button:hover {
+    transform: translateY(-4px) scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 255, 255, 0.4);
+  }
+</style>
+</head>
+
+<body class="font-sans relative text-white">
+
+  <audio id="hover-sound" preload="auto">
+    <source src="assets/click.mp3" type="audio/mpeg">
+  </audio>
+  
+  <!-- 🌌 Background Video -->
+  <video autoplay muted loop playsinline class="fixed top-0 left-0 w-full h-full object-cover z-[-10] brightness-90 blur-sm">
+    <source src="assets\bg.mp4" type="video/mp4" />
+    Your browser does not support the video tag.
+  </video>
+
+  <!-- Optional Dark Overlay (for contrast) -->
+  <div class="fixed top-0 left-0 w-full h-full bg-black opacity-40 z-[-9]"></div>
+
+  <!-- 📦 Main Content -->
+  <div class="relative z-10">
+<audio id="hoverSound" src="assets/click.mp3" preload="auto"></audio>
+
+<!-- Sidebar -->
+<div class="fixed left-0 top-0 h-full w-64 bg-black/70 text-white p-4 z-50 rounded-r-xl border-r-4 border-cyan-400 shadow-[0_0_15px_#22d3ee]">
+  <h2 class="text-xl font-bold mb-6 text-cyan-300 drop-shadow-md">QuantumCopyTrading</h2>
+  <nav class="flex flex-col space-y-3">
+
+ <!-- Cyan - Dashboard -->
+<a href="dashboard.html" class="sidebar-button px-4 py-2 rounded bg-gray-900 text-white border border-cyan-400 
+          shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_4px_6px_rgba(0,0,0,0.4)] 
+	  hover:shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_0_20px_5px_rgba(34,211,238,0.8)] 
+          transition-all duration-300 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 hover:bump onmouseenter="playHoverSound()"">
+Dashboard
+</a>
+
+
+<!-- Purple - Settings -->
+<a href="settings.html"
+   class="sidebar-button px-4 py-2 rounded bg-gray-900 text-white border border-purple-400 
+          shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_4px_6px_rgba(0,0,0,0.4)] 
+          hover:shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_0_20px_5px_rgba(192,132,252,0.8)] 
+          transition-all duration-300 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 hover:bump">
+  Settings
+</a>
+
+
+<!-- Green - Api -->
+<a href="api.html"
+   class="sidebar-button px-4 py-2 rounded bg-gray-900 text-white border border-green-400 
+          shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_4px_6px_rgba(0,0,0,0.4)] 
+          hover:shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_0_20px_5px_rgba(74,222,128,0.8)] 
+          transition-all duration-300 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 hover:bump">
+  API Details
+</a>
+
+<!-- Yellow - Positions -->
+<a href="positions.html"
+   class="sidebar-button px-4 py-2 rounded bg-gray-900 text-white border border-yellow-300 
+          shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_4px_6px_rgba(0,0,0,0.4)] 
+          hover:shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_0_20px_5px_rgba(253,224,71,0.8)] 
+          transition-all duration-300 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 hover:bump">
+  Positions
+</a>
+
+<!-- Pink - Users -->
+<a href="users.html"
+   class="sidebar-button px-4 py-2 rounded bg-gray-900 text-white border border-pink-400 
+          shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_4px_6px_rgba(0,0,0,0.4)] 
+          hover:shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_0_20px_5px_rgba(244,114,182,0.8)] 
+          transition-all duration-300 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 hover:bump">
+  Users
+</a>
+
+<!-- Pink - Logs -->
+<a href="logs.html"
+   class="sidebar-button px-4 py-2 rounded bg-gray-900 text-white border border-pink-400 
+          shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_4px_6px_rgba(0,0,0,0.4)] 
+          hover:shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_0_20px_5px_rgba(244,114,182,0.8)] 
+          transition-all duration-300 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 hover:bump">
+  Logs
+</a>
+
+<!-- Pink - Manual Push -->
+<a href="manual.html"
+   class="sidebar-button px-4 py-2 rounded bg-gray-900 text-white border border-pink-400 
+          shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_4px_6px_rgba(0,0,0,0.4)] 
+          hover:shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_0_20px_5px_rgba(244,114,182,0.8)] 
+          transition-all duration-300 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 hover:bump">
+  Manual Push
+</a>
+
+<!-- Red - Logout -->
+<a href="logout.html"
+   class="sidebar-button px-4 py-2 rounded bg-gray-900 text-white border border-red-500 
+          shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_4px_6px_rgba(0,0,0,0.4)] 
+          hover:shadow-[inset_2px_2px_5px_rgba(255,255,255,0.1),inset_-2px_-2px_5px_rgba(0,0,0,0.6),0_0_20px_5px_rgba(239,68,68,0.8)] 
+          transition-all duration-300 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-600 hover:bump">
+  Logout
+</a>
+
+
+  </nav>
+</div>
+
+
+
+   <!-- Dashboard Content -->
+    <main class="ml-64 flex-1 p-8 overflow-y-auto animate-fade-in space-y-10 bg-gray text-white">
+      <div class="shimmer-wrapper w-full py-4 px-6 mb-6">
+  <h1 class="text-3xl font-semibold drop-shadow-md">Logs</h1>
+</div>
+
+
+    <!-- Filters Row -->
+<div class="grid grid-cols-4 gap-4 mb-4 w-full">
+  <!-- User Dropdown -->
+  <select id="userFilter"
+    class="w-full p-2 bg-white/100 backdrop-blur-xl text-black border border-cyan-400 rounded-xl shadow-md shadow-cyan-500/30 hover:shadow-cyan-400 focus:outline-none transition duration-300">
+    <option>All</option>
+    <option>970 - Joseph</option>
+    <option>969 - haidangnguyenvi@gmail.com</option>
+    <option>968 - hashim</option>
+  </select>
+
+  <!-- TV ID Dropdown -->
+  <select id="tvIdFilter"
+    class="w-full p-2 bg-white/100 backdrop-blur-xl text-black border border-cyan-400 rounded-xl shadow-md shadow-cyan-500/30 hover:shadow-cyan-400 focus:outline-none transition duration-300">
+    <option>All TV IDS</option>
+    <option>7L</option>
+  </select>
+
+  <!-- Exchange Dropdown -->
+  <select id="exchangeFilter"
+    class="w-full p-2 bg-white/100 backdrop-blur-xl text-black border border-cyan-400 rounded-xl shadow-md shadow-cyan-500/30 hover:shadow-cyan-400 focus:outline-none transition duration-300">
+    <option>All Exchanges</option>
+    <option>bybit</option>
+    <option>binance</option>
+  </select>
+
+  <!-- Date Filter -->
+  <input type="date" id="dateFilter"
+    class="w-full p-2 bg-white/010 backdrop-blur-xl text-black border border-cyan-400 rounded-xl shadow-md shadow-cyan-500/30 hover:shadow-cyan-400 focus:outline-none transition duration-300" />
+</div>
+
+
+<!-- Logs Table -->
+<div class="overflow-x-auto">
+  <table
+    class="
+      min-w-full
+      table-auto
+      bg-black/40
+      backdrop-blur-md
+      border
+      border-cyan-400
+      rounded-xl
+      transition-shadow duration-300
+      shadow-[0_0_10px_5px_rgba(0,255,255,0.3)]
+      hover:shadow-[0_0_20px_10px_rgba(0,255,255,0.7)]
+    ">
+    <thead class="bg-white/10 text-white uppercase text-sm">
+      <tr>
+        <th class="px-4 py-3 text-left">User</th>
+        <th class="px-4 py-3 text-left">TV ID</th>
+        <th class="px-4 py-3 text-left">Exchange</th>
+        <th class="px-4 py-3 text-left">Symbol</th>
+        <th class="px-4 py-3 text-left">Request</th>
+        <th class="px-4 py-3 text-left">Log</th>
+        <th class="px-4 py-3 text-left">Created At</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr
+        class="
+          hover:shadow-[0_0_15px_8px_rgba(0,255,255,0.6)]
+          hover:bg-white/5
+          transition-all duration-300
+        ">
+        <td class="px-4 py-2">970 – Joseph</td>
+        <td class="px-4 py-2">7L</td>
+        <td class="px-4 py-2">bybit</td>
+        <td class="px-4 py-2">ETH/USDT:USDT</td>
+        <td class="px-4 py-2 text-xs break-words">
+          {"url":"/webhook","request":"{'id':'7L','exchange':'bybit','action':'buy','market_position':'long','symbol':'ETH/USDT:USDT','qty':'10','tp':5,'sl':10}"}
+        </td>
+        <td class="px-4 py-2 text-red-500 font-semibold">'No Exchanges exist'</td>
+        <td class="px-4 py-2">05:01:09 7/27/2025</td>
+      </tr>
+      <tr
+        class="
+          hover:shadow-[0_0_15px_8px_rgba(0,255,255,0.6)]
+          hover:bg-white/5
+          transition-all duration-300
+        ">
+        <td class="px-4 py-2">969 – haidangnguyenvi@gmail.com</td>
+        <td class="px-4 py-2">7L</td>
+        <td class="px-4 py-2">bybit</td>
+        <td class="px-4 py-2">ETH/USDT:USDT</td>
+        <td class="px-4 py-2 text-xs break-words">
+          {"url":"/webhook","request":"{'id':'7L','exchange':'bybit','action':'buy','market_position':'long','symbol':'ETH/USDT:USDT','qty':'10','tp':5,'sl':10}"}
+        </td>
+        <td class="px-4 py-2 text-red-500 font-semibold">'No Exchanges exist'</td>
+        <td class="px-4 py-2">05:01:09 7/27/2025</td>
+      </tr>
+      <tr
+        class="
+          hover:shadow-[0_0_15px_8px_rgba(0,255,255,0.6)]
+          hover:bg-white/5
+          transition-all duration-300
+        ">
+        <td class="px-4 py-2">968 – hashim</td>
+        <td class="px-4 py-2">7L</td>
+        <td class="px-4 py-2">bybit</td>
+        <td class="px-4 py-2">ETH/USDT:USDT</td>
+        <td class="px-4 py-2 text-xs break-words">
+          {"url":"/webhook","request":"{'id':'7L','exchange':'bybit','action':'buy','market_position':'long','symbol':'ETH/USDT:USDT','qty':'10','tp':5,'sl':10}"}
+        </td>
+        <td class="px-4 py-2 text-red-500 font-semibold">'last'</td>
+        <td class="px-4 py-2">05:01:09 7/27/2025</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+  </div>
+</body>
+</html>
