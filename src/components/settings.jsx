@@ -1,4 +1,5 @@
 import React, { useRef, useEffect } from "react";
+import "./../styles/globals.css";
 
 export default function Settings() {
   const audioRef = useRef(null);
@@ -24,16 +25,13 @@ export default function Settings() {
   }, []);
 
   return (
-    <div className="relative z-10">
+    <div className="bg-black text-white min-h-screen">
       <audio ref={audioRef} id="hover-sound" preload="auto">
         <source src="/assets/click.mp3" type="audio/mpeg" />
       </audio>
 
-      {/* Dark Overlay (kept for background contrast) */}
-      <div className="fixed top-0 left-0 w-full h-full bg-black opacity-40 z-[-9]"></div>
-
-      {/* Main Content */}
-      <main className="ml-64 flex-1 p-8 overflow-y-auto animate-fade-in space-y-10 bg-gray text-white">
+      {/* Main Content (assumes sidebar is handled by parent) */}
+      <main className="ml-64 p-8 overflow-y-auto space-y-10">
         <div className="shimmer-wrapper w-full py-4 px-6 mb-6">
           <h1 className="text-3xl font-semibold drop-shadow-md">Settings</h1>
         </div>

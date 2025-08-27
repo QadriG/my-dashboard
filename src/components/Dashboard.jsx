@@ -1,10 +1,10 @@
 /* eslint no-undef: "off" */
 import React, { useRef, useEffect, useState } from "react";
-import { isMobile } from "react-device-detect"; // Added for consistency with user dashboard
+import { isMobile } from "react-device-detect"; 
 import { useNavigate } from "react-router-dom";
-import "../styles/sidebar.css";
 import "../styles/globals.css";
 import hoverSound from "../assets/click.mp3";
+import Layout from "./Layout";
 
 // ✅ Dashboard Components
 import ActiveUsers from "../components/ActiveUsers.jsx";
@@ -20,14 +20,35 @@ import DailyPnL from "../components/DailyPnL.jsx";
 import BestTradingPairs from "../components/BestTradingPairs.jsx";
 import OpenPositions from "../components/OpenPositions.jsx";
 
-export default function Dashboard() {
+export default function AdminDashboard() {
   const audioRef = useRef(null);
   const navigate = useNavigate();
 
-  const [sidebarOpen, setSidebarOpen] = useState(false); // mobile only, kept for consistency
-  const [expandedCard, setExpandedCard] = useState(null); // desktop modal
+  const [expandedCard, setExpandedCard] = useState(null);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [buttonText, setButtonText] = useState("Light Mode");
+
+  // ✅ Logout handler
+const handleLogout = async () => {
+  try {
+    await fetch("http://localhost:5000/api/auth/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+
+    // Clear all tokens/session
+    localStorage.clear();
+    sessionStorage.clear();
+
+    // Redirect & prevent back navigation
+    navigate("/login", { replace: true });
+
+    // Force UI refresh
+    window.location.reload();
+  } catch (err) {
+    console.error("Logout failed:", err);
+  }
+};
 
   // ✅ JWT check on mount
   useEffect(() => {
@@ -56,22 +77,6 @@ export default function Dashboard() {
     checkAuth();
   }, [navigate]);
 
-  // ✅ Handle Logout
-  const handleLogout = async () => {
-    try {
-      await fetch("http://localhost:5000/api/auth/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-
-      localStorage.clear();
-      sessionStorage.clear();
-      window.location.href = "/my-dashboard/login";
-    } catch (err) {
-      console.error("Logout failed:", err);
-    }
-  };
-
   // ✅ Prevent back navigation after logout
   useEffect(() => {
     const handlePopState = () => {
@@ -97,8 +102,8 @@ export default function Dashboard() {
     profit: <Profit />,
     upl: <UPL />,
     fundsDistribution: <FundsDistribution />,
-    balanceGraph: React.cloneElement(<BalanceGraph />, { isDarkMode }), // Pass isDarkMode like user dashboard
-    weeklyRevenue: React.cloneElement(<WeeklyRevenue />, { isDarkMode }), // Pass isDarkMode
+    balanceGraph: React.cloneElement(<BalanceGraph />, { isDarkMode }),
+    weeklyRevenue: React.cloneElement(<WeeklyRevenue />, { isDarkMode }),
     dailyPnL: React.cloneElement(<DailyPnL />, { isDarkMode }),
     bestTradingPairs: React.cloneElement(<BestTradingPairs />, { isDarkMode }),
     openPositions: React.cloneElement(<OpenPositions />, { isDarkMode }),
@@ -159,44 +164,7 @@ export default function Dashboard() {
         <source src={hoverSound} type="audio/mpeg" />
       </audio>
 
-      {/* Sidebar: Fixed and always open like user dashboard */}
-      <aside className="sidebar open bg-black/70 text-white" style={{ marginLeft: 0 }}>
-        <h2 className="text-xl font-bold mb-10 text-cyan-300 drop-shadow-md">
-          QuantumCopyTrading
-        </h2>
-        <ul>
-          {[
-            { label: "Dashboard", className: "sidebar-cyan" },
-            { label: "Settings", className: "sidebar-purple", path: "/settings" }, // ✅ Added path
-            { label: "API Details", className: "sidebar-green" },
-            { label: "Positions", className: "sidebar-yellow" },
-            { label: "Users", className: "sidebar-users" },
-            { label: "Logs", className: "sidebar-logs" },
-            { label: "Manual Push", className: "sidebar-manual-push" },
-            { label: "Logout", className: "sidebar-red", action: handleLogout },
-          ].map((btn, i) => (
-            <li key={i}>
-              <a
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (btn.action) {
-                    btn.action();
-                  } else if (btn.path) {
-                    navigate(btn.path); // ✅ Navigate if path exists
-                  }
-                }}
-                onMouseEnter={playHoverSound}
-                className={`sidebar-button ${btn.className}`}
-              >
-                {btn.label}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </aside>
-
-      {/* Main */}
+      {/* ✅ Main Dashboard Content (sidebar removed) */}
       <main
         className="relative z-20 p-6 overflow-y-auto md:ml-64"
         style={{
@@ -232,35 +200,19 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {/* First row: Extra cards for admin */}
+        {/* First row */}
         {!isMobile && (
           <div className="grid grid-cols-4 gap-7 max-lg:grid-cols-2 max-sm:grid-cols-1 mb-6">
-            <div
-              className="dashboard-column dashboard-column-cyan"
-              onClick={() => handleCardClick("activeUsers")}
-              style={{ color: isDarkMode ? "#fff" : "#000" }}
-            >
+            <div className="dashboard-column dashboard-column-cyan" onClick={() => handleCardClick("activeUsers")}>
               {cards.activeUsers}
             </div>
-            <div
-              className="dashboard-column dashboard-column-purple"
-              onClick={() => handleCardClick("activeExchange")}
-              style={{ color: isDarkMode ? "#fff" : "#000" }}
-            >
+            <div className="dashboard-column dashboard-column-purple" onClick={() => handleCardClick("activeExchange")}>
               {cards.activeExchange}
             </div>
-            <div
-              className="dashboard-column dashboard-column-green"
-              onClick={() => handleCardClick("activePositions")}
-              style={{ color: isDarkMode ? "#fff" : "#000" }}
-            >
+            <div className="dashboard-column dashboard-column-green" onClick={() => handleCardClick("activePositions")}>
               {cards.activePositions}
             </div>
-            <div
-              className="dashboard-column dashboard-column-teal"
-              onClick={() => handleCardClick("totalBalances")}
-              style={{ color: isDarkMode ? "#fff" : "#000" }}
-            >
+            <div className="dashboard-column dashboard-column-teal" onClick={() => handleCardClick("totalBalances")}>
               {cards.totalBalances}
             </div>
           </div>
@@ -268,25 +220,13 @@ export default function Dashboard() {
 
         {/* Second row */}
         <div className="grid grid-cols-3 gap-7 max-lg:grid-cols-1">
-          <div
-            className="dashboard-column dashboard-column-cyan"
-            onClick={() => handleCardClick("profit")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }}
-          >
+          <div className="dashboard-column dashboard-column-cyan" onClick={() => handleCardClick("profit")}>
             {cards.profit}
           </div>
-          <div
-            className="dashboard-column dashboard-column-purple"
-            onClick={() => handleCardClick("upl")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }}
-          >
+          <div className="dashboard-column dashboard-column-purple" onClick={() => handleCardClick("upl")}>
             {cards.upl}
           </div>
-          <div
-            className="dashboard-column dashboard-column-green"
-            onClick={() => handleCardClick("fundsDistribution")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }}
-          >
+          <div className="dashboard-column dashboard-column-green" onClick={() => handleCardClick("fundsDistribution")}>
             {cards.fundsDistribution}
           </div>
         </div>
@@ -296,20 +236,14 @@ export default function Dashboard() {
           <div
             className="dashboard-column dashboard-column-cyan balance-graph w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden"
             onClick={() => handleCardClick("balanceGraph")}
-            style={{
-              color: isDarkMode ? "#fff" : "#000",
-              "--chart-text-color": isDarkMode ? "#fff" : "#000",
-            }}
+            style={{ "--chart-text-color": isDarkMode ? "#fff" : "#000" }}
           >
             {cards.balanceGraph}
           </div>
           <div
             className="dashboard-column dashboard-column-purple weekly-revenue w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden"
             onClick={() => handleCardClick("weeklyRevenue")}
-            style={{
-              color: isDarkMode ? "#fff" : "#000",
-              "--chart-text-color": isDarkMode ? "#fff" : "#000",
-            }}
+            style={{ "--chart-text-color": isDarkMode ? "#fff" : "#000" }}
           >
             {cards.weeklyRevenue}
           </div>
@@ -317,47 +251,32 @@ export default function Dashboard() {
 
         {/* Fourth row */}
         <div className="grid grid-cols-2 gap-7 mt-8 max-sm:grid-cols-1">
-          <div
-            className="dashboard-column dashboard-column-cyan"
-            onClick={() => handleCardClick("dailyPnL")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }}
-          >
+          <div className="dashboard-column dashboard-column-cyan" onClick={() => handleCardClick("dailyPnL")}>
             {cards.dailyPnL}
           </div>
-          <div
-            className="dashboard-column dashboard-column-purple"
-            onClick={() => handleCardClick("bestTradingPairs")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }}
-          >
+          <div className="dashboard-column dashboard-column-purple" onClick={() => handleCardClick("bestTradingPairs")}>
             {cards.bestTradingPairs}
           </div>
         </div>
 
         {/* Fifth row */}
         <div className="mt-8">
-          <div
-            className="dashboard-column dashboard-column-green"
-            onClick={() => handleCardClick("openPositions")}
-            style={{ color: isDarkMode ? "#fff" : "#000" }}
-          >
+          <div className="dashboard-column dashboard-column-green" onClick={() => handleCardClick("openPositions")}>
             {cards.openPositions}
           </div>
         </div>
 
-        {/* CTA: View All Positions */}
+        {/* CTA */}
         <div className="flex justify-center mt-6 mb-10">
           <a href="/admin/positions">
-            <button
-              className="dashboard-column dashboard-column-cyan p-6 text-center"
-              style={{ color: isDarkMode ? "#fff" : "#000" }}
-            >
+            <button className="dashboard-column dashboard-column-cyan p-6 text-center">
               View All Positions
             </button>
           </a>
         </div>
       </main>
 
-      {/* Expanded modal for desktop */}
+      {/* Expanded modal */}
       {!isMobile && expandedCard && (
         <div
           onClick={() => setExpandedCard(null)}
