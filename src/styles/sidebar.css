@@ -38,7 +38,7 @@
 
 .sidebar h2 {
   margin-top: 0 !important;
-  margin-bottom: 2.5rem !important;
+  margin-bottom: 1.5rem !important;
   padding-top: 0 !important;
   padding-bottom: 0 !important;
   color: #00d4ff;
@@ -51,7 +51,7 @@
 }
 
 .sidebar ul li {
-  padding: 10px 0;
+  padding: 5px 0;
   color: #00d4ff;
   cursor: pointer;
   border-radius: 0.5rem;

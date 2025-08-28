@@ -4,9 +4,11 @@ import { isMobile } from "react-device-detect";
 import { useNavigate } from "react-router-dom";   // ✅ added
 import "../../styles/sidebar.css";
 import "../../styles/globals.css";
-import hoverSound from "../../assets/click.mp3";
 
-import UserSidebar from "./UserSidebar.jsx";
+import UserSidebar from "./Sidebar.jsx"; // make sure path is correct relative to this file
+import "../../styles/globals.css"; 
+import "../../styles/sidebar.css"; 
+import hoverSound from "../../assets/click.mp3"; // adjust path if necessary
 
 import Profit from "../Profit.jsx";
 import UPL from "../UPL.jsx";

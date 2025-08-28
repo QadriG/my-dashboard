@@ -6,8 +6,8 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow: hidden; /* Prevent scrollbars on body; scrolling happens in <main> */
-  background-color: #000; /* Force black background */
+  overflow: hidden;
+  background-color: #000;
   color: #fff;
 }
 
@@ -22,7 +22,7 @@ html, body, #root {
   margin: 0;
   padding: 0;
   height: 100%;
-  background-color: #000 !important; /* Match body background */
+  background-color: #000;
 }
 
 /* Force all elements transparent unless specified */
@@ -33,7 +33,7 @@ html, body, #root {
 /* Prevent transparent background inside charts */
 canvas,
 canvas * {
-  background-color: inherit !important;
+  background-color: inherit;
 }
 
 /* Black overlay for contrast */
@@ -45,117 +45,344 @@ canvas * {
   height: 100%;
   background-color: rgba(0, 0, 0, 0.5);
   z-index: 1;
-  pointer-events: none; /* Let clicks pass through */
+  pointer-events: none;
 }
 
-/* Text shimmer effect - disabled in light mode */
+/* Shimmer effect for title text */
 .shimmer-wrapper {
   position: relative;
   overflow: hidden;
   border: 2px solid #00ffff;
   border-radius: 0.75rem;
+  padding: 1rem;
 }
 
-.shimmer-wrapper .shimmer-effect {
-  background: linear-gradient(
-    270deg,
-    #22d3ee,
-    #ffffff,
-    #22d3ee
-  );
-  background-size: 600% 600%;
-  animation: shimmer 3s ease infinite;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: #22d3ee;
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: -1;
-}
-
-@keyframes shimmer {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 100% 50%; }
-}
-
-.wave-mask {
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.2) 20%, transparent 70%);
+.shimmer-wrapper h1 {
+  position: relative;
+  background: linear-gradient(90deg, transparent, #22d3ee 50%, transparent);
   background-size: 200% 100%;
-  animation: waveMove 5s linear infinite;
-  mix-blend-mode: screen;
+  animation: wave 2s linear infinite;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-fill-color: transparent;
+  color: transparent;
+  z-index: 1;
 }
 
-@keyframes waveMove {
+@keyframes wave {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
 
-/* ===========================
-   Mobile-only refinements
-   (≤ ~7" screens)
-   =========================== */
+/* Form transition animations */
+.form-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.form-transition {
+  position: absolute;
+  width: 100%;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.form-transition.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.form-transition.inactive {
+  opacity: 0;
+  transform: translateY(20px);
+  pointer-events: none;
+}
+
+/* Page glow */
+.page-glow {
+  background: radial-gradient(circle at center, rgba(0, 246, 255, 0.2) 0%, transparent 70%);
+}
+
+/* Glass box styling */
+.glass-box {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.glass-box:hover {
+  box-shadow: 0 0 12px 4px rgba(34, 197, 94, 0.6);
+  transform: scale(1.02);
+}
+
+/* Neon button styling */
+.neon-button {
+  background: linear-gradient(45deg, #00f6ff, #ff00ff);
+  border: none;
+  transition: background 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+  color: #fff;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+}
+
+.neon-button:hover {
+  background: linear-gradient(45deg, #00ccff, #cc00cc);
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(0, 246, 255, 0.8), 0 0 30px rgba(0, 246, 255, 0.6), 0 0 40px rgba(0, 246, 255, 0.4);
+  -webkit-box-shadow: 0 0 20px rgba(0, 246, 255, 0.8), 0 0 30px rgba(0, 246, 255, 0.6), 0 0 40px rgba(0, 246, 255, 0.4);
+}
+
+/* Input field styling */
+.input-field {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 4px;
+  color: #fff;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.input-field:focus {
+  border-color: #00f6ff;
+  box-shadow: 0 0 8px rgba(0, 246, 255, 0.5);
+  -webkit-box-shadow: 0 0 8px rgba(0, 246, 255, 0.5);
+  outline: none;
+}
+
+/* Loading state */
+.text-white.text-center.mt-20 {
+  font-size: 1.2rem;
+  font-weight: 500;
+}
+
+/* Custom styles for Settings.jsx */
+.bg-black\/30 {
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+.backdrop-blur-md {
+  backdrop-filter: blur(8px);
+}
+
+.border-green-400 {
+  border-color: #22c55e;
+}
+
+.border-red-400 {
+  border-color: #ef4444;
+}
+
+.border-cyan-300 {
+  border-color: #22d3ee;
+}
+
+.bg-cyan-500 {
+  background-color: #06b6d4;
+}
+
+.bg-purple-600 {
+  background-color: #9333ea;
+}
+
+.hover\:bg-cyan-600:hover {
+  background-color: #0891b2;
+}
+
+.text-white {
+  color: #fff;
+}
+
+.text-gray-300 {
+  color: #d1d5db;
+}
+
+.text-black {
+  color: #000;
+}
+
+.rounded {
+  border-radius: 0.375rem;
+}
+
+.rounded-xl {
+  border-radius: 0.75rem;
+}
+
+.p-2 {
+  padding: 0.5rem;
+}
+
+.p-6 {
+  padding: 1.5rem;
+}
+
+.px-4 {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.py-2 {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.mb-1 {
+  margin-bottom: 0.25rem;
+}
+
+.mb-4 {
+  margin-bottom: 1rem;
+}
+
+.space-y-4 > * + * {
+  margin-top: 1rem;
+}
+
+.space-y-10 > * + * {
+  margin-top: 2.5rem;
+}
+
+.text-2xl {
+  font-size: 1.5rem;
+  line-height: 2rem;
+}
+
+.text-3xl {
+  font-size: 1.875rem;
+  line-height: 2.25rem;
+}
+
+.font-semibold {
+  font-weight: 600;
+}
+
+.font-medium {
+  font-weight: 500;
+}
+
+.transition-transform {
+  transition-property: transform;
+}
+
+.duration-300 {
+  transition-duration: 300ms;
+}
+
+.transform {
+  transform: translate(0, 0);
+}
+
+.overflow-hidden {
+  overflow: hidden;
+}
+
+.will-change-transform {
+  will-change: transform;
+}
+
+.focus\:outline-none:focus {
+  outline: none;
+}
+
+.focus\:ring-2:focus {
+  box-shadow: 0 0 0 2px;
+}
+
+.focus\:ring-cyan-400:focus {
+  box-shadow: 0 0 0 2px #22d3ee;
+}
+
+.placeholder-white\/70::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.shadow-lg {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.hover\:shadow-white-500\/50:hover {
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+}
+
+.transition {
+  transition-property: all;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Sidebar container */
+.ml-64 {
+  margin-left: 16rem;
+}
+
+.bg-gray {
+  background-color: #1f2937;
+}
+
+/* Mobile refinements */
 @media (max-width: 768px) {
   html, body {
-    transform: none !important;
-    width: 100% !important;
-    overflow-x: hidden !important;
+    transform: none;
+    width: 100%;
+    overflow-x: hidden;
   }
 
   #root {
-    width: 100% !important;
-    height: auto !important;
+    width: 100%;
+    height: auto;
   }
 
-  /* So the scroll happens inside main, not body */
   main {
-    padding: clamp(8px, 2.5vw, 16px) !important;
+    padding: clamp(8px, 2.5vw, 16px);
     transition: padding 220ms ease;
   }
 
-  /* Tighten card padding slightly for small screens */
   .dashboard-column {
-    padding: clamp(10px, 3vw, 18px) !important;
+    padding: clamp(10px, 3vw, 18px);
   }
 
-  /* ✅ Only collapse grids inside .admin-dashboard (not globally) */
   .admin-dashboard .grid.grid-cols-4,
   .admin-dashboard .grid.grid-cols-3,
   .admin-dashboard .grid.grid-cols-2 {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: 1fr;
   }
 
-  /* ✅ Keep flex stack scoped to dashboard only */
   .admin-dashboard .mobile-stack {
     display: flex;
-    flex-direction: column !important;
+    flex-direction: column;
   }
 }
 
-/* Dark mode styles */
+/* Dark/light mode */
 .dark-mode {
   background-color: #000;
   color: #fff;
 }
 
-/* Light mode styles */
 .light-mode {
   background-color: #fff;
   color: #000;
 }
 
-/* Theme-specific overlay adjustments */
 .dark-mode .overlay {
   background-color: rgba(0, 0, 0, 0.5);
 }
 
 .light-mode .overlay {
-  background-color: transparent; /* Remove overlay in light mode */
+  background-color: transparent;
 }
 
-/* Theme-specific dashboard column adjustments */
 .dark-mode .dashboard-column {
   background-color: rgba(0, 0, 0, 0.5);
 }
@@ -164,59 +391,22 @@ canvas * {
   background-color: rgba(255, 255, 255, 0.2);
 }
 
-/* Theme-specific shimmer wrapper text */
-.dark-mode .shimmer-wrapper h1 {
-  position: relative;
-}
-
-.dark-mode .shimmer-wrapper h1 .shimmer-effect {
-  display: block; /* Enable shimmer in dark mode */
-}
-
+.dark-mode .shimmer-wrapper h1,
 .light-mode .shimmer-wrapper h1 {
-  position: relative;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
 }
 
-.light-mode .shimmer-wrapper h1 .shimmer-effect {
-  display: none; /* Disable shimmer in light mode */
-}
-
-.light-mode .shimmer-wrapper h1 {
-  color: #000 !important; /* Force pure black text */
-  -webkit-text-fill-color: #000 !important; /* Override any shimmer fill */
-  text-shadow: none !important; /* Remove shadow effects */
-}
-
-/* Remove blur or dim effects from text in light mode */
-.light-mode .dashboard-column {
-  filter: none !important;
-  text-shadow: none !important;
-  color: #000 !important; /* Force pure black text */
-}
-
-.light-mode main {
-  color: #000 !important; /* Force pure black text for main content */
-}
-
-.light-mode .sidebar-button {
-  color: #fff !important;
-}
-
-/* ===========================
-   Chart text color fix
-   =========================== */
-/* Force all chart labels and ticks to white in dark mode */
 .dark-mode canvas,
 .dark-mode canvas *,
 .dark-mode text {
-  color: #fff !important;
-  fill: #fff !important;
-  -webkit-text-fill-color: #fff !important; /* Override any internal fill */
+  color: #fff;
+  fill: #fff;
 }
 
-/* Ensure chart text is not hidden by backdrop-filter */
 .dark-mode .dashboard-column canvas,
 .dark-mode .dashboard-column text {
-  filter: none !important;
-  background-color: transparent !important;
+  filter: none;
+  background-color: transparent;
 }

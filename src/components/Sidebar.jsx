@@ -1,4 +1,3 @@
-// Sidebar.jsx
 import React, { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/sidebar.css";
@@ -17,28 +16,23 @@ export default function Sidebar({ onLogout }) {
 
   const buttons = [
     { label: "Dashboard", className: "sidebar-cyan", path: "/admin" },
-    { label: "Settings", className: "sidebar-purple", path: "/settings" },
-    { label: "API Details", className: "sidebar-green", path: "/api-details" },
-    { label: "Positions", className: "sidebar-yellow", path: "/positions" },
-    { label: "Users", className: "sidebar-users", path: "/users" },
-    { label: "Logs", className: "sidebar-logs", path: "/logs" },
-    { label: "Manual Push", className: "sidebar-manual-push", path: "/manual-push" },
+    { label: "Settings", className: "sidebar-purple", path: "/admin/settings" },
+    { label: "API Details", className: "sidebar-green", path: "/admin/api-details" },
+    { label: "Positions", className: "sidebar-yellow", path: "/admin/positions" },
+    { label: "Users", className: "sidebar-users", path: "/admin/users" },
+    { label: "Logs", className: "sidebar-logs", path: "/admin/logs" },
+    { label: "Manual Push", className: "sidebar-manual-push", path: "/admin/manual-push" },
     { label: "Logout", className: "sidebar-red", action: onLogout },
   ];
 
   return (
-    <aside
-      className="sidebar open bg-black text-white min-h-screen p-4"
-      style={{ marginLeft: 0 }}
-    >
+    <aside className="sidebar open bg-black text-white min-h-screen p-4">
       <h2 className="text-xl font-bold mb-10 text-cyan-300 drop-shadow-md">
         QuantumCopyTrading
       </h2>
-
       <audio ref={audioRef} preload="auto">
         <source src={hoverSound} type="audio/mpeg" />
       </audio>
-
       <ul>
         {buttons.map((btn, i) => (
           <li key={i} className="mb-3">
@@ -46,11 +40,8 @@ export default function Sidebar({ onLogout }) {
               href="#"
               onClick={(e) => {
                 e.preventDefault();
-                if (btn.action) {
-                  btn.action();
-                } else if (btn.path) {
-                  navigate(btn.path);
-                }
+                if (btn.action) btn.action();
+                else if (btn.path) navigate(btn.path);
               }}
               onMouseEnter={playHoverSound}
               className={`sidebar-button ${btn.className}`}

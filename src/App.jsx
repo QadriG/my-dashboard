@@ -1,39 +1,50 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect } from "react";
+
+// Auth & Protected
 import Login from "./components/Auth/Login";
+import ResetPassword from "./components/Auth/ResetPassword";
+import ProtectedRoute from "./components/ProtectedRoute";
+
+// Dashboards
 import AdminDashboard from "./components/Dashboard";
 import UserDashboard from "./components/Users/Dashboard";
-import ProtectedRoute from "./components/ProtectedRoute";
-import ResetPassword from "./components/Auth/ResetPassword";
-import Settings from "./components/settings";
 
-import Sidebar from "./components/Sidebar"; // ✅ Admin Sidebar
-import UserSidebar from "./components/Users/UserSidebar"; // ✅ User Sidebar
+// Settings
+import AdminSettings from "./components/settings";        
+import UserSettings from "./components/Users/settings";  
+
+// Sidebars
+import Sidebar from "./components/Sidebar";              
+import UserSidebar from "./components/Users/Sidebar";   
+
+// Theme
+import { useTheme } from "./context/ThemeContext";
 
 // ✅ Layout for Admin
-function AdminLayout({ children }) {
+export function AdminLayout({ children }) {
+  const { isDarkMode } = useTheme();
   return (
-    <div className="flex">
+    <div className={`flex ${isDarkMode ? "dark-mode" : "light-mode"}`} style={{ minHeight: "100vh" }}>
       <Sidebar />
-      <div className="flex-1 p-4">{children}</div>
+      <main className="flex-1 p-4">{children}</main>
     </div>
   );
 }
 
 // ✅ Layout for User
-function UserLayout({ children }) {
+export function UserLayout({ children }) {
+  const { isDarkMode } = useTheme();
   return (
-    <div className="flex">
+    <div className={`flex ${isDarkMode ? "dark-mode" : "light-mode"}`} style={{ minHeight: "100vh" }}>
       <UserSidebar />
-      <div className="flex-1 p-4">{children}</div>
+      <main className="flex-1 p-4">{children}</main>
     </div>
   );
 }
 
 function App() {
-  useEffect(() => {
-    // Optional: handle cache or auth refresh
-  }, []);
+  useEffect(() => {}, []);
 
   return (
     <Router>
@@ -43,7 +54,7 @@ function App() {
         <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route path="/verify-email/:token" element={<Navigate to="/login" replace />} />
 
-        {/* Protected Admin Dashboard */}
+        {/* Admin routes */}
         <Route
           path="/admin"
           element={
@@ -54,8 +65,19 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/admin/settings"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AdminLayout>
+                <AdminSettings />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        {/* ...other admin routes */}
 
-        {/* Protected User Dashboard */}
+        {/* User routes */}
         <Route
           path="/user"
           element={
@@ -66,22 +88,19 @@ function App() {
             </ProtectedRoute>
           }
         />
-
-        {/* Protected Settings (accessible to both admin and user) */}
         <Route
-          path="/settings"
+          path="/user/settings"
           element={
-            <ProtectedRoute allowedRoles={["admin", "user"]}>
-              {/* 👇 If you want separate sidebars even in settings, 
-                  you need two routes: /admin/settings & /user/settings */}
-              <AdminLayout>
-                <Settings />
-              </AdminLayout>
+            <ProtectedRoute allowedRoles={["user"]}>
+              <UserLayout>
+                <UserSettings />
+              </UserLayout>
             </ProtectedRoute>
           }
         />
+        {/* ...other user routes */}
 
-        {/* Catch-all redirects */}
+        {/* Catch-all redirect */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>

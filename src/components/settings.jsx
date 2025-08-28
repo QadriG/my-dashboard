@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from "react";
-import "./../styles/globals.css";
+import "../styles/globals.css";
 
 export default function Settings() {
   const audioRef = useRef(null);
