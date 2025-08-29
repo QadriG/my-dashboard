@@ -1,15 +1,13 @@
 /* eslint no-undef: "off" */
+
 import React, { useRef, useState, useEffect } from "react";
 import { isMobile } from "react-device-detect";
-import { useNavigate } from "react-router-dom";   // ✅ added
+import { useNavigate } from "react-router-dom";
+import { useTheme } from "../../context/ThemeContext";
 import "../../styles/sidebar.css";
 import "../../styles/globals.css";
-
-import UserSidebar from "./Sidebar.jsx"; // make sure path is correct relative to this file
-import "../../styles/globals.css"; 
-import "../../styles/sidebar.css"; 
-import hoverSound from "../../assets/click.mp3"; // adjust path if necessary
-
+import UserSidebar from "./Sidebar.jsx"; 
+import hoverSound from "../../assets/click.mp3";
 import Profit from "../Profit.jsx";
 import UPL from "../UPL.jsx";
 import FundsDistribution from "../FundsDistribution.jsx";
@@ -22,11 +20,9 @@ import OpenPositions from "../OpenPositions.jsx";
 export default function UserDashboard() {
   const audioRef = useRef(null);
   const [expandedCard, setExpandedCard] = useState(null);
-  const [isDarkMode, setIsDarkMode] = useState(true);
-  const [buttonText, setButtonText] = useState("Light Mode");
-  const navigate = useNavigate();   // ✅ added
+  const { isDarkMode, toggleTheme } = useTheme();
+  const navigate = useNavigate();
 
-  // ✅ JWT Check on mount
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -43,43 +39,30 @@ export default function UserDashboard() {
         navigate("/login");
       }
     };
-
     checkAuth();
   }, [navigate]);
 
-  // ✅ Logout handler
   const handleLogout = async () => {
-  try {
-    await fetch("http://localhost:5000/api/auth/logout", {
-      method: "POST",
-      credentials: "include",
-    });
+    try {
+      await fetch("http://localhost:5000/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+      localStorage.clear();
+      sessionStorage.clear();
+      navigate("/login", { replace: true });
+      window.location.reload();
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
+  };
 
-    // Clear any cached tokens/state
-    localStorage.clear();
-    sessionStorage.clear();
-
-    // Redirect & prevent back navigation
-    navigate("/login", { replace: true });
-
-    // Force refresh to drop any cached UI
-    window.location.reload();
-  } catch (err) {
-    console.error("Logout failed:", err);
-  }
-};
-
-  // ✅ Prevent going back after logout
   useEffect(() => {
     const handlePopState = () => {
       navigate("/login", { replace: true });
     };
-
     window.addEventListener("popstate", handlePopState);
-
-    return () => {
-      window.removeEventListener("popstate", handlePopState);
-    };
+    return () => window.removeEventListener("popstate", handlePopState);
   }, [navigate]);
 
   const playHoverSound = () => {
@@ -87,11 +70,6 @@ export default function UserDashboard() {
       audioRef.current.currentTime = 0;
       audioRef.current.play().catch(() => {});
     }
-  };
-
-  const toggleTheme = () => {
-    setIsDarkMode((prev) => !prev);
-    setButtonText((prev) => (prev === "Light Mode" ? "Dark Mode" : "Light Mode"));
   };
 
   const cards = {
@@ -109,71 +87,27 @@ export default function UserDashboard() {
     if (!isMobile) setExpandedCard(expandedCard === key ? null : key);
   };
 
-  const buttonStyle = {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    padding: "0.5rem 1rem",
-    backgroundColor: isDarkMode ? "#333" : "#ddd",
-    color: isDarkMode ? "#fff" : "#000",
-    border: "2px solid " + (isDarkMode ? "#00ffff" : "#0000ff"),
-    borderRadius: "4px",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "1.5rem",
-    boxShadow: isDarkMode
-      ? "0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff"
-      : "0 0 10px #0000ff, 0 0 20px #0000ff, 0 0 30px #0000ff",
-  };
-
   return (
-    <div
-      className={`zoom-out-container relative h-screen w-screen overflow-x-hidden overflow-y-auto ${
-        isDarkMode ? "dark-mode" : "light-mode"
-      }`}
-      style={{ backgroundColor: isDarkMode ? "#000" : "#fff" }}
-    >
+    <div className="zoom-out-container relative h-screen w-screen overflow-x-hidden overflow-y-auto">
       <audio ref={audioRef} preload="auto">
         <source src={hoverSound} type="audio/mpeg" />
       </audio>
-
-      {/* Sidebar */}
-      <UserSidebar isOpen={true} playHoverSound={playHoverSound} onLogout={handleLogout} /> {/* ✅ pass logout */}
-
+      <UserSidebar isOpen={true} playHoverSound={playHoverSound} onLogout={handleLogout} />
       <main
         className="relative z-20 p-6 overflow-y-auto md:ml-64"
-        style={{
-          height: "100vh",
-          width: "100%",
-          maxWidth: "calc(100vw - 16rem)",
-          color: isDarkMode ? "#fff" : "#000",
-        }}
+        style={{ height: "100vh", width: "100%", maxWidth: "calc(100vw - 16rem)" }}
       >
-        <div className="shimmer-wrapper w-full py-4 px-6 mb-6" style={{ position: "relative" }}>
-          <h1 className="text-4xl font-semibold drop-shadow-md inline-block" style={{ color: isDarkMode ? "#fff" : "#000" }}>
-            Dashboard
-          </h1>
+        <div className="shimmer-wrapper w-full py-4 px-6 mb-6 relative">
+          <h1 className="text-4xl font-semibold drop-shadow-md inline-block title-bar-text">Dashboard</h1>
           <button
             onClick={toggleTheme}
-            style={buttonStyle}
-            onMouseEnter={(e) => {
-              e.target.style.boxShadow = isDarkMode
-                ? "0 0 15px #00ffff, 0 0 25px #00ffff, 0 0 40px #00ffff"
-                : "0 0 15px #0000ff, 0 0 25px #0000ff, 0 0 40px #0000ff";
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.boxShadow = isDarkMode
-                ? "0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff"
-                : "0 0 10px #0000ff, 0 0 20px #0000ff, 0 0 30px #0000ff";
-            }}
+            className="theme-toggle"
+            onMouseEnter={(e) => (e.target.style.boxShadow = isDarkMode ? "0 0 15px #00ffff, 0 0 25px #00ffff, 0 0 40px #00ffff" : "0 0 15px #0000ff, 0 0 25px #0000ff, 0 0 40px #0000ff")}
+            onMouseLeave={(e) => (e.target.style.boxShadow = isDarkMode ? "0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff" : "0 0 10px #0000ff, 0 0 20px #0000ff, 0 0 30px #0000ff")}
           >
-            {buttonText}
+            {isDarkMode ? "Light Mode" : "Dark Mode"}
           </button>
         </div>
-
-        {/* First row */}
         <div className="grid grid-cols-3 gap-7 max-lg:grid-cols-1">
           <div className="dashboard-column dashboard-column-cyan" onClick={() => handleCardClick("profit")}>
             {React.cloneElement(cards.profit, { isDarkMode })}
@@ -185,8 +119,6 @@ export default function UserDashboard() {
             {React.cloneElement(cards.fundsDistribution, { isDarkMode })}
           </div>
         </div>
-
-        {/* Second row */}
         <div className="flex gap-4 w-full items-start mt-8 max-lg:flex-col">
           <div
             className="dashboard-column dashboard-column-cyan balance-graph w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden"
@@ -201,8 +133,6 @@ export default function UserDashboard() {
             {React.cloneElement(cards.weeklyRevenue, { isDarkMode })}
           </div>
         </div>
-
-        {/* Third row */}
         <div className="grid grid-cols-2 gap-7 mt-8 max-sm:grid-cols-1">
           <div className="dashboard-column dashboard-column-cyan" onClick={() => handleCardClick("dailyPnL")}>
             {React.cloneElement(cards.dailyPnL, { isDarkMode })}
@@ -211,25 +141,17 @@ export default function UserDashboard() {
             {React.cloneElement(cards.bestTradingPairs, { isDarkMode })}
           </div>
         </div>
-
-        {/* Fourth row */}
         <div className="mt-8">
           <div className="dashboard-column dashboard-column-green" onClick={() => handleCardClick("openPositions")}>
             {React.cloneElement(cards.openPositions, { isDarkMode })}
           </div>
         </div>
-
-        {/* CTA: View All Positions */}
         <div className="flex justify-center mt-6 mb-10">
           <a href="/user/positions">
-            <button className="dashboard-column dashboard-column-cyan p-6 text-center" style={{ color: isDarkMode ? "#fff" : "#000" }}>
-              View All Positions
-            </button>
+            <button className="dashboard-column dashboard-column-cyan p-6 text-center">View All Positions</button>
           </a>
         </div>
       </main>
-
-      {/* Expanded modal for desktop */}
       {!isMobile && expandedCard && (
         <div
           onClick={() => setExpandedCard(null)}
@@ -251,7 +173,6 @@ export default function UserDashboard() {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              backgroundColor: isDarkMode ? "#111827" : "#f9fafb",
               borderRadius: "1rem",
               padding: "1rem",
               display: "inline-block",
@@ -260,7 +181,6 @@ export default function UserDashboard() {
               overflow: "auto",
               boxShadow: "0 0 20px 5px #00ffff",
               position: "relative",
-              color: isDarkMode ? "#fff" : "#000",
               fontSize: "2em",
               lineHeight: "1.2",
             }}

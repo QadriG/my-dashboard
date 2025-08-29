@@ -13,36 +13,62 @@ import UserDashboard from "./components/Users/Dashboard";
 // Settings
 import AdminSettings from "./components/settings";        
 import UserSettings from "./components/Users/settings";  
+import ApiDetails from "./components/Users/ApiDetails";
+
+// Positions
+import AdminPositions from "./components/Positions";
+import UserPositions from "./components/Users/Positions";
 
 // Sidebars
 import Sidebar from "./components/Sidebar";              
 import UserSidebar from "./components/Users/Sidebar";   
 
+// Live Chat
+import LiveChat from "./components/Users/LiveChat";
+import { ChatProvider } from "./context/ChatContext";
+
 // Theme
 import { useTheme } from "./context/ThemeContext";
 
-// ✅ Layout for Admin
+// ----------------------
+// Admin Layout
+// ----------------------
 export function AdminLayout({ children }) {
   const { isDarkMode } = useTheme();
   return (
-    <div className={`flex ${isDarkMode ? "dark-mode" : "light-mode"}`} style={{ minHeight: "100vh" }}>
-      <Sidebar />
-      <main className="flex-1 p-4">{children}</main>
-    </div>
+    <ChatProvider>
+      <div className={`flex ${isDarkMode ? "dark-mode" : "light-mode"}`} style={{ minHeight: "100vh" }}>
+        <Sidebar />
+        <main className="flex-1 p-4 relative">
+          {children}
+          <LiveChat /> {/* Optional: Admin can have chat too */}
+        </main>
+      </div>
+    </ChatProvider>
   );
 }
 
-// ✅ Layout for User
+// ----------------------
+// User Layout
+// ----------------------
 export function UserLayout({ children }) {
   const { isDarkMode } = useTheme();
   return (
-    <div className={`flex ${isDarkMode ? "dark-mode" : "light-mode"}`} style={{ minHeight: "100vh" }}>
-      <UserSidebar />
-      <main className="flex-1 p-4">{children}</main>
-    </div>
+    <ChatProvider>
+      <div className={`flex ${isDarkMode ? "dark-mode" : "light-mode"}`} style={{ minHeight: "100vh" }}>
+        <UserSidebar />
+        <main className="flex-1 p-4 relative">
+          {children}
+          <LiveChat /> {/* Persistent global chat */}
+        </main>
+      </div>
+    </ChatProvider>
   );
 }
 
+// ----------------------
+// App Component
+// ----------------------
 function App() {
   useEffect(() => {}, []);
 
@@ -75,7 +101,26 @@ function App() {
             </ProtectedRoute>
           }
         />
-        {/* ...other admin routes */}
+        <Route
+          path="/admin/api-details"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AdminLayout>
+                <ApiDetails />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/positions"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AdminLayout>
+                <AdminPositions />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
 
         {/* User routes */}
         <Route
@@ -98,7 +143,26 @@ function App() {
             </ProtectedRoute>
           }
         />
-        {/* ...other user routes */}
+        <Route
+          path="/user/api-details"
+          element={
+            <ProtectedRoute allowedRoles={["user"]}>
+              <UserLayout>
+                <ApiDetails />
+              </UserLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/user/positions"
+          element={
+            <ProtectedRoute allowedRoles={["user"]}>
+              <UserLayout>
+                <UserPositions />
+              </UserLayout>
+            </ProtectedRoute>
+          }
+        />
 
         {/* Catch-all redirect */}
         <Route path="*" element={<Navigate to="/login" replace />} />

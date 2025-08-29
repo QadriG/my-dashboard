@@ -7,36 +7,37 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow: hidden;
-  background-color: #000;
-  color: #fff;
 }
 
-/* Code font */
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
-}
-
-/* Make entire app transparent */
 html, body, #root {
   margin: 0;
   padding: 0;
   height: 100%;
-  background-color: #000;
 }
 
-/* Force all elements transparent unless specified */
+/* Force background colors based on theme */
+.dark-mode {
+  background-color: #000;
+  color: #fff;
+}
+
+.light-mode {
+  background-color: #fff;
+  color: #000;
+}
+
+/* Override transparent rule for themed elements */
 * {
-  background-color: transparent;
+  background-color: inherit;
 }
 
 /* Prevent transparent background inside charts */
 canvas,
 canvas * {
-  background-color: inherit;
+  background-color: inherit !important;
 }
 
-/* Black overlay for contrast */
+/* Black overlay for contrast (adjust for light mode) */
 .overlay {
   position: fixed;
   top: 0;
@@ -48,6 +49,10 @@ canvas * {
   pointer-events: none;
 }
 
+.light-mode .overlay {
+  background-color: transparent;
+}
+
 /* Shimmer effect for title text */
 .shimmer-wrapper {
   position: relative;
@@ -55,9 +60,14 @@ canvas * {
   border: 2px solid #00ffff;
   border-radius: 0.75rem;
   padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: inherit;
+  z-index: 10;
 }
 
-.shimmer-wrapper h1 {
+.shimmer-wrapper h1.title-bar-text {
   position: relative;
   background: linear-gradient(90deg, transparent, #22d3ee 50%, transparent);
   background-size: 200% 100%;
@@ -68,6 +78,13 @@ canvas * {
   text-fill-color: transparent;
   color: transparent;
   z-index: 1;
+  margin: 0;
+}
+
+.light-mode .shimmer-wrapper h1.title-bar-text {
+  -webkit-text-fill-color: #000;
+  text-fill-color: #000;
+  color: #000;
 }
 
 @keyframes wave {
@@ -115,6 +132,11 @@ canvas * {
   transition: all 0.3s ease;
 }
 
+.light-mode .glass-box {
+  background: rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
 .glass-box:hover {
   box-shadow: 0 0 12px 4px rgba(34, 197, 94, 0.6);
   transform: scale(1.02);
@@ -137,6 +159,15 @@ canvas * {
   -webkit-box-shadow: 0 0 20px rgba(0, 246, 255, 0.8), 0 0 30px rgba(0, 246, 255, 0.6), 0 0 40px rgba(0, 246, 255, 0.4);
 }
 
+.light-mode .neon-button {
+  color: #000;
+}
+
+.light-mode .neon-button:hover {
+  box-shadow: 0 0 20px rgba(0, 0, 255, 0.8), 0 0 30px rgba(0, 0, 255, 0.6), 0 0 40px rgba(0, 0, 255, 0.4);
+  -webkit-box-shadow: 0 0 20px rgba(0, 0, 255, 0.8), 0 0 30px rgba(0, 0, 255, 0.6), 0 0 40px rgba(0, 0, 255, 0.4);
+}
+
 /* Input field styling */
 .input-field {
   background: rgba(255, 255, 255, 0.1);
@@ -146,11 +177,23 @@ canvas * {
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
+.light-mode .input-field {
+  background: rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 0, 0, 0.5);
+  color: #000;
+}
+
 .input-field:focus {
   border-color: #00f6ff;
   box-shadow: 0 0 8px rgba(0, 246, 255, 0.5);
   -webkit-box-shadow: 0 0 8px rgba(0, 246, 255, 0.5);
   outline: none;
+}
+
+.light-mode .input-field:focus {
+  border-color: #0000ff;
+  box-shadow: 0 0 8px rgba(0, 0, 255, 0.5);
+  -webkit-box-shadow: 0 0 8px rgba(0, 0, 255, 0.5);
 }
 
 /* Loading state */
@@ -162,6 +205,48 @@ canvas * {
 /* Custom styles for Settings.jsx */
 .bg-black\/30 {
   background-color: rgba(0, 0, 0, 0.3);
+}
+
+.light-mode .bg-black\/30 {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.light-mode main {
+  background-color: #fff;
+  color: #000;
+}
+
+/* Sidebar and main layout adjustment */
+.light-mode .UserSidebar {
+  border-right: none;
+  background-color: #f9fafb;
+}
+
+.light-mode main {
+  border-left: none;
+}
+
+/* Chat header styling */
+.LiveChat .chat-header {
+  border: none;
+  background-color: inherit;
+}
+
+/* Ensure text color adapts to theme */
+.text-white {
+  color: #fff;
+}
+
+.light-mode .text-white {
+  color: #000;
+}
+
+.text-gray-300 {
+  color: #d1d5db;
+}
+
+.light-mode .text-gray-300 {
+  color: #4b5563;
 }
 
 .backdrop-blur-md {
@@ -190,18 +275,6 @@ canvas * {
 
 .hover\:bg-cyan-600:hover {
   background-color: #0891b2;
-}
-
-.text-white {
-  color: #fff;
-}
-
-.text-gray-300 {
-  color: #d1d5db;
-}
-
-.text-black {
-  color: #000;
 }
 
 .rounded {
@@ -300,12 +373,20 @@ canvas * {
   color: rgba(255, 255, 255, 0.7);
 }
 
+.light-mode .placeholder-white\/70::placeholder {
+  color: rgba(0, 0, 0, 0.7);
+}
+
 .shadow-lg {
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 
 .hover\:shadow-white-500\/50:hover {
   box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+}
+
+.light-mode .hover\:shadow-white-500\/50:hover {
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
 }
 
 .transition {
@@ -346,6 +427,7 @@ canvas * {
   main {
     padding: clamp(8px, 2.5vw, 16px);
     transition: padding 220ms ease;
+    margin-left: 0;
   }
 
   .dashboard-column {
@@ -364,49 +446,60 @@ canvas * {
   }
 }
 
-/* Dark/light mode */
-.dark-mode {
-  background-color: #000;
-  color: #fff;
-}
-
-.light-mode {
-  background-color: #fff;
-  color: #000;
-}
-
-.dark-mode .overlay {
-  background-color: rgba(0, 0, 0, 0.5);
-}
-
-.light-mode .overlay {
-  background-color: transparent;
-}
-
+/* Theme-specific dashboard columns */
 .dark-mode .dashboard-column {
   background-color: rgba(0, 0, 0, 0.5);
 }
 
 .light-mode .dashboard-column {
   background-color: rgba(255, 255, 255, 0.2);
+  color: #000;
 }
 
-.dark-mode .shimmer-wrapper h1,
-.light-mode .shimmer-wrapper h1 {
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-  text-shadow: none;
-}
-
-.dark-mode canvas,
-.dark-mode canvas *,
-.dark-mode text {
+/* Theme toggle button */
+.theme-toggle {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 2px solid #00ffff;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1.5rem;
+  box-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff;
+  background-color: #333;
   color: #fff;
-  fill: #fff;
+  z-index: 10;
 }
 
-.dark-mode .dashboard-column canvas,
-.dark-mode .dashboard-column text {
-  filter: none;
-  background-color: transparent;
+.light-mode .theme-toggle {
+  border-color: #0000ff;
+  box-shadow: 0 0 10px #0000ff, 0 0 20px #0000ff, 0 0 30px #0000ff;
+  background-color: #ddd;
+  color: #000;
+}
+
+.theme-toggle:hover {
+  box-shadow: 0 0 15px #00ffff, 0 0 25px #00ffff, 0 0 40px #00ffff;
+}
+
+.light-mode .theme-toggle:hover {
+  box-shadow: 0 0 15px #0000ff, 0 0 25px #0000ff, 0 0 40px #0000ff;
+}
+
+/* Dropdown styling for positions page */
+select,
+.dropdown {
+  background-color: #000;
+  color: #fff;
+  border: 1px solid #00ffff;
+  border-radius: 4px;
+  padding: 0.5rem;
+}
+
+.light-mode select,
+.light-mode .dropdown {
+  background-color: #fff;
+  color: #000;
+  border-color: #0000ff;
 }

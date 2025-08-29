@@ -1,11 +1,13 @@
 import React, { useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTheme } from "../../context/ThemeContext";
 import "../../styles/sidebar.css";
 import hoverSound from "../../assets/click.mp3";
 
 export default function UserSidebar({ onLogout }) {
   const audioRef = useRef(null);
   const navigate = useNavigate();
+  const { isDarkMode } = useTheme();
 
   const playHoverSound = () => {
     if (audioRef.current) {
@@ -23,15 +25,13 @@ export default function UserSidebar({ onLogout }) {
   ];
 
   return (
-    <aside className="sidebar open bg-black text-white min-h-screen p-4" style={{ marginLeft: 0 }}>
-      <h2 className="text-xl font-bold mb-10 text-cyan-300 drop-shadow-md">
+    <aside className={`sidebar open min-h-screen w-64 p-4 fixed left-0 top-0 ${isDarkMode ? "bg-black text-white" : "bg-white text-black"}`}>
+      <h2 className={`text-xl font-bold mb-10 drop-shadow-md ${isDarkMode ? "text-cyan-300" : "text-cyan-700"}`}>
         QuantumCopyTrading
       </h2>
-
       <audio ref={audioRef} preload="auto">
         <source src={hoverSound} type="audio/mpeg" />
       </audio>
-
       <ul>
         {buttons.map((btn, i) => (
           <li key={i} className="mb-3">

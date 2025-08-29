@@ -1,25 +1,13 @@
 import React from "react";
-import UserSidebar from "./Sidebar";
-import { useTheme } from "../../context/ThemeContext";
+import Sidebar from "./Sidebar";
 
-export default function UserLayout({ children, onLogout }) {
-  const { isDarkMode } = useTheme();
-
+export default function Layout({ children, onLogout }) {
   return (
-    <div
-      className={`flex zoom-out-container relative h-screen w-screen overflow-x-hidden overflow-y-auto ${
-        isDarkMode ? "bg-black text-white" : "bg-white text-black"
-      }`}
-    >
-      {/* Sidebar */}
-      <UserSidebar onLogout={onLogout} />
+    <div className="flex">
+      {/* Sidebar now receives onLogout prop */}
+      <Sidebar onLogout={onLogout} />
 
-      {/* Main Content */}
-      <main
-        className={`relative z-20 p-6 overflow-y-auto md:ml-64 w-full ${
-          isDarkMode ? "bg-black text-white" : "bg-white text-black"
-        }`}
-      >
+      <main className="relative z-20 p-6 overflow-y-auto md:ml-64 w-full bg-black text-white dark:bg-black light-mode:bg-white">
         {children}
       </main>
     </div>
