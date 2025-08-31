@@ -1,3 +1,5 @@
+/* eslint no-undef: "off" */
+
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "../../styles/globals.css";
@@ -18,6 +20,18 @@ export default function Login() {
   const mouseRef = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
 
   const API_BASE = "http://localhost:5000/api/auth";
+
+  // Ensure full-page background stays black for the login page
+  useEffect(() => {
+    const prevBg = document.body.style.backgroundColor;
+    const prevColor = document.body.style.color;
+    document.body.style.backgroundColor = "#000";
+    document.body.style.color = "#fff";
+    return () => {
+      document.body.style.backgroundColor = prevBg || "";
+      document.body.style.color = prevColor || "";
+    };
+  }, []);
 
   // ✅ Prevent browser caching of protected pages
   useEffect(() => {
@@ -60,6 +74,7 @@ export default function Login() {
     }));
 
     const animate = () => {
+      // clear to transparent so underlying black body shows through
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       dots.forEach((dot) => {
         const dx = mouseRef.current.x - dot.x;
@@ -104,7 +119,7 @@ export default function Login() {
     setSuccess("");
   };
 
-  // ✅ LOGIN (fixed)
+  // ✅ LOGIN
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
@@ -133,9 +148,7 @@ export default function Login() {
         } else {
           navigate("/user", { replace: true });
         }
-
-        // ✅ Delay reload so navigation applies first
-              } else {
+      } else {
         setError(data.message || "Invalid credentials");
       }
     } catch {
@@ -213,11 +226,16 @@ export default function Login() {
     `form-transition ${currentForm === form ? "active" : "inactive"}`;
 
   return (
-    <div className="flex items-center justify-center page-glow h-screen w-screen text-white relative">
-      <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full" />
+    <div className="flex items-center justify-center page-glow h-screen w-screen text-white relative bg-black">
+      {/* canvas is transparent so the body/bg shows through */}
+      <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full" style={{ background: "transparent" }} />
       <div
         className="glass-box neon-glow p-8 w-full max-w-sm mx-auto text-center relative z-10"
-        style={{ minHeight: "420px", background: "transparent", backdropFilter: "none" }}
+        style={{
+          minHeight: "420px",
+          background: "rgba(0,0,0,0.6)",
+          backdropFilter: "blur(8px)",
+        }}
       >
         <div className="form-container">
           {/* LOGIN FORM */}

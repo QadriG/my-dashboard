@@ -61,12 +61,13 @@ export default function LiveChat() {
       )}
 
       <div
-        className="w-96 bg-gray-800 text-white px-4 py-2 rounded-t-lg cursor-pointer flex justify-between items-center shadow-lg"
-        onClick={() => setMinimized(!minimized)}
-      >
-        <span>Live Chat</span>
-        <span className="text-lg">{minimized ? "▲" : "▼"}</span>
-      </div>
+  className="w-96 bg-gray-200 dark:bg-gray-800 text-black dark:text-white px-4 py-2 rounded-t-lg cursor-pointer flex justify-between items-center shadow-lg"
+  onClick={() => setMinimized(!minimized)}
+>
+  <span>Live Chat</span>
+  <span className="text-lg">{minimized ? "▲" : "▼"}</span>
+</div>
+
 
       {!minimized && (
         <div

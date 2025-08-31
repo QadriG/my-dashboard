@@ -1,6 +1,8 @@
+/* eslint no-undef: "off" */
 import React, { useRef, useEffect, useState } from "react";
 import { isMobile } from "react-device-detect";
-import { useNavigate } from "react-router-dom";
+import { useTheme } from "../context/ThemeContext";
+import { useAdminAuth } from "../hooks/useAdminAuth";
 import "../styles/globals.css";
 import Layout from "./Layout";
 
@@ -18,31 +20,41 @@ import DailyPnL from "../components/DailyPnL.jsx";
 import BestTradingPairs from "../components/BestTradingPairs.jsx";
 import OpenPositions from "../components/OpenPositions.jsx";
 
+// Reusable LightModeToggle
+export function LightModeToggle({ className, style }) {
+  const { isDarkMode, toggleTheme } = useTheme();
+  return (
+    <button
+      onClick={toggleTheme}
+      className={`theme-toggle ${className || ""}`}
+      style={style}
+      onMouseEnter={(e) =>
+        (e.target.style.boxShadow = isDarkMode
+          ? "0 0 15px #00ffff, 0 0 25px #00ffff, 0 0 40px #00ffff"
+          : "0 0 15px #0000ff, 0 0 25px #0000ff, 0 0 40px #0000ff")
+      }
+      onMouseLeave={(e) =>
+        (e.target.style.boxShadow = isDarkMode
+          ? "0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff"
+          : "0 0 10px #0000ff, 0 0 20px #0000ff, 0 0 30px #0000ff")
+      }
+    >
+      {isDarkMode ? "Light Mode" : "Dark Mode"}
+    </button>
+  );
+}
+
+// ---------------------
+// AdminDashboard
+// ---------------------
 export default function AdminDashboard() {
   const audioRef = useRef(null);
-  const navigate = useNavigate();
+  const { isDarkMode } = useTheme();
+  const { logout } = useAdminAuth();
 
   const [expandedCard, setExpandedCard] = useState(null);
-  const [isDarkMode, setIsDarkMode] = useState(true);
-  const [buttonText, setButtonText] = useState("Light Mode");
 
-  // ✅ Logout handler
-  const handleLogout = async () => {
-    try {
-      await fetch("http://localhost:5000/api/auth/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-      localStorage.clear();
-      sessionStorage.clear();
-      navigate("/login", { replace: true });
-      window.location.reload();
-    } catch (err) {
-      console.error("Logout failed:", err);
-    }
-  };
-
-  // ✅ JWT check
+  // JWT check on mount
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -52,38 +64,13 @@ export default function AdminDashboard() {
           headers: { "Cache-Control": "no-store" },
         });
         const data = await res.json();
-        if (!res.ok || data.role !== "admin") {
-          localStorage.clear();
-          sessionStorage.clear();
-          navigate("/login", { replace: true });
-        }
+        if (!res.ok || data.role !== "admin") logout();
       } catch {
-        localStorage.clear();
-        sessionStorage.clear();
-        navigate("/login", { replace: true });
+        logout();
       }
     };
     checkAuth();
-  }, [navigate]);
-
-  // Toggle light/dark theme
-  const toggleTheme = () => {
-    setIsDarkMode((prev) => !prev);
-    setButtonText((prev) => (prev === "Light Mode" ? "Dark Mode" : "Light Mode"));
-  };
-
-  const buttonStyle = {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    padding: "0.5rem 1rem",
-    backgroundColor: isDarkMode ? "#333" : "#ddd",
-    color: isDarkMode ? "#fff" : "#000",
-    border: "2px solid " + (isDarkMode ? "#00ffff" : "#0000ff"),
-    borderRadius: "4px",
-    cursor: "pointer",
-    fontSize: "1.2rem",
-  };
+  }, [logout]);
 
   const handleCardClick = (key) => {
     if (!isMobile) setExpandedCard(expandedCard === key ? null : key);
@@ -105,46 +92,66 @@ export default function AdminDashboard() {
   };
 
   return (
-    <Layout onLogout={handleLogout}>
-      {/* Title Bar */}
-      <div className="shimmer-wrapper w-full py-4 px-6 mb-6 relative">
-        <h1 className="text-4xl font-semibold drop-shadow-md inline-block" style={{ color: isDarkMode ? "#fff" : "#000" }}>
+    <Layout onLogout={logout}>
+      <div className="shimmer-wrapper w-full py-4 px-6 mb-6 relative flex justify-between items-center">
+        <h1 className="text-4xl font-semibold drop-shadow-md inline-block title-bar-text">
           Dashboard
         </h1>
-        <button onClick={toggleTheme} style={buttonStyle}>
-          {buttonText}
-        </button>
+        <LightModeToggle />
       </div>
 
-      {/* Dashboard Content */}
-      <div className={`dashboard-content ${isDarkMode ? "dark-mode" : "light-mode"}`}>
+      <div className="dashboard-content">
         {!isMobile && (
           <div className="grid grid-cols-4 gap-7 max-lg:grid-cols-2 max-sm:grid-cols-1 mb-6">
-            <div className="dashboard-column dashboard-column-cyan" onClick={() => handleCardClick("activeUsers")}>{cards.activeUsers}</div>
-            <div className="dashboard-column dashboard-column-purple" onClick={() => handleCardClick("activeExchange")}>{cards.activeExchange}</div>
-            <div className="dashboard-column dashboard-column-green" onClick={() => handleCardClick("activePositions")}>{cards.activePositions}</div>
-            <div className="dashboard-column dashboard-column-teal" onClick={() => handleCardClick("totalBalances")}>{cards.totalBalances}</div>
+            <div className="dashboard-column dashboard-column-cyan" onClick={() => handleCardClick("activeUsers")}>
+              {cards.activeUsers}
+            </div>
+            <div className="dashboard-column dashboard-column-purple" onClick={() => handleCardClick("activeExchange")}>
+              {cards.activeExchange}
+            </div>
+            <div className="dashboard-column dashboard-column-green" onClick={() => handleCardClick("activePositions")}>
+              {cards.activePositions}
+            </div>
+            <div className="dashboard-column dashboard-column-teal" onClick={() => handleCardClick("totalBalances")}>
+              {cards.totalBalances}
+            </div>
           </div>
         )}
 
         <div className="grid grid-cols-3 gap-7 max-lg:grid-cols-1">
-          <div className="dashboard-column dashboard-column-cyan" onClick={() => handleCardClick("profit")}>{cards.profit}</div>
-          <div className="dashboard-column dashboard-column-purple" onClick={() => handleCardClick("upl")}>{cards.upl}</div>
-          <div className="dashboard-column dashboard-column-green" onClick={() => handleCardClick("fundsDistribution")}>{cards.fundsDistribution}</div>
+          <div className="dashboard-column dashboard-column-cyan" onClick={() => handleCardClick("profit")}>
+            {cards.profit}
+          </div>
+          <div className="dashboard-column dashboard-column-purple" onClick={() => handleCardClick("upl")}>
+            {cards.upl}
+          </div>
+          <div className="dashboard-column dashboard-column-green" onClick={() => handleCardClick("fundsDistribution")}>
+            {cards.fundsDistribution}
+          </div>
         </div>
 
         <div className="flex gap-4 w-full items-start mt-8 max-lg:flex-col">
-          <div className="dashboard-column dashboard-column-cyan balance-graph w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden" onClick={() => handleCardClick("balanceGraph")}>{cards.balanceGraph}</div>
-          <div className="dashboard-column dashboard-column-purple weekly-revenue w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden" onClick={() => handleCardClick("weeklyRevenue")}>{cards.weeklyRevenue}</div>
+          <div className="dashboard-column dashboard-column-cyan balance-graph w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden" onClick={() => handleCardClick("balanceGraph")}>
+            {cards.balanceGraph}
+          </div>
+          <div className="dashboard-column dashboard-column-purple weekly-revenue w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden" onClick={() => handleCardClick("weeklyRevenue")}>
+            {cards.weeklyRevenue}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-7 mt-8 max-sm:grid-cols-1">
-          <div className="dashboard-column dashboard-column-cyan" onClick={() => handleCardClick("dailyPnL")}>{cards.dailyPnL}</div>
-          <div className="dashboard-column dashboard-column-purple" onClick={() => handleCardClick("bestTradingPairs")}>{cards.bestTradingPairs}</div>
+          <div className="dashboard-column dashboard-column-cyan" onClick={() => handleCardClick("dailyPnL")}>
+            {cards.dailyPnL}
+          </div>
+          <div className="dashboard-column dashboard-column-purple" onClick={() => handleCardClick("bestTradingPairs")}>
+            {cards.bestTradingPairs}
+          </div>
         </div>
 
         <div className="mt-8">
-          <div className="dashboard-column dashboard-column-green" onClick={() => handleCardClick("openPositions")}>{cards.openPositions}</div>
+          <div className="dashboard-column dashboard-column-green" onClick={() => handleCardClick("openPositions")}>
+            {cards.openPositions}
+          </div>
         </div>
       </div>
     </Layout>

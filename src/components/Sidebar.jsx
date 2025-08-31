@@ -1,11 +1,13 @@
 import React, { useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAdminAuth } from "../hooks/useAdminAuth"; // ✅ centralized logout
 import "../styles/sidebar.css";
 import hoverSound from "../assets/click.mp3";
 
-export default function Sidebar({ onLogout }) {
+export default function Sidebar() {
   const audioRef = useRef(null);
   const navigate = useNavigate();
+  const { logout } = useAdminAuth(); // ✅ use global logout
 
   const playHoverSound = () => {
     if (audioRef.current) {
@@ -22,7 +24,7 @@ export default function Sidebar({ onLogout }) {
     { label: "Users", className: "sidebar-users", path: "/admin/users" },
     { label: "Logs", className: "sidebar-logs", path: "/admin/logs" },
     { label: "Manual Push", className: "sidebar-manual-push", path: "/admin/manual-push" },
-    { label: "Logout", className: "sidebar-red", action: onLogout },
+    { label: "Logout", className: "sidebar-red", action: logout }, // ✅ centralized
   ];
 
   return (

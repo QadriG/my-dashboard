@@ -5,6 +5,8 @@ import { useEffect } from "react";
 import Login from "./components/Auth/Login";
 import ResetPassword from "./components/Auth/ResetPassword";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { AdminAuthProvider } from "./hooks/useAdminAuth";
+import { UserAuthProvider } from "./hooks/useUserAuth";
 
 // Dashboards
 import AdminDashboard from "./components/Dashboard";
@@ -29,19 +31,19 @@ import { ChatProvider } from "./context/ChatContext";
 
 // Theme
 import { useTheme } from "./context/ThemeContext";
+import { Outlet } from "react-router-dom";
 
 // ----------------------
 // Admin Layout
 // ----------------------
-export function AdminLayout({ children }) {
+export function AdminLayout() {
   const { isDarkMode } = useTheme();
   return (
     <ChatProvider>
       <div className={`flex ${isDarkMode ? "dark-mode" : "light-mode"}`} style={{ minHeight: "100vh" }}>
         <Sidebar />
         <main className="flex-1 p-4 relative">
-          {children}
-          <LiveChat /> {/* Optional: Admin can have chat too */}
+          <Outlet />
         </main>
       </div>
     </ChatProvider>
@@ -51,15 +53,15 @@ export function AdminLayout({ children }) {
 // ----------------------
 // User Layout
 // ----------------------
-export function UserLayout({ children }) {
+export function UserLayout() {
   const { isDarkMode } = useTheme();
   return (
     <ChatProvider>
       <div className={`flex ${isDarkMode ? "dark-mode" : "light-mode"}`} style={{ minHeight: "100vh" }}>
         <UserSidebar />
         <main className="flex-1 p-4 relative">
-          {children}
-          <LiveChat /> {/* Persistent global chat */}
+          <Outlet />
+          <LiveChat />
         </main>
       </div>
     </ChatProvider>
@@ -74,99 +76,43 @@ function App() {
 
   return (
     <Router>
-      <Routes>
-        {/* Public routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/reset-password/:token" element={<ResetPassword />} />
-        <Route path="/verify-email/:token" element={<Navigate to="/login" replace />} />
+      <AdminAuthProvider>
+        <UserAuthProvider>
+          <Routes>
+            {/* Public routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/reset-password/:token" element={<ResetPassword />} />
+            <Route path="/verify-email/:token" element={<Navigate to="/login" replace />} />
 
-        {/* Admin routes */}
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute allowedRoles={["admin"]}>
-              <AdminLayout>
-                <AdminDashboard />
-              </AdminLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/settings"
-          element={
-            <ProtectedRoute allowedRoles={["admin"]}>
-              <AdminLayout>
-                <AdminSettings />
-              </AdminLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/api-details"
-          element={
-            <ProtectedRoute allowedRoles={["admin"]}>
-              <AdminLayout>
-                <ApiDetails />
-              </AdminLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/positions"
-          element={
-            <ProtectedRoute allowedRoles={["admin"]}>
-              <AdminLayout>
-                <AdminPositions />
-              </AdminLayout>
-            </ProtectedRoute>
-          }
-        />
+            {/* Admin routes */}
+            <Route path="/admin" element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <AdminLayout />
+              </ProtectedRoute>
+            }>
+              <Route index element={<AdminDashboard />} />
+              <Route path="settings" element={<AdminSettings />} />
+              <Route path="api-details" element={<ApiDetails />} />
+              <Route path="positions" element={<AdminPositions />} />
+            </Route>
 
-        {/* User routes */}
-        <Route
-          path="/user"
-          element={
-            <ProtectedRoute allowedRoles={["user"]}>
-              <UserLayout>
-                <UserDashboard />
-              </UserLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/user/settings"
-          element={
-            <ProtectedRoute allowedRoles={["user"]}>
-              <UserLayout>
-                <UserSettings />
-              </UserLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/user/api-details"
-          element={
-            <ProtectedRoute allowedRoles={["user"]}>
-              <UserLayout>
-                <ApiDetails />
-              </UserLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/user/positions"
-          element={
-            <ProtectedRoute allowedRoles={["user"]}>
-              <UserLayout>
-                <UserPositions />
-              </UserLayout>
-            </ProtectedRoute>
-          }
-        />
+            {/* User routes (fixed logout) */}
+            <Route path="/user" element={
+              <ProtectedRoute allowedRoles={["user"]}>
+                <UserLayout />
+              </ProtectedRoute>
+            }>
+              <Route index element={<UserDashboard />} />
+              <Route path="settings" element={<UserSettings />} />
+              <Route path="api-details" element={<ApiDetails />} />
+              <Route path="positions" element={<UserPositions />} />
+            </Route>
 
-        {/* Catch-all redirect */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
+            {/* Catch-all */}
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
+        </UserAuthProvider>
+      </AdminAuthProvider>
     </Router>
   );
 }

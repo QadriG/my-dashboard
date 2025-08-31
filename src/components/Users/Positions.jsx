@@ -1,6 +1,9 @@
 import React, { useState } from "react";
+import { useTheme } from "../../context/ThemeContext";
 
 export default function UserPositions() {
+  const { isDarkMode } = useTheme();
+
   // ✅ Example dummy data
   const openPositions = [
     {
@@ -38,15 +41,32 @@ export default function UserPositions() {
   const [page, setPage] = useState(1);
 
   const positions = tableType === "open" ? openPositions : closedPositions;
-  const totalPages = Math.ceil(positions.length / pageSize);
+  const totalPages = Math.max(1, Math.ceil(positions.length / pageSize));
   const paginated = positions.slice((page - 1) * pageSize, page * pageSize);
 
   const changePage = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) setPage(newPage);
   };
 
+  // helper for conditional classes
+  const selectClass = `px-3 py-2 rounded border w-48 ${
+    isDarkMode
+      ? "border-gray-700 bg-black text-white"
+      : "border-gray-300 bg-white text-black"
+  }`;
+
+  const smallSelectClass = `px-2 py-1 rounded border ${
+    isDarkMode
+      ? "bg-black text-white border-gray-700"
+      : "bg-white text-black border-gray-300"
+  }`;
+
   return (
-    <main className="ml-64 flex-1 p-8 overflow-y-auto space-y-10 text-white">
+    <main
+      className={`ml-64 flex-1 p-8 overflow-y-auto space-y-10 ${
+        isDarkMode ? "text-white" : "text-black"
+      }`}
+    >
       {/* Header */}
       <div className="shimmer-wrapper w-full py-4 px-6 mb-6">
         <h1 className="text-3xl font-semibold drop-shadow-md">Positions</h1>
@@ -55,7 +75,7 @@ export default function UserPositions() {
       {/* Filter */}
       <div>
         <label className="block text-sm font-medium mb-1">Filter by Pair:</label>
-        <select className="px-3 py-2 rounded border border-gray-700 bg-black w-48">
+        <select className={selectClass} defaultValue="All">
           <option>All</option>
           <option>XMR/USDT:USDT</option>
           <option>UNI/USDT:USDT</option>
@@ -74,9 +94,7 @@ export default function UserPositions() {
             setPage(1);
           }}
           className={`px-4 py-2 rounded-full text-sm ${
-            tableType === "open"
-              ? "bg-green-500"
-              : "bg-green-700 hover:bg-green-600"
+            tableType === "open" ? "bg-green-500" : "bg-green-700 hover:bg-green-600"
           }`}
         >
           Open Positions
@@ -87,9 +105,7 @@ export default function UserPositions() {
             setPage(1);
           }}
           className={`px-4 py-2 rounded-full text-sm ${
-            tableType === "closed"
-              ? "bg-red-500"
-              : "bg-red-700 hover:bg-red-600"
+            tableType === "closed" ? "bg-red-500" : "bg-red-700 hover:bg-red-600"
           }`}
         >
           Closed Positions
@@ -99,8 +115,12 @@ export default function UserPositions() {
       {/* Table */}
       <div className="p-[2px] rounded-xl bg-gradient-to-r from-green-400 to-red-500 shadow-[0_0_12px_4px_rgba(34,197,94,0.6)]">
         <div className="rounded-xl bg-black/30 backdrop-blur-md p-6 transition-transform duration-300 hover:scale-[1.01]">
-          <table className="w-full text-white">
-            <thead className="bg-gray-200 text-black rounded-xl">
+          <table className="w-full">
+            <thead
+              className={`rounded-xl ${
+                isDarkMode ? "bg-gray-800 text-white" : "bg-gray-200 text-black"
+              }`}
+            >
               <tr>
                 {tableType === "open" ? (
                   <>
@@ -131,7 +151,7 @@ export default function UserPositions() {
                 )}
               </tr>
             </thead>
-            <tbody className="bg-black/20">
+            <tbody className={`${isDarkMode ? "bg-black/20" : "bg-white/5"}`}>
               {paginated.map((pos, i) => (
                 <tr key={i} className="border-t border-gray-600">
                   {tableType === "open" ? (
@@ -190,7 +210,7 @@ export default function UserPositions() {
             setPageSize(parseInt(e.target.value));
             setPage(1);
           }}
-          className="text-black px-2 py-1 rounded border"
+          className={smallSelectClass}
         >
           {[10, 20, 30, 40].map((n) => (
             <option key={n} value={n}>
@@ -199,7 +219,7 @@ export default function UserPositions() {
           ))}
         </select>
 
-        <div className="flex gap-1 text-white">
+        <div className={`flex gap-1 ${isDarkMode ? "text-white" : "text-black"}`}>
           <button
             disabled={page === 1}
             onClick={() => changePage(page - 1)}
