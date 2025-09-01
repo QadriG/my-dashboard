@@ -33,6 +33,11 @@ import { ChatProvider } from "./context/ChatContext";
 import { useTheme } from "./context/ThemeContext";
 import { Outlet } from "react-router-dom";
 
+// Users/Logs/ManualPush
+import AdminLogs from "./components/Logs";
+import AdminUsers from "./components/Users";
+import AdminManualPush from "./components/ManualPush";
+
 // ----------------------
 // Admin Layout
 // ----------------------
@@ -94,6 +99,9 @@ function App() {
               <Route path="settings" element={<AdminSettings />} />
               <Route path="api-details" element={<ApiDetails />} />
               <Route path="positions" element={<AdminPositions />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="logs" element={<AdminLogs />} />
+              <Route path="manualpush" element={<AdminManualPush />} />
             </Route>
 
             {/* User routes (fixed logout) */}

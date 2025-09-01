@@ -118,29 +118,28 @@ canvas * {
   pointer-events: none;
 }
 
-/* Page glow */
-.page-glow {
-  background: radial-gradient(circle at center, rgba(0, 246, 255, 0.2) 0%, transparent 70%);
-}
 
-/* Glass box styling */
+
 .glass-box {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
-  transition: all 0.3s ease;
-}
-
-.light-mode .glass-box {
-  background: rgba(0, 0, 0, 0.1);
-  border-color: rgba(0, 0, 0, 0.2);
+  backdrop-filter: none;
+  background: transparent;
+  overflow: hidden;
+  border: 2px solid #00ffff;
+  border-radius: 0.75rem;
+  box-shadow: none !important; /* no default glow */
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
 }
 
 .glass-box:hover {
-  box-shadow: 0 0 12px 4px rgba(34, 197, 94, 0.6);
+  box-shadow:
+    0 0 10px #00ffff,
+    0 0 20px #00ffff,
+    0 0 40px #00ffff,
+    inset 0 0 10px #00ffff !important;
   transform: scale(1.02);
 }
+
+
 
 /* Neon button styling */
 .neon-button {

@@ -1,13 +1,13 @@
 import React, { useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAdminAuth } from "../hooks/useAdminAuth"; // ✅ centralized logout
+import { useAdminAuth } from "../hooks/useAdminAuth";
 import "../styles/sidebar.css";
 import hoverSound from "../assets/click.mp3";
 
 export default function Sidebar() {
   const audioRef = useRef(null);
   const navigate = useNavigate();
-  const { logout } = useAdminAuth(); // ✅ use global logout
+  const { logout } = useAdminAuth();
 
   const playHoverSound = () => {
     if (audioRef.current) {
@@ -23,8 +23,8 @@ export default function Sidebar() {
     { label: "Positions", className: "sidebar-yellow", path: "/admin/positions" },
     { label: "Users", className: "sidebar-users", path: "/admin/users" },
     { label: "Logs", className: "sidebar-logs", path: "/admin/logs" },
-    { label: "Manual Push", className: "sidebar-manual-push", path: "/admin/manual-push" },
-    { label: "Logout", className: "sidebar-red", action: logout }, // ✅ centralized
+    { label: "Manual Push", className: "sidebar-manual-push", path: "/admin/manualpush" },
+    { label: "Logout", className: "sidebar-red", action: logout },
   ];
 
   return (
@@ -32,24 +32,25 @@ export default function Sidebar() {
       <h2 className="text-xl font-bold mb-10 text-cyan-300 drop-shadow-md">
         QuantumCopyTrading
       </h2>
+
       <audio ref={audioRef} preload="auto">
         <source src={hoverSound} type="audio/mpeg" />
       </audio>
+
       <ul>
         {buttons.map((btn, i) => (
           <li key={i} className="mb-3">
-            <a
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
+            <button
+              type="button"
+              onClick={() => {
                 if (btn.action) btn.action();
                 else if (btn.path) navigate(btn.path);
               }}
               onMouseEnter={playHoverSound}
-              className={`sidebar-button ${btn.className}`}
+              className={`sidebar-button ${btn.className} w-full text-left`}
             >
               {btn.label}
-            </a>
+            </button>
           </li>
         ))}
       </ul>

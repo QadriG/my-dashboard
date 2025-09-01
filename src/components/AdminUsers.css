@@ -1,0 +1,60 @@
+/* Shimmer for text */
+.shimmer-text {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    rgba(255, 255, 255, 0.1) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Shimmer hover effect for buttons */
+.shimmer-button {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.shimmer-button::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -75%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    120deg,
+    rgba(255, 255, 255, 0.2),
+    rgba(255, 255, 255, 0.6),
+    rgba(255, 255, 255, 0.2)
+  );
+  transform: skewX(-25deg);
+  transition: all 0.5s ease;
+}
+
+.shimmer-button:hover::after {
+  left: 125%;
+}
+
+/* Shimmer hover for table rows */
+.shimmer-row {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.shimmer-row:hover {
+  transform: scale(1.01);
+  box-shadow: 0 0 12px 4px rgba(34, 197, 94, 0.6);
+}
