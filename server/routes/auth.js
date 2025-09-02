@@ -1,182 +1,135 @@
 import express from "express";
-import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
-import nodemailer from "nodemailer";
-import cookieParser from "cookie-parser";
+import dotenv from "dotenv";
 
-// Add in-memory blacklist
-const tokenBlacklist = new Set();
-
+dotenv.config();
 const router = express.Router();
 const prisma = new PrismaClient();
-const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
 
-// Middleware to parse cookies
-router.use(cookieParser());
+const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key";
+const JWT_EXPIRES_IN = "7d"; // ✅ changed from 5s to 7 days
 
-// ---------------- SIGNUP ----------------
-// [Existing signup code remains unchanged]
+// ========================
+// ✅ Register
+// ========================
+router.post("/register", async (req, res) => {
+  const { name, email, password } = req.body;
 
-router.post("/signup", async (req, res) => {
+  if (!name || !email || !password) {
+    return res.status(400).json({ message: "All fields are required" });
+  }
+
   try {
-    const { email, password, role } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ message: "Email and password required" });
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already exists" });
     }
 
-    const existingUser = await prisma.user.findUnique({ where: { email } });
-    if (existingUser) return res.status(400).json({ message: "User already exists" });
-
     const hashedPassword = await bcrypt.hash(password, 10);
-    const verificationToken = crypto.randomBytes(32).toString("hex");
-    const user = await prisma.user.create({
+
+    const newUser = await prisma.user.create({
       data: {
+        name,
         email,
         password: hashedPassword,
-        role: role || "user",
-        isVerified: false,
-        verificationToken,
+        role: "user", // ✅ default role
       },
     });
 
-    const verificationLink = `${process.env.CLIENT_URL}/verify-email/${verificationToken}`;
-    await sendEmail(
-      user.email,
-      "Verify Your Email",
-      `<p>Hello,</p><p>Please verify your email by clicking <a href="${verificationLink}">here</a>.</p>`
-    );
-
-    res.json({ message: "Please check your email to verify your account." });
-  } catch (err) {
-    console.error("Signup error:", err);
-    res.status(500).json({ message: "Server error" });
+    res.status(201).json({
+      message: "User registered successfully",
+      user: { id: newUser.id, name: newUser.name, email: newUser.email },
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error registering user", error });
   }
 });
 
-// ---------------- LOGIN ----------------
+// ========================
+// ✅ Login
+// ========================
 router.post("/login", async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ message: "Email and password required" });
+  const { email, password } = req.body;
 
+  try {
     const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) return res.status(400).json({ message: "Invalid credentials" });
+    if (!user) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
-
-    if (!user.isVerified) return res.status(403).json({ message: "Please verify your email first" });
-
-    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: "5s" });
-    res
-      .cookie("token", token, {
-        httpOnly: true,
-        secure: false,
-        sameSite: "lax",
-        maxAge: 5000, // 5 seconds in milliseconds
-      })
-      .json({ message: "Login successful", user: { id: user.id, email: user.email, role: user.role } });
-  } catch (err) {
-    console.error("Login error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
-// ---------------- CHECK AUTH ----------------
-// [Existing check-auth code remains unchanged]
-
-router.get("/check-auth", async (req, res) => {
-  try {
-    const token = req.cookies.token || req.headers.authorization?.split(" ")[1];
-    if (!token) return res.status(401).json({ message: "Unauthorized" });
-
-    if (tokenBlacklist.has(token)) {
-      return res.status(401).json({ message: "Invalid token" });
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const user = await prisma.user.findUnique({ where: { id: decoded.id } });
-    if (!user) return res.status(401).json({ message: "User not found" });
+    const token = jwt.sign(
+      { id: user.id, role: user.role },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
 
-    res.json({ id: user.id, role: user.role, email: user.email });
-  } catch (err) {
-    console.error("Check auth error:", err);
-    res.status(401).json({ message: "Invalid token" });
-  }
-});
-
-// ---------------- VERIFY EMAIL ----------------
-// [Existing verify-email code remains unchanged]
-
-router.get("/verify-email/:token", async (req, res) => {
-  try {
-    const { token } = req.params;
-    const user = await prisma.user.findFirst({ where: { verificationToken: token } });
-
-    if (!user || user.isVerified) {
-      return res.status(400).json({ message: "Invalid or already verified token" });
-    }
-
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { isVerified: true, verificationToken: null },
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", // ✅ secure in prod
+      sameSite: "strict", // ✅ strict CSRF protection
+      maxAge: 7 * 24 * 60 * 60 * 1000, // ✅ 7 days
     });
 
-    res.json({ message: "Email verified successfully. You can now log in." });
-  } catch (err) {
-    console.error("Verification error:", err);
-    res.status(500).json({ message: "Server error" });
+    res.json({
+      message: "Login successful",
+      token,
+      user: { id: user.id, name: user.name, role: user.role },
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error logging in", error });
   }
 });
 
-// ---------------- LOGOUT ----------------
+// ========================
+// ✅ Logout
+// ========================
 router.post("/logout", (req, res) => {
   const token = req.cookies.token;
+
   if (token) {
-    tokenBlacklist.add(token);
-    console.log("Blacklisting token:", token);
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
   }
-  res.status(200).set({
-    "Set-Cookie": "token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax",
-  });
-  console.log("Setting cookie header, response headers:", res.getHeaders());
+
   res.json({ message: "Logged out successfully" });
 });
 
-// ---------------- FORGOT PASSWORD ----------------
-// [Existing forgot-password code remains unchanged]
-
-router.post("/forgot-password", async (req, res) => {
+// ========================
+// ✅ Check Authentication
+// ========================
+router.get("/check-auth", async (req, res) => {
   try {
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ message: "Email required" });
+    const token =
+      req.cookies?.token ||
+      req.headers["authorization"]?.split(" ")[1];
 
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) return res.status(400).json({ message: "User not found" });
+    if (!token) {
+      return res.status(401).json({ message: "No token provided" });
+    }
 
-    const resetToken = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: "15m" });
-    const resetLink = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
+    jwt.verify(token, JWT_SECRET, async (err, decoded) => {
+      if (err) return res.status(401).json({ message: "Invalid token" });
 
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
+      const user = await prisma.user.findUnique({ where: { id: decoded.id } });
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      res.json({
+        authenticated: true,
+        user: { id: user.id, name: user.name, role: user.role },
+      });
     });
-
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: "Password Reset",
-      text: `Click this link to reset your password: ${resetLink}`,
-    });
-
-    res.json({ message: "Password reset email sent" });
-  } catch (err) {
-    console.error("Forgot password error:", err);
-    res.status(500).json({ message: "Server error" });
+  } catch (error) {
+    res.status(500).json({ message: "Error checking authentication", error });
   }
 });
 

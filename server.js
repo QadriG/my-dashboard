@@ -10,6 +10,12 @@ import rateLimit from "express-rate-limit";
 import bodyParser from "body-parser";
 import crypto from "crypto";
 import { sendEmail } from "./src/utils/mailer.js";
+import http from "http";
+import webhookRoutes from "./server/routes/webhookRoutes.js";
+import { initWebSocket } from "./server/services/websocketService.js";
+
+// ✅ Import admin routes
+import adminRoutes from "./server/routes/adminRoutes.js";
 
 dotenv.config();
 const app = express();
@@ -20,7 +26,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
 const SERVER_URL = process.env.SERVER_URL || `http://localhost:${PORT}`;
 const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:3000";
 
-// Middleware
+// === Middleware (order matters!) ===
 app.use(bodyParser.json());
 app.use(cookieParser());
 app.use(
@@ -29,11 +35,8 @@ app.use(
       const allowedOrigins = process.env.CORS_WHITELIST
         ? process.env.CORS_WHITELIST.split(",")
         : ["http://localhost:3000", "http://localhost:5173"];
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
+      if (!origin || allowedOrigins.includes(origin)) callback(null, true);
+      else callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
   })
@@ -41,7 +44,7 @@ app.use(
 app.use(helmet());
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
 
-/// Helper: auth cookie
+// === Helper: auth cookie ===
 const setAuthCookie = (res, token) => {
   res.cookie("token", token, {
     httpOnly: true,
@@ -51,20 +54,41 @@ const setAuthCookie = (res, token) => {
   });
 };
 
-// Auth middleware
+// === Auth middleware (supports cookie + headers) ===
 const authMiddleware = async (req, res, next) => {
-  const token = req.cookies.token;
-  if (!token) return res.status(401).json({ error: "Unauthorized" });
   try {
+    let token = req.cookies?.token;
+    if (!token && req.headers.authorization) {
+      token = req.headers.authorization.split(" ")[1];
+    }
+    if (!token) return res.status(401).json({ error: "Unauthorized: No token" });
+
     const decoded = jwt.verify(token, JWT_SECRET);
     const user = await prisma.user.findUnique({ where: { id: decoded.id } });
-    if (!user) return res.status(401).json({ error: "User not found" });
+    if (!user) return res.status(401).json({ error: "Unauthorized: User not found" });
+
     req.user = user;
     next();
-  } catch {
-    return res.status(401).json({ error: "Invalid token" });
+  } catch (err) {
+    return res.status(401).json({ error: "Unauthorized: Invalid or expired token" });
   }
 };
+
+// === Admin middleware (role check) ===
+const adminMiddleware = (req, res, next) => {
+  if (!req.user || req.user.role !== "admin") {
+    return res.status(403).json({ error: "Forbidden: Admins only" });
+  }
+  next();
+};
+
+// === Webhook route ===
+app.use("/api/webhook", webhookRoutes);
+
+// === Admin routes (protected) ===
+app.use("/api/admin", authMiddleware, adminMiddleware, adminRoutes);
+
+// === AUTH ROUTES ===
 
 // SIGNUP
 app.post("/api/auth/signup", async (req, res) => {
@@ -138,7 +162,7 @@ app.get("/api/auth/verify-email", async (req, res) => {
   }
 });
 
-// LOGIN (updated to 7 days)
+// LOGIN
 app.post("/api/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -226,11 +250,28 @@ app.post("/api/auth/logout", (req, res) => {
     secure: false,
     sameSite: "lax",
     path: "/",
-    expires: new Date(0), // Explicitly expire
+    expires: new Date(0),
   });
-  console.log("Clearing cookie, response headers:", res.getHeaders());
   return res.json({ message: "Logged out" });
 });
 
-// Start server
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+// =============================
+// ✅ EXTRA SECURED ROUTES
+// =============================
+
+// User profile
+app.get("/user/profile", authMiddleware, (req, res) => {
+  res.json({ user: req.user });
+});
+
+// Admin dashboard
+app.get("/admin/dashboard", authMiddleware, adminMiddleware, (req, res) => {
+  res.json({ message: "Welcome Admin", user: req.user });
+});
+
+// === Create HTTP server & WebSocket ===
+const server = http.createServer(app);
+initWebSocket(server);
+
+// === Start server ===
+server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
