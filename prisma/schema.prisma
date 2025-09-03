@@ -8,21 +8,23 @@ datasource db {
 }
 
 model User {
-  id                Int       @id @default(autoincrement())
-  email             String    @unique
+  id                Int            @id @default(autoincrement())
+  email             String         @unique
   password          String
   name              String?
-  role              String    @default("user")
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  role              String         @default("user")
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
   resetToken        String?
   resetTokenExp     DateTime?
-  isVerified        Boolean   @default(false)
+  isVerified        Boolean        @default(false)
   verificationToken String?
 
   trades            Trade[]
   alerts            AlertLog[]
-  exchanges         UserExchange[]  // Step 1: added relation to UserExchange
+  exchanges         UserExchange[]
+  apis              UserAPI[]      // ✅ Opposite relation for UserAPI
+  logs              Log[]          // ✅ Opposite relation for Log
 }
 
 model Trade {
@@ -50,13 +52,38 @@ model AlertLog {
   updatedAt   DateTime  @updatedAt
 }
 
-// Step 1: New model to store user API keys per exchange
 model UserExchange {
-  id        Int     @id @default(autoincrement())
-  user      User    @relation(fields: [userId], references: [id])
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id])
   userId    Int
   exchange  String
   apiKey    String
   apiSecret String
+  createdAt DateTime @default(now())
+}
+
+model UserAPI {
+  id             Int      @id @default(autoincrement())
+  user           User     @relation(fields: [userId], references: [id])
+  userId         Int
+  exchangeName   String
+  apiKey         String
+  apiSecret      String
+  spotEnabled    Boolean  @default(false)
+  futuresEnabled Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Log {
+  id        Int      @id @default(autoincrement())
+  user      User?    @relation(fields: [userId], references: [id])
+  userId    Int?
+  tvId      String?
+  exchange  String?
+  symbol    String?
+  request   String?
+  message   String
+  level     String   @default("INFO") // INFO, ERROR, WARN
   createdAt DateTime @default(now())
 }

@@ -1,11 +1,13 @@
-const bcrypt = require("bcrypt");
+// nodeadmin.js
+import { hashPassword } from "./utils/encrypt.js";
 
-// Generate a hash (do this once, not every time your server runs)
-async function generateHash() {
+const generateHash = async () => {
   const plainPassword = "Seriousgains2025!";
-  const saltRounds = 12; // higher is more secure, but slower
-  const hash = await bcrypt.hash(plainPassword, saltRounds);
+  const hash = await hashPassword(plainPassword);
   console.log("Hashed Password:", hash);
-}
+};
 
-generateHash();
+// Run immediately if script executed directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  generateHash();
+}
