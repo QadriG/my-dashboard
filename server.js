@@ -12,8 +12,7 @@ import http from "http";
 
 import { sendEmail } from "./src/utils/mailer.js";
 import webhookRoutes from "./server/routes/webhookRoutes.mjs";
-import websocketService from "./server/services/websocketService.mjs";
-const { initWebSocket, broadcastToUsers } = websocketService;
+import { initWebSocket, broadcastToUsers } from "./server/services/websocketService.mjs";
 
 import adminRoutes from "./server/routes/adminRoutes.mjs";
 

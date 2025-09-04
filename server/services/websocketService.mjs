@@ -1,9 +1,10 @@
 // server/services/websocketService.mjs
-import WebSocket from "ws";
-import { info, error as logError } from "../utils/logger.mjs";
+import WebSocket, { WebSocketServer } from "ws";
+import { info, error as logError, warn } from "../utils/logger.mjs";
+// import jwt from "jsonwebtoken"; // optional if you want JWT validation
 
 let wss;
-// Map of userId to WebSocket connections
+// Map of userId -> array of active WebSocket connections
 const userConnections = new Map();
 
 /**
@@ -11,55 +12,90 @@ const userConnections = new Map();
  * @param {*} server - HTTP server instance
  */
 export const initWebSocket = (server) => {
-  wss = new WebSocket.Server({ server });
+  wss = new WebSocketServer({ server });
 
   wss.on("connection", (ws, req) => {
     info("New WebSocket connection established");
 
     ws.isAlive = true;
 
-    // Expect client to send auth token immediately to register userId
     ws.on("message", (message) => {
       try {
         const msg = JSON.parse(message.toString());
-        if (msg.type === "auth" && msg.userId) {
-          ws.userId = msg.userId;
-          if (!userConnections.has(msg.userId)) userConnections.set(msg.userId, []);
-          userConnections.get(msg.userId).push(ws);
-          info(`Registered WebSocket for userId: ${msg.userId}`);
+
+        if (msg.type === "auth" && msg.token) {
+          // Example: validate token -> extract userId
+          // let decoded;
+          // try {
+          //   decoded = jwt.verify(msg.token, process.env.JWT_SECRET);
+          // } catch (err) {
+          //   ws.close(4001, "Invalid token");
+          //   return;
+          // }
+          // const userId = decoded.userId;
+
+          const userId = msg.userId; // fallback if no JWT validation
+          if (!userId) {
+            warn("Auth message missing userId");
+            return;
+          }
+
+          ws.userId = userId;
+          if (!userConnections.has(userId)) userConnections.set(userId, []);
+          userConnections.get(userId).push(ws);
+
+          info(`Registered WebSocket for userId: ${userId}`);
         }
       } catch (err) {
         logError("WebSocket message parse error:", err);
       }
     });
 
-    ws.on("pong", () => (ws.isAlive = true));
-
-    ws.on("close", () => {
-      if (ws.userId && userConnections.has(ws.userId)) {
-        const arr = userConnections.get(ws.userId).filter((c) => c !== ws);
-        if (arr.length > 0) userConnections.set(ws.userId, arr);
-        else userConnections.delete(ws.userId);
-      }
-      info("WebSocket connection closed");
+    ws.on("pong", () => {
+      ws.isAlive = true;
     });
 
-    ws.on("error", (err) => logError("WebSocket error:", err));
+    ws.on("close", () => {
+      cleanupConnection(ws);
+      info(`WebSocket connection closed (userId: ${ws.userId || "unknown"})`);
+    });
+
+    ws.on("error", (err) => {
+      logError("WebSocket error:", err);
+      cleanupConnection(ws);
+    });
   });
 
-  // Heartbeat
+  // Heartbeat to keep connections alive
   const interval = setInterval(() => {
     if (!wss) return;
     wss.clients.forEach((ws) => {
-      if (!ws.isAlive) return ws.terminate();
+      if (!ws.isAlive) {
+        logError(`Terminating dead WebSocket (userId: ${ws.userId || "unknown"})`);
+        return ws.terminate();
+      }
       ws.isAlive = false;
       ws.ping();
     });
   }, 30000);
 
-  info("WebSocket server initialized");
   wss.on("close", () => clearInterval(interval));
+  info("WebSocket server initialized");
 };
+
+/**
+ * Clean up userConnections map when a socket closes or errors
+ */
+function cleanupConnection(ws) {
+  if (ws.userId && userConnections.has(ws.userId)) {
+    const arr = userConnections.get(ws.userId).filter((c) => c !== ws);
+    if (arr.length > 0) {
+      userConnections.set(ws.userId, arr);
+    } else {
+      userConnections.delete(ws.userId);
+    }
+  }
+}
 
 /**
  * Broadcast alert to specific users
@@ -87,7 +123,9 @@ export const broadcastToUsers = (alert, userIds) => {
   userIds.forEach((uid) => {
     if (userConnections.has(uid)) {
       userConnections.get(uid).forEach((ws) => {
-        if (ws.readyState === WebSocket.OPEN) ws.send(payload);
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(payload);
+        }
       });
     }
   });
@@ -97,4 +135,17 @@ export const broadcastToUsers = (alert, userIds) => {
     symbol: alert.symbol,
     action: alert.action,
   });
+};
+
+/**
+ * Send a message to a single user
+ */
+export const sendToUser = (userId, message) => {
+  if (!userConnections.has(userId)) return false;
+
+  const payload = JSON.stringify(message);
+  userConnections.get(userId).forEach((ws) => {
+    if (ws.readyState === WebSocket.OPEN) ws.send(payload);
+  });
+  return true;
 };
