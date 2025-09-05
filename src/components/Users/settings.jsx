@@ -1,6 +1,64 @@
-import React from "react";
+import React, { useState } from "react";
 
 export default function Settings() {
+  // State for password reset
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordMessage, setPasswordMessage] = useState("");
+
+  // State for leverage
+  const [leverage, setLeverage] = useState("1");
+  const [leverageMessage, setLeverageMessage] = useState("");
+
+  // Submit password reset
+  const handlePasswordReset = async () => {
+    if (newPassword !== confirmPassword) {
+      setPasswordMessage("❌ New password and confirm password do not match.");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setPasswordMessage("✅ Password updated successfully.");
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+      } else {
+        setPasswordMessage(`❌ ${data.message || "Error updating password."}`);
+      }
+    } catch (err) {
+      setPasswordMessage("❌ Server error. Please try again later.");
+    }
+  };
+
+  // Submit leverage setting
+  const handleLeverageSet = async () => {
+    try {
+      const res = await fetch("/api/set-leverage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leverage }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setLeverageMessage("✅ Leverage updated successfully.");
+      } else {
+        setLeverageMessage(`❌ ${data.message || "Error setting leverage."}`);
+      }
+    } catch (err) {
+      setLeverageMessage("❌ Server error. Please try again later.");
+    }
+  };
+
   return (
     <main className="ml-64 p-8 overflow-y-auto space-y-10">
       {/* Title */}
@@ -19,6 +77,8 @@ export default function Settings() {
             <input
               type="password"
               id="current-password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
               className="w-full p-2 border border-cyan-300 bg-transparent rounded placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-cyan-400"
             />
           </div>
@@ -29,6 +89,8 @@ export default function Settings() {
             <input
               type="password"
               id="new-password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
               className="w-full p-2 border border-cyan-300 bg-transparent rounded placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-cyan-400"
             />
           </div>
@@ -39,12 +101,20 @@ export default function Settings() {
             <input
               type="password"
               id="confirm-password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
               className="w-full p-2 border border-cyan-300 bg-transparent rounded placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-cyan-400"
             />
           </div>
-          <button className="bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 rounded shadow-lg hover:shadow-white-500/50 transition duration-300">
+          <button
+            onClick={handlePasswordReset}
+            className="bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 rounded shadow-lg hover:shadow-white-500/50 transition duration-300"
+          >
             Save Password
           </button>
+          {passwordMessage && (
+            <p className="mt-2 text-sm">{passwordMessage}</p>
+          )}
         </div>
       </div>
 
@@ -59,6 +129,8 @@ export default function Settings() {
               </label>
               <select
                 id="leverage"
+                value={leverage}
+                onChange={(e) => setLeverage(e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded text-black"
               >
                 <option value="1">1x</option>
@@ -73,9 +145,15 @@ export default function Settings() {
                 This will be auto-synced with the exchange based on their allowed leverage.
               </p>
             </div>
-            <button className="bg-purple-600 hover:shadow-white-500/50 transition duration-300 text-white px-4 py-2 rounded">
+            <button
+              onClick={handleLeverageSet}
+              className="bg-purple-600 hover:shadow-white-500/50 transition duration-300 text-white px-4 py-2 rounded"
+            >
               Set Leverage
             </button>
+            {leverageMessage && (
+              <p className="mt-2 text-sm">{leverageMessage}</p>
+            )}
           </div>
         </div>
       </div>

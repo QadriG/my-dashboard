@@ -20,6 +20,9 @@ import adminRoutes from "./server/routes/adminRoutes.mjs";
 
 import logger from "./server/utils/logger.mjs";
 const { info, error: logError } = logger;
+import exchangesRoutes from "./routes/exchanges.mjs";
+app.use("/api/exchanges", exchangesRoutes);
+
 
 // ✅ Import via default to avoid CommonJS/ESM named export issues
 import encryptUtils from "./server/utils/encrypt.mjs";

@@ -1,56 +1,47 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 export default function AdminPositions() {
-  // sample static data (replace with API later)
-  const [openPositions, setOpenPositions] = useState([
-    {
-      id: "2S",
-      symbol: "XMR/USDT:USDT",
-      side: "Short",
-      amount: 0.08,
-      value: 26.3104,
-      price: 328.88,
-      status: "Open",
-      openDate: "3/25/2025",
-    },
-    {
-      id: "1L",
-      symbol: "UNI/USDT:USDT",
-      side: "Long",
-      amount: 2.7,
-      value: 28.3733,
-      price: 10.5086,
-      status: "Open",
-      openDate: "5/13/2025",
-    },
-  ]);
-
-  const [closedPositions] = useState([
-    {
-      id: "001",
-      symbol: "BTCUSDT",
-      side: "Long",
-      amount: 0.5,
-      value: 13000,
-      openPrice: 26000,
-      closePrice: 27000,
-      profit: 500,
-      pnl: "3.85%",
-      status: "Closed",
-      openDate: "2025-08-01",
-      closeDate: "2025-08-03",
-    },
-  ]);
-
+  const [openPositions, setOpenPositions] = useState([]);
+  const [closedPositions, setClosedPositions] = useState([]);
   const [activeTable, setActiveTable] = useState("open");
 
-  const handleClose = (posId) => {
-    // simple demo: remove from open and move to closed
-    const pos = openPositions.find((p) => p.id === posId);
-    if (pos) {
-      setOpenPositions(openPositions.filter((p) => p.id !== posId));
-      // Ideally, add it to closedPositions
-      // but for demo we just remove it
+  // ✅ Fetch positions from backend
+  useEffect(() => {
+    const fetchPositions = async () => {
+      try {
+        const resOpen = await fetch("http://localhost:5000/api/positions/open");
+        const resClosed = await fetch("http://localhost:5000/api/positions/closed");
+
+        const dataOpen = await resOpen.json();
+        const dataClosed = await resClosed.json();
+
+        setOpenPositions(dataOpen);
+        setClosedPositions(dataClosed);
+      } catch (error) {
+        console.error("Error fetching positions:", error);
+      }
+    };
+
+    fetchPositions();
+
+    // Optional: poll every 5s for updates
+    const interval = setInterval(fetchPositions, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // ✅ Send "close" action to backend
+  const handleClose = async (posId) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/positions/close/${posId}`, {
+        method: "POST",
+      });
+      if (res.ok) {
+        // Refresh data after closing
+        const updatedOpen = openPositions.filter((p) => p.id !== posId);
+        setOpenPositions(updatedOpen);
+      }
+    } catch (err) {
+      console.error("Error closing position:", err);
     }
   };
 
@@ -64,15 +55,12 @@ export default function AdminPositions() {
       {/* Filter + Toggle */}
       <div className="flex items-center justify-between">
         <div>
-          <label className="block text-sm font-medium mb-1">
-            Filter by Pair:
-          </label>
+          <label className="block text-sm font-medium mb-1">Filter by Pair:</label>
           <select className="px-3 py-2 rounded border border-gray-700 bg-black w-48">
             <option>All</option>
-            <option>XMR/USDT:USDT</option>
-            <option>UNI/USDT:USDT</option>
-            <option>BTC/USDT:USDT</option>
-            <option>SOL/USDT:USDT</option>
+            {openPositions.concat(closedPositions).map((p, idx) => (
+              <option key={idx}>{p.symbol}</option>
+            ))}
           </select>
         </div>
 
@@ -119,36 +107,44 @@ export default function AdminPositions() {
                 </tr>
               </thead>
               <tbody className="bg-black/20">
-                {openPositions.map((pos, idx) => (
-                  <tr key={idx} className="border-t border-gray-600">
-                    <td className="px-4 py-2">{pos.id}</td>
-                    <td className="px-4 py-2">{pos.symbol}</td>
-                    <td className="px-4 py-2">
-                      <span
-                        className={`px-2 py-1 text-xs font-semibold rounded ${
-                          pos.side === "Long"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-700"
-                        }`}
-                      >
-                        {pos.side}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2">{pos.amount}</td>
-                    <td className="px-4 py-2">{pos.value}</td>
-                    <td className="px-4 py-2">{pos.price}</td>
-                    <td className="px-4 py-2 text-green-600">{pos.status}</td>
-                    <td className="px-4 py-2">{pos.openDate}</td>
-                    <td className="px-4 py-2">
-                      <button
-                        onClick={() => handleClose(pos.id)}
-                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 text-xs rounded"
-                      >
-                        Close
-                      </button>
+                {openPositions.length > 0 ? (
+                  openPositions.map((pos, idx) => (
+                    <tr key={idx} className="border-t border-gray-600">
+                      <td className="px-4 py-2">{pos.id}</td>
+                      <td className="px-4 py-2">{pos.symbol}</td>
+                      <td className="px-4 py-2">
+                        <span
+                          className={`px-2 py-1 text-xs font-semibold rounded ${
+                            pos.side === "Long"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          {pos.side}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2">{pos.amount}</td>
+                      <td className="px-4 py-2">{pos.value}</td>
+                      <td className="px-4 py-2">{pos.price}</td>
+                      <td className="px-4 py-2 text-green-600">{pos.status}</td>
+                      <td className="px-4 py-2">{pos.openDate}</td>
+                      <td className="px-4 py-2">
+                        <button
+                          onClick={() => handleClose(pos.id)}
+                          className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 text-xs rounded"
+                        >
+                          Close
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="9" className="text-center py-4 text-gray-400">
+                      No open positions
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
@@ -177,22 +173,30 @@ export default function AdminPositions() {
                 </tr>
               </thead>
               <tbody className="bg-black/20">
-                {closedPositions.map((pos, idx) => (
-                  <tr key={idx} className="border-t border-gray-600">
-                    <td className="px-4 py-2">{pos.id}</td>
-                    <td className="px-4 py-2">{pos.symbol}</td>
-                    <td className="px-4 py-2">{pos.side}</td>
-                    <td className="px-4 py-2">{pos.amount}</td>
-                    <td className="px-4 py-2">{pos.value}</td>
-                    <td className="px-4 py-2">{pos.openPrice}</td>
-                    <td className="px-4 py-2">{pos.closePrice}</td>
-                    <td className="px-4 py-2 text-green-600">{pos.profit}</td>
-                    <td className="px-4 py-2 text-green-600">{pos.pnl}</td>
-                    <td className="px-4 py-2 text-red-600">{pos.status}</td>
-                    <td className="px-4 py-2">{pos.openDate}</td>
-                    <td className="px-4 py-2">{pos.closeDate}</td>
+                {closedPositions.length > 0 ? (
+                  closedPositions.map((pos, idx) => (
+                    <tr key={idx} className="border-t border-gray-600">
+                      <td className="px-4 py-2">{pos.id}</td>
+                      <td className="px-4 py-2">{pos.symbol}</td>
+                      <td className="px-4 py-2">{pos.side}</td>
+                      <td className="px-4 py-2">{pos.amount}</td>
+                      <td className="px-4 py-2">{pos.value}</td>
+                      <td className="px-4 py-2">{pos.openPrice}</td>
+                      <td className="px-4 py-2">{pos.closePrice}</td>
+                      <td className="px-4 py-2 text-green-600">{pos.profit}</td>
+                      <td className="px-4 py-2 text-green-600">{pos.pnl}</td>
+                      <td className="px-4 py-2 text-red-600">{pos.status}</td>
+                      <td className="px-4 py-2">{pos.openDate}</td>
+                      <td className="px-4 py-2">{pos.closeDate}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="12" className="text-center py-4 text-gray-400">
+                      No closed positions
+                    </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>

@@ -5,15 +5,16 @@ import "../../styles/sidebar.css";
 import "../../styles/globals.css";
 import UserSidebar from "./Sidebar.jsx"; 
 import hoverSound from "../../assets/click.mp3";
-import Profit from "../Profit.jsx";
-import UPL from "../UPL.jsx";
-import FundsDistribution from "../FundsDistribution.jsx";
-import BalanceGraph from "../BalanceGraph.jsx";
-import WeeklyRevenue from "../WeeklyRevenue.jsx";
-import DailyPnL from "../DailyPnL.jsx";
-import BestTradingPairs from "../BestTradingPairs.jsx";
-import OpenPositions from "../OpenPositions.jsx";
+import Profit from "./Profit.jsx";
+import UPL from "./UPL.jsx";
+import FundsDistribution from "./FundsDistribution.jsx";
+import BalanceGraph from "./BalanceGraph.jsx";
+import WeeklyRevenue from "./WeeklyRevenue.jsx";
+import DailyPnL from "./DailyPnL.jsx";
+import BestTradingPairs from "./BestTradingPairs.jsx";
+import OpenPositions from "./OpenPositions.jsx";
 import { useUserAuth } from "../../hooks/useUserAuth";
+import { useNavigate } from "react-router-dom";
 
 // ---------------------
 // LightModeToggle
@@ -49,12 +50,16 @@ export default function UserDashboard() {
   const [expandedCard, setExpandedCard] = useState(null);
   const { isDarkMode } = useTheme();
   const { logout } = useUserAuth(); // centralized logout
+  const navigate = useNavigate();
+
+  // ✅ New state for backend data
+  const [dashboardData, setDashboardData] = useState(null);
 
   // ----------------------
-  // Admin-style logout + JWT check
+  // Auth check + fetch dashboard data
   // ----------------------
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkAuthAndFetch = async () => {
       try {
         const res = await fetch("http://localhost:5000/api/auth/check-auth", {
           method: "GET",
@@ -63,15 +68,33 @@ export default function UserDashboard() {
         });
         const data = await res.json();
 
-        // Force logout if not authorized
-        if (!res.ok || data.role !== "user") logout();
-      } catch {
+        if (!res.ok || data.role !== "user") {
+          logout();
+          return;
+        }
+
+        // ✅ Fetch dashboard data after auth
+        const dashRes = await fetch("http://localhost:5000/api/user/dashboard", {
+          method: "GET",
+          credentials: "include",
+          headers: { "Cache-Control": "no-store" },
+        });
+
+        if (dashRes.ok) {
+          const dashData = await dashRes.json();
+          setDashboardData(dashData);
+        } else {
+          console.error("Failed to fetch dashboard data");
+        }
+      } catch (err) {
+        console.error("Error:", err);
         logout();
       }
     };
-    checkAuth();
 
-    // Optional: prevent back-button cached pages
+    checkAuthAndFetch();
+
+    // Prevent back-button cached pages
     const handlePopState = () => logout();
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
@@ -88,17 +111,6 @@ export default function UserDashboard() {
     }
   };
 
-  const cards = {
-    profit: <Profit />,
-    upl: <UPL />,
-    fundsDistribution: <FundsDistribution />,
-    balanceGraph: <BalanceGraph />,
-    weeklyRevenue: <WeeklyRevenue />,
-    dailyPnL: <DailyPnL />,
-    bestTradingPairs: <BestTradingPairs />,
-    openPositions: <OpenPositions />,
-  };
-
   return (
     <div className="zoom-out-container relative h-screen w-screen overflow-x-hidden overflow-y-auto">
       <audio ref={audioRef} preload="auto">
@@ -109,7 +121,10 @@ export default function UserDashboard() {
       <UserSidebar isOpen={true} playHoverSound={playHoverSound} onLogout={logout} />
 
       {/* Main Content */}
-      <main className="relative z-20 p-6 overflow-y-auto md:ml-64" style={{ height: "100vh", width: "100%", maxWidth: "calc(100vw - 16rem)" }}>
+      <main
+        className="relative z-20 p-6 overflow-y-auto md:ml-64"
+        style={{ height: "100vh", width: "100%", maxWidth: "calc(100vw - 16rem)" }}
+      >
         <div className="shimmer-wrapper w-full py-4 px-6 mb-6 relative flex justify-between items-center">
           <h1 className="text-4xl font-semibold drop-shadow-md inline-block title-bar-text">
             Dashboard
@@ -119,23 +134,73 @@ export default function UserDashboard() {
 
         {/* Cards */}
         <div className="grid grid-cols-3 gap-7 max-lg:grid-cols-1">
-          <div className="dashboard-column dashboard-column-cyan" onClick={() => handleCardClick("profit")}>{cards.profit}</div>
-          <div className="dashboard-column dashboard-column-purple" onClick={() => handleCardClick("upl")}>{cards.upl}</div>
-          <div className="dashboard-column dashboard-column-green" onClick={() => handleCardClick("fundsDistribution")}>{cards.fundsDistribution}</div>
+          <div
+            className="dashboard-column dashboard-column-cyan"
+            onClick={() => handleCardClick("profit")}
+          >
+            <Profit profitData={dashboardData?.profit} />
+          </div>
+          <div
+            className="dashboard-column dashboard-column-purple"
+            onClick={() => handleCardClick("upl")}
+          >
+            <UPL uplData={dashboardData?.upl} />
+          </div>
+          <div
+            className="dashboard-column dashboard-column-green"
+            onClick={() => handleCardClick("fundsDistribution")}
+          >
+            <FundsDistribution fundsData={dashboardData?.fundsDistribution} />
+          </div>
         </div>
 
         <div className="flex gap-4 w-full items-start mt-8 max-lg:flex-col">
-          <div className="dashboard-column dashboard-column-cyan balance-graph w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden" onClick={() => handleCardClick("balanceGraph")}>{cards.balanceGraph}</div>
-          <div className="dashboard-column dashboard-column-purple weekly-revenue w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden" onClick={() => handleCardClick("weeklyRevenue")}>{cards.weeklyRevenue}</div>
+          <div
+            className="dashboard-column dashboard-column-cyan balance-graph w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden"
+            onClick={() => handleCardClick("balanceGraph")}
+          >
+            <BalanceGraph balanceData={dashboardData?.balanceGraph} />
+          </div>
+          <div
+            className="dashboard-column dashboard-column-purple weekly-revenue w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden"
+            onClick={() => handleCardClick("weeklyRevenue")}
+          >
+            <WeeklyRevenue weeklyData={dashboardData?.weeklyRevenue} />
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-7 mt-8 max-sm:grid-cols-1">
-          <div className="dashboard-column dashboard-column-cyan" onClick={() => handleCardClick("dailyPnL")}>{cards.dailyPnL}</div>
-          <div className="dashboard-column dashboard-column-purple" onClick={() => handleCardClick("bestTradingPairs")}>{cards.bestTradingPairs}</div>
+          <div
+            className="dashboard-column dashboard-column-cyan"
+            onClick={() => handleCardClick("dailyPnL")}
+          >
+            <DailyPnL dailyData={dashboardData?.dailyPnL} />
+          </div>
+          <div
+            className="dashboard-column dashboard-column-purple"
+            onClick={() => handleCardClick("bestTradingPairs")}
+          >
+            <BestTradingPairs pairsData={dashboardData?.bestTradingPairs} />
+          </div>
         </div>
 
         <div className="mt-8">
-          <div className="dashboard-column dashboard-column-green" onClick={() => handleCardClick("openPositions")}>{cards.openPositions}</div>
+          <div
+            className="dashboard-column dashboard-column-green"
+            onClick={() => handleCardClick("openPositions")}
+          >
+            <OpenPositions positionsData={dashboardData?.openPositions} />
+          </div>
+        </div>
+
+        {/* ✅ View All Positions Button - OUTSIDE columns */}
+        <div className="mt-8 flex justify-center">
+          <button
+            onClick={() => navigate("/user/positions")}
+            className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2 rounded-lg shadow-md transition"
+          >
+            View All Positions
+          </button>
         </div>
       </main>
     </div>

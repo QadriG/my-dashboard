@@ -1,19 +1,69 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 export default function ApiDetails() {
-  const [exchange, setExchange] = useState("binance");
+  const [exchange, setExchange] = useState("");
+  const [exchanges, setExchanges] = useState([]);
   const [apiKey, setApiKey] = useState("");
   const [apiSecret, setApiSecret] = useState("");
   const [passphrase, setPassphrase] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [fetching, setFetching] = useState(true);
+  const [error, setError] = useState(null);
 
-  const handleSave = () => {
-    console.log("Saving API details:", {
-      exchange,
-      apiKey,
-      apiSecret,
-      passphrase,
-    });
-    // TODO: send to backend
+  // ✅ Load supported exchanges from backend
+  useEffect(() => {
+    const fetchExchanges = async () => {
+      try {
+        const res = await fetch("/api/exchanges/list"); // ✅ fixed endpoint
+        const data = await res.json();
+
+        if (res.ok && data.success && data.exchanges) {
+          setExchanges(data.exchanges);
+          setExchange(data.exchanges[0]?.id || "");
+        } else {
+          setError("❌ Failed to load exchanges");
+        }
+      } catch (err) {
+        setError("❌ Error fetching exchanges");
+      } finally {
+        setFetching(false);
+      }
+    };
+
+    fetchExchanges();
+  }, []);
+
+  const handleSave = async () => {
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const res = await fetch("/api/save-api-key", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          exchange,
+          apiKey,
+          apiSecret,
+          passphrase,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setMessage("✅ API key saved successfully.");
+        setApiKey("");
+        setApiSecret("");
+        setPassphrase("");
+      } else {
+        setMessage(`❌ ${data.message || "Error saving API key."}`);
+      }
+    } catch (err) {
+      setMessage("❌ Server error. Please try again later.");
+    }
+
+    setLoading(false);
   };
 
   return (
@@ -42,19 +92,24 @@ export default function ApiDetails() {
       <div className="w-full bg-black/30 backdrop-blur-md border-2 border-red-400 hover:shadow-[0_0_20px_5px_rgba(239,68,68,0.8)] text-white rounded-xl transition-transform duration-300 transform hover:scale-[1.02] overflow-hidden px-6 py-6">
         {/* Exchange */}
         <div className="mb-4">
-          <label className="block mb-1 font-semibold text-white">
-            Exchange
-          </label>
-          <select
-            value={exchange}
-            onChange={(e) => setExchange(e.target.value)}
-            className="w-full border border-gray-300 bg-white text-black rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="binance">Binance</option>
-            <option value="kucoin">KuCoin</option>
-            <option value="bybit">Bybit</option>
-            <option value="okx">OKX</option>
-          </select>
+          <label className="block mb-1 font-semibold text-white">Exchange</label>
+          {fetching ? (
+            <p>Loading exchanges...</p>
+          ) : error ? (
+            <p className="text-red-400">{error}</p>
+          ) : (
+            <select
+              value={exchange}
+              onChange={(e) => setExchange(e.target.value)}
+              className="w-full border border-gray-300 bg-white text-black rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {exchanges.map((ex) => (
+                <option key={ex.id} value={ex.id}>
+                  {ex.name}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         {/* API Key */}
@@ -71,9 +126,7 @@ export default function ApiDetails() {
 
         {/* API Secret */}
         <div className="mb-4">
-          <label className="block mb-1 font-semibold text-white">
-            API Secret
-          </label>
+          <label className="block mb-1 font-semibold text-white">API Secret</label>
           <input
             type="password"
             value={apiSecret}
@@ -85,9 +138,7 @@ export default function ApiDetails() {
 
         {/* Passphrase */}
         <div className="mb-4">
-          <label className="block mb-1 font-semibold text-white">
-            Passphrase
-          </label>
+          <label className="block mb-1 font-semibold text-white">Passphrase</label>
           <input
             type="text"
             value={passphrase}
@@ -100,10 +151,18 @@ export default function ApiDetails() {
         {/* Save Button */}
         <button
           onClick={handleSave}
-          className="mt-4 bg-green-500 text-white px-4 py-2 rounded font-bold transition-all shadow-[0_0_10px_#39ff14] hover:shadow-[0_0_20px_5px_#39ff14]"
+          disabled={loading}
+          className={`mt-4 px-4 py-2 rounded font-bold transition-all ${
+            loading
+              ? "bg-gray-500 cursor-not-allowed"
+              : "bg-green-500 text-white shadow-[0_0_10px_#39ff14] hover:shadow-[0_0_20px_5px_#39ff14]"
+          }`}
         >
-          Save API Key
+          {loading ? "Saving..." : "Save API Key"}
         </button>
+
+        {/* Status Message */}
+        {message && <p className="mt-3 text-sm">{message}</p>}
       </div>
     </main>
   );

@@ -1,86 +1,94 @@
-import React from "react";
-import "../../styles/globals.css";
-import "../../styles/sidebar.css";
-import { useTheme } from "../../context/ThemeContext";
-import UserSidebar from "./Sidebar.jsx";
+import React, { useEffect, useState } from "react";
 
 export default function OpenPositions() {
-  const { isDarkMode } = useTheme();
+  const [positions, setPositions] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const positions = [
-    { id: "2S", symbol: "XMR/USDT:USDT", side: "Short", amount: "0.0800", value: "0.0000", price: "328.8800", status: "Open", date: "03/25/2025" },
-    { id: "1L", symbol: "UNI/USDT:USDT", side: "Long", amount: "2.7000", value: "0.0000", price: "10.5086", status: "Open", date: "05/13/2025" },
-    { id: "1L", symbol: "AVAX/USDT:USDT", side: "Long", amount: "1.1000", value: "0.0000", price: "25.9260", status: "Open", date: "06/07/2023" },
-    { id: "2S", symbol: "1000PEPE/USDT:USDT", side: "Short", amount: "2100.0000", value: "0.0000", price: "0.0130", status: "Open", date: "06/07/2023" },
-    { id: "1L", symbol: "XRP/USDT:USDT", side: "Long", amount: "10.0000", value: "0.0000", price: "3.4871", status: "Open", date: "06/07/2023" },
-    { id: "2S", symbol: "SOL/USDT:USDT", side: "Short", amount: "0.1000", value: "0.0000", price: "187.6700", status: "Open", date: "06/07/2023" },
-  ];
+  useEffect(() => {
+    async function fetchPositions() {
+      try {
+        const response = await fetch("/api/positions/active"); // ✅ Adjust to your backend route
+        const data = await response.json();
+        setPositions(data || []);
+      } catch (error) {
+        console.error("Error fetching active positions:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchPositions();
+  }, []);
 
   return (
-    <div className="flex">
-      {/* Sidebar */}
-      <UserSidebar isOpen={true} />
+    <div className="dashboard-column open-positions p-4 text-center border-emerald-400">
+      {/* Section title */}
+      <h2 className="text-lg font-semibold mb-4 text-white drop-shadow">
+        Active Positions
+      </h2>
 
-      {/* Main Content */}
-      <main className="ml-64 flex-1 p-8 overflow-y-auto">
-        <div className="shimmer-wrapper w-full py-4 px-6 mb-6 relative flex justify-between items-center">
-          <h1 className="text-3xl font-semibold drop-shadow-md text-white">
-            Open Positions
-          </h1>
-        </div>
+      {/* Responsive wrapper */}
+      <div className="overflow-x-auto">
+        {loading ? (
+          <p className="text-gray-400">Loading positions...</p>
+        ) : positions.length === 0 ? (
+          <p className="text-gray-400">No active positions found.</p>
+        ) : (
+          <table className="min-w-full table-auto text-sm text-left text-white">
+            {/* Table Header */}
+            <thead className="bg-gray-800 text-white font-semibold">
+              <tr>
+                <th className="p-2">ID</th>
+                <th className="p-2">Symbol</th>
+                <th className="p-2">Side</th>
+                <th className="p-2">Amount</th>
+                <th className="p-2">Order Value</th>
+                <th className="p-2">Open Price</th>
+                <th className="p-2">Status</th>
+                <th className="p-2">Open Date</th>
+              </tr>
+            </thead>
 
-        {/* Positions Table Container with Neon Glow */}
-        <div className={`dashboard-column open-positions glass-box neon-row-hover p-4 rounded-xl border-emerald-400 transition-transform duration-300 hover:scale-[1.02]`}>
-          <h2 className="text-lg font-semibold mb-4 text-white drop-shadow">
-            Active Positions
-          </h2>
-
-          <div className="overflow-x-auto">
-            <table className="min-w-full table-auto text-sm text-left text-white">
-              <thead className="bg-gray-800 text-white font-semibold">
-                <tr>
-                  <th className="p-2">ID</th>
-                  <th className="p-2">Symbol</th>
-                  <th className="p-2">Side</th>
-                  <th className="p-2">Amount</th>
-                  <th className="p-2">Order Value</th>
-                  <th className="p-2">Open Price</th>
-                  <th className="p-2">Status</th>
-                  <th className="p-2">Open Date</th>
+            {/* Table Body */}
+            <tbody className="divide-y divide-gray-700">
+              {positions.map((pos, index) => (
+                <tr key={index}>
+                  <td className="p-2">
+                    <span
+                      className={`px-2 py-1 rounded ${
+                        pos.side === "Long"
+                          ? "bg-green-600 text-white"
+                          : "bg-red-600 text-white"
+                      }`}
+                    >
+                      {pos.id || index + 1}
+                    </span>
+                  </td>
+                  <td className="p-2">{pos.symbol}</td>
+                  <td className="p-2">
+                    <span
+                      className={`px-2 py-1 rounded ${
+                        pos.side === "Long"
+                          ? "bg-green-600 text-white"
+                          : "bg-red-600 text-white"
+                      }`}
+                    >
+                      {pos.side}
+                    </span>
+                  </td>
+                  <td className="p-2">{pos.amount}</td>
+                  <td className="p-2">{pos.orderValue}</td>
+                  <td className="p-2">{pos.openPrice}</td>
+                  <td className="p-2 text-green-400">{pos.status}</td>
+                  <td className="p-2">
+                    {new Date(pos.openDate).toLocaleDateString()}
+                  </td>
                 </tr>
-              </thead>
-
-              <tbody className="divide-y divide-gray-700">
-                {positions.map((pos, idx) => (
-                  <tr
-                    key={idx}
-                    className="neon-row-hover transition-all duration-300 hover:scale-[1.01] cursor-pointer"
-                  >
-                    <td className="p-2">
-                      <span className={`px-2 py-1 rounded ${pos.side === "Long" ? "bg-green-600" : "bg-red-600"} text-white`}>
-                        {pos.id}
-                      </span>
-                    </td>
-                    <td className="p-2">{pos.symbol}</td>
-                    <td className="p-2">
-                      <span className={`px-2 py-1 rounded ${pos.side === "Long" ? "bg-green-600" : "bg-red-600"} text-white`}>
-                        {pos.side}
-                      </span>
-                    </td>
-                    <td className="p-2">{pos.amount}</td>
-                    <td className="p-2">{pos.value}</td>
-                    <td className="p-2">{pos.price}</td>
-                    <td className={`p-2 ${pos.status === "Open" ? "text-green-400" : "text-red-400"}`}>
-                      {pos.status}
-                    </td>
-                    <td className="p-2">{pos.date}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </main>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 }
