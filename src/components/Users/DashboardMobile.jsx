@@ -1,7 +1,7 @@
 /* eslint no-undef: "off" */
 import React, { useRef, useState, useEffect } from "react";
 import { isMobile } from "react-device-detect";
-import { useNavigate } from "react-router-dom";   // ✅ added
+import { useNavigate } from "react-router-dom";
 import "../../styles/sidebar.css";
 import "../../styles/globals.css";
 import hoverSound from "../../assets/click.mp3";
@@ -17,7 +17,7 @@ import DailyPnL from "../DailyPnL.jsx";
 import BestTradingPairs from "../BestTradingPairs.jsx";
 import OpenPositions from "../OpenPositions.jsx";
 
-/* Disable heavy/video content on mobile by passing a prop */
+/* Small helper for video-heavy components */
 const filterVideoContent = (component) => {
   if (isMobile) {
     return React.cloneElement(component, { disableVideo: true });
@@ -25,7 +25,6 @@ const filterVideoContent = (component) => {
   return component;
 };
 
-/* Small helper to wrap and scale each card individually */
 const Card = ({ className = "", onClick, children }) => (
   <div className={`scaled-card dashboard-column ${className}`} onClick={onClick}>
     {children}
@@ -39,9 +38,12 @@ export default function DashboardMobile() {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [buttonText, setButtonText] = useState("Light Mode");
 
-  const navigate = useNavigate();   // ✅ added
+  const [dashboardData, setDashboardData] = useState(null); // ✅ backend data
+  const [loading, setLoading] = useState(true);
 
-  // ✅ JWT Check on mount
+  const navigate = useNavigate();
+
+  // ✅ JWT check on mount
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -61,42 +63,56 @@ export default function DashboardMobile() {
     checkAuth();
   }, [navigate]);
 
+  // ✅ Fetch dashboard data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch("http://localhost:5000/api/user/dashboard", {
+          method: "GET",
+          credentials: "include",
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setDashboardData(data);
+        }
+      } catch (err) {
+        console.error("Error fetching dashboard:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   // ✅ Logout handler
   const handleLogout = async () => {
-  try {
-    await fetch("http://localhost:5000/api/auth/logout", {
-      method: "POST",
-      credentials: "include",
-    });
+    try {
+      await fetch("http://localhost:5000/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
 
-    // Clear any cached tokens/state
-    localStorage.clear();
-    sessionStorage.clear();
+      localStorage.clear();
+      sessionStorage.clear();
+      navigate("/login", { replace: true });
+      window.location.reload();
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
+  };
 
-    // Redirect & prevent going back
-    navigate("/login", { replace: true });
-
-    // Force refresh to drop any cached UI
-    window.location.reload();
-  } catch (err) {
-    console.error("Logout failed:", err);
-  }
-};
-
-  // ✅ Prevent going back after logout
+  // ✅ Prevent back nav after logout
   useEffect(() => {
     const handlePopState = () => {
       navigate("/login", { replace: true });
     };
-
     window.addEventListener("popstate", handlePopState);
-
-    return () => {
-      window.removeEventListener("popstate", handlePopState);
-    };
+    return () => window.removeEventListener("popstate", handlePopState);
   }, [navigate]);
 
-  // ✅ Existing code continues unchanged
+  // ✅ Mobile scaling
   useEffect(() => {
     const setScale = () => {
       const designWidth = 390;
@@ -121,15 +137,42 @@ export default function DashboardMobile() {
     setButtonText((prev) => (prev === "Light Mode" ? "Dark Mode" : "Light Mode"));
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen text-xl text-gray-400">
+        Loading dashboard...
+      </div>
+    );
+  }
+
+  if (!dashboardData) {
+    return (
+      <div className="flex items-center justify-center h-screen text-red-400">
+        Failed to load dashboard data
+      </div>
+    );
+  }
+
+  // ✅ Pass backend data to widgets
   const cards = {
-    profit: filterVideoContent(<Profit />),
-    upl: filterVideoContent(<UPL />),
-    fundsDistribution: filterVideoContent(<FundsDistribution />),
-    balanceGraph: filterVideoContent(<BalanceGraph isDarkMode={isDarkMode} />),
-    weeklyRevenue: filterVideoContent(<WeeklyRevenue isDarkMode={isDarkMode} />),
-    dailyPnL: filterVideoContent(<DailyPnL />),
-    bestTradingPairs: filterVideoContent(<BestTradingPairs />),
-    openPositions: filterVideoContent(<OpenPositions />),
+    profit: filterVideoContent(<Profit data={dashboardData.profit} />),
+    upl: filterVideoContent(<UPL data={dashboardData.upl} />),
+    fundsDistribution: filterVideoContent(
+      <FundsDistribution data={dashboardData.fundsDistribution} />
+    ),
+    balanceGraph: filterVideoContent(
+      <BalanceGraph isDarkMode={isDarkMode} data={dashboardData.balanceGraph} />
+    ),
+    weeklyRevenue: filterVideoContent(
+      <WeeklyRevenue isDarkMode={isDarkMode} data={dashboardData.weeklyRevenue} />
+    ),
+    dailyPnL: filterVideoContent(<DailyPnL data={dashboardData.dailyPnL} />),
+    bestTradingPairs: filterVideoContent(
+      <BestTradingPairs data={dashboardData.bestTradingPairs} />
+    ),
+    openPositions: filterVideoContent(
+      <OpenPositions data={dashboardData.openPositions} />
+    ),
   };
 
   const handleCardClick = (key) => {
@@ -152,8 +195,12 @@ export default function DashboardMobile() {
         <source src={hoverSound} type="audio/mpeg" />
       </audio>
 
-      {/* Mobile Sidebar */}
-      <UserSidebar isOpen={sidebarOpen} playHoverSound={playHoverSound} onLogout={handleLogout} /> {/* ✅ pass logout */}
+      {/* Sidebar */}
+      <UserSidebar
+        isOpen={sidebarOpen}
+        playHoverSound={playHoverSound}
+        onLogout={handleLogout}
+      />
 
       <button
         className={`sidebar-toggle-btn ${sidebarOpen ? "open" : ""}`}
@@ -186,7 +233,7 @@ export default function DashboardMobile() {
           backgroundColor: isDarkMode ? "rgba(0, 0, 0, 0.8)" : "rgba(255, 255, 255, 0.8)",
         }}
       >
-        <div className="shimmer-wrapper w-full py-4 px-6 mb-4" style={{ position: "relative" }}>
+        <div className="shimmer-wrapper w-full py-4 px-6 mb-4 relative">
           <h1
             className="text-2xl font-semibold drop-shadow-md inline-block"
             style={{
@@ -198,29 +245,22 @@ export default function DashboardMobile() {
           </h1>
           <button
             onClick={toggleTheme}
+            className="absolute top-0 right-0 px-4 py-2 rounded"
             style={{
-              position: "absolute",
-              top: 0,
-              right: 0,
-              padding: "0.5rem 1rem",
               backgroundColor: isDarkMode ? "#333" : "#ddd",
               color: isDarkMode ? "#fff" : "#000",
-              border: "2px solid " + (isDarkMode ? "#00ffff" : "#0000ff"),
-              borderRadius: "4px",
-              cursor: "pointer",
+              border: `2px solid ${isDarkMode ? "#00ffff" : "#0000ff"}`,
               boxShadow: isDarkMode
                 ? "0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff"
                 : "0 0 10px #0000ff, 0 0 20px #0000ff, 0 0 30px #0000ff",
               transition: "all 0.3s ease",
-              width: "10rem",
-              height: "100%",
             }}
           >
             {buttonText}
           </button>
         </div>
 
-        {/* Row 1: Only remaining user cards */}
+        {/* Cards layout remains same */}
         <div className="grid grid-cols-3 gap-2 mt-4">
           <Card className="dashboard-column-cyan" onClick={() => handleCardClick("profit")}>
             {cards.profit}

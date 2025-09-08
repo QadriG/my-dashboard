@@ -131,7 +131,7 @@ export default function Settings() {
                 id="leverage"
                 value={leverage}
                 onChange={(e) => setLeverage(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded text-black"
+                className="w-full p-2 border border-gray-300 rounded bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
               >
                 <option value="1">1x</option>
                 <option value="5">5x</option>
@@ -147,7 +147,7 @@ export default function Settings() {
             </div>
             <button
               onClick={handleLeverageSet}
-              className="bg-purple-600 hover:shadow-white-500/50 transition duration-300 text-white px-4 py-2 rounded"
+              className="bg-purple-600 hover:bg-purple-700 transition duration-300 text-white px-4 py-2 rounded"
             >
               Set Leverage
             </button>

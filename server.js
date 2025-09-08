@@ -1,3 +1,4 @@
+// === Imports ===
 import express from "express";
 import { PrismaClient } from "@prisma/client";
 import jwt from "jsonwebtoken";
@@ -10,24 +11,23 @@ import bodyParser from "body-parser";
 import crypto from "crypto";
 import http from "http";
 
+// Utils & services
 import { sendEmail } from "./src/utils/mailer.js";
 import webhookRoutes from "./server/routes/webhookRoutes.mjs";
-import { initWebSocket, broadcastToUsers } from "./server/services/websocketService.mjs";
-
+import { initWebSocket } from "./server/services/websocketService.mjs";
 import adminRoutes from "./server/routes/adminRoutes.mjs";
-
-// ✅ Correct in ESM
-
+import exchangesRoutes from "./server/routes/exchanges.mjs";
 import logger from "./server/utils/logger.mjs";
-const { info, error: logError } = logger;
-import exchangesRoutes from "./routes/exchanges.mjs";
-app.use("/api/exchanges", exchangesRoutes);
-
-
-// ✅ Import via default to avoid CommonJS/ESM named export issues
 import encryptUtils from "./server/utils/encrypt.mjs";
+import positionsRouter from "./server/routes/positions.mjs"; // ✅ Positions route
+import usersRouter from "./server/routes/users.mjs";
+import balancesRouter from "./server/routes/balances.mjs";
+
+
+const { info, error: logError } = logger;
 const { encryptPassword, comparePassword } = encryptUtils;
 
+// === Setup ===
 dotenv.config();
 const app = express();
 const prisma = new PrismaClient();
@@ -95,10 +95,14 @@ const adminMiddleware = (req, res, next) => {
 };
 
 // === Routes ===
+app.use("/api/positions", positionsRouter); // ✅ Positions route after app is defined
+app.use("/api/exchanges", exchangesRoutes);
 app.use("/api/webhook", webhookRoutes);
 app.use("/api/admin", authMiddleware, adminMiddleware, adminRoutes);
+app.use("/api/users", usersRouter);
+app.use("/api/balances", balancesRouter);
 
-// SIGNUP
+// === Auth Routes ===
 app.post("/api/auth/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -118,7 +122,9 @@ app.post("/api/auth/signup", async (req, res) => {
     const verifyToken = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "1d" });
     await prisma.user.update({ where: { id: user.id }, data: { verificationToken: verifyToken } });
 
-    const verifyLink = `${SERVER_URL}/api/auth/verify-email?token=${encodeURIComponent(verifyToken)}`;
+    const verifyLink = `${SERVER_URL}/api/auth/verify-email?token=${encodeURIComponent(
+      verifyToken
+    )}`;
 
     try {
       await sendEmail(
@@ -140,7 +146,7 @@ app.post("/api/auth/signup", async (req, res) => {
   }
 });
 
-// VERIFY EMAIL
+// === VERIFY EMAIL ===
 app.get("/api/auth/verify-email", async (req, res) => {
   try {
     const { token } = req.query;
@@ -149,7 +155,8 @@ app.get("/api/auth/verify-email", async (req, res) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
 
-    if (!user || user.verificationToken !== token) return res.status(400).send("Invalid or expired token");
+    if (!user || user.verificationToken !== token)
+      return res.status(400).send("Invalid or expired token");
 
     await prisma.user.update({
       where: { id: user.id },
@@ -173,7 +180,7 @@ app.get("/api/auth/verify-email", async (req, res) => {
   }
 });
 
-// LOGIN
+// === LOGIN ===
 app.post("/api/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -187,20 +194,28 @@ app.post("/api/auth/login", async (req, res) => {
     const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: "7d" });
     setAuthCookie(res, token);
 
-    res.json({ message: "Login successful", user: { id: user.id, email: user.email, role: user.role } });
+    res.json({
+      message: "Login successful",
+      user: { id: user.id, email: user.email, role: user.role },
+    });
   } catch (err) {
     logError("Login error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
 
-// CHECK AUTH
+// === CHECK AUTH ===
 app.get("/api/auth/check-auth", authMiddleware, async (req, res) => {
   const user = req.user;
-  res.json({ id: user.id, email: user.email, role: user.role, isVerified: user.isVerified });
+  res.json({
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    isVerified: user.isVerified,
+  });
 });
 
-// FORGOT PASSWORD
+// === FORGOT PASSWORD ===
 app.post("/api/auth/forgot-password", async (req, res) => {
   try {
     const { email } = req.body;
@@ -210,14 +225,20 @@ app.post("/api/auth/forgot-password", async (req, res) => {
     const resetToken = crypto.randomBytes(32).toString("hex");
     const resetExp = new Date(Date.now() + 15 * 60 * 1000);
 
-    await prisma.user.update({ where: { email }, data: { resetToken, resetTokenExp: resetExp } });
+    await prisma.user.update({
+      where: { email },
+      data: { resetToken, resetTokenExp: resetExp },
+    });
 
     const resetLink = `${CLIENT_URL}/my-dashboard/reset-password/${resetToken}`;
     try {
       await sendEmail(
         email,
         "Reset your QuantumCopyTrading password",
-        `<p>Hello ${user.name || "User"},</p><p>Click below to reset your password:</p><a href="${resetLink}" target="_blank">Reset Password</a><p>Link expires in 15 min.</p>`
+        `<p>Hello ${user.name || "User"},</p>
+         <p>Click below to reset your password:</p>
+         <a href="${resetLink}" target="_blank">Reset Password</a>
+         <p>Link expires in 15 min.</p>`
       );
     } catch (err) {
       logError("Failed reset email:", err);
@@ -230,7 +251,7 @@ app.post("/api/auth/forgot-password", async (req, res) => {
   }
 });
 
-// RESET PASSWORD
+// === RESET PASSWORD ===
 app.post("/api/auth/reset-password/:token", async (req, res) => {
   try {
     const { token } = req.params;
@@ -254,7 +275,7 @@ app.post("/api/auth/reset-password/:token", async (req, res) => {
   }
 });
 
-// LOGOUT
+// === LOGOUT ===
 app.post("/api/auth/logout", (req, res) => {
   res.clearCookie("token", {
     httpOnly: true,
@@ -266,7 +287,7 @@ app.post("/api/auth/logout", (req, res) => {
   return res.json({ message: "Logged out" });
 });
 
-// === EXTRA SECURED ROUTES ===
+// === Extra secured routes ===
 app.get("/user/profile", authMiddleware, (req, res) => {
   res.json({ user: req.user });
 });
