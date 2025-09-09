@@ -14,7 +14,7 @@ import DailyPnL from "./DailyPnL.jsx";
 import BestTradingPairs from "./BestTradingPairs.jsx";
 import OpenPositions from "./OpenPositions.jsx";
 import { useUserAuth } from "../../hooks/useUserAuth";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 // ---------------------
 // LightModeToggle
@@ -49,32 +49,38 @@ export default function UserDashboard() {
   const audioRef = useRef(null);
   const [expandedCard, setExpandedCard] = useState(null);
   const { isDarkMode } = useTheme();
-  const { logout } = useUserAuth(); // centralized logout
+  const { logout } = useUserAuth(); 
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // ✅ New state for backend data
+  // ✅ Detect admin view
+  const adminView = location.state?.adminView || false;
+  const userId = location.state?.userId || null;
+
   const [dashboardData, setDashboardData] = useState(null);
 
-  // ----------------------
-  // Auth check + fetch dashboard data
-  // ----------------------
   useEffect(() => {
     const checkAuthAndFetch = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/auth/check-auth", {
+        let authRes = await fetch("http://localhost:5000/api/auth/check-auth", {
           method: "GET",
           credentials: "include",
           headers: { "Cache-Control": "no-store" },
         });
-        const data = await res.json();
+        let authData = await authRes.json();
 
-        if (!res.ok || data.role !== "user") {
+        // ✅ If admin viewing another user, skip logout check
+        if (!adminView && (!authRes.ok || authData.role !== "user")) {
           logout();
           return;
         }
 
-        // ✅ Fetch dashboard data after auth
-        const dashRes = await fetch("http://localhost:5000/api/user/dashboard", {
+        // ✅ Fetch dashboard data
+        let dashUrl = adminView
+          ? `http://localhost:5000/api/admin/users/${userId}/dashboard`
+          : "http://localhost:5000/api/user/dashboard";
+
+        const dashRes = await fetch(dashUrl, {
           method: "GET",
           credentials: "include",
           headers: { "Cache-Control": "no-store" },
@@ -88,17 +94,16 @@ export default function UserDashboard() {
         }
       } catch (err) {
         console.error("Error:", err);
-        logout();
+        if (!adminView) logout(); // only logout if normal user
       }
     };
 
     checkAuthAndFetch();
 
-    // Prevent back-button cached pages
     const handlePopState = () => logout();
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [logout]);
+  }, [logout, adminView, userId]);
 
   const handleCardClick = (key) => {
     if (!isMobile) setExpandedCard(expandedCard === key ? null : key);
@@ -117,10 +122,8 @@ export default function UserDashboard() {
         <source src={hoverSound} type="audio/mpeg" />
       </audio>
 
-      {/* Sidebar */}
       <UserSidebar isOpen={true} playHoverSound={playHoverSound} onLogout={logout} />
 
-      {/* Main Content */}
       <main
         className="relative z-20 p-6 overflow-y-auto md:ml-64"
         style={{ height: "100vh", width: "100%", maxWidth: "calc(100vw - 16rem)" }}
@@ -134,69 +137,44 @@ export default function UserDashboard() {
 
         {/* Cards */}
         <div className="grid grid-cols-3 gap-7 max-lg:grid-cols-1">
-          <div
-            className="dashboard-column dashboard-column-cyan"
-            onClick={() => handleCardClick("profit")}
-          >
+          <div className="dashboard-column dashboard-column-cyan" onClick={() => handleCardClick("profit")}>
             <Profit profitData={dashboardData?.profit} />
           </div>
-          <div
-            className="dashboard-column dashboard-column-purple"
-            onClick={() => handleCardClick("upl")}
-          >
+          <div className="dashboard-column dashboard-column-purple" onClick={() => handleCardClick("upl")}>
             <UPL uplData={dashboardData?.upl} />
           </div>
-          <div
-            className="dashboard-column dashboard-column-green"
-            onClick={() => handleCardClick("fundsDistribution")}
-          >
+          <div className="dashboard-column dashboard-column-green" onClick={() => handleCardClick("fundsDistribution")}>
             <FundsDistribution fundsData={dashboardData?.fundsDistribution} />
           </div>
         </div>
 
         <div className="flex gap-4 w-full items-start mt-8 max-lg:flex-col">
-          <div
-            className="dashboard-column dashboard-column-cyan balance-graph w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden"
-            onClick={() => handleCardClick("balanceGraph")}
-          >
+          <div className="dashboard-column dashboard-column-cyan balance-graph w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden" onClick={() => handleCardClick("balanceGraph")}>
             <BalanceGraph balanceData={dashboardData?.balanceGraph} />
           </div>
-          <div
-            className="dashboard-column dashboard-column-purple weekly-revenue w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden"
-            onClick={() => handleCardClick("weeklyRevenue")}
-          >
+          <div className="dashboard-column dashboard-column-purple weekly-revenue w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden" onClick={() => handleCardClick("weeklyRevenue")}>
             <WeeklyRevenue weeklyData={dashboardData?.weeklyRevenue} />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-7 mt-8 max-sm:grid-cols-1">
-          <div
-            className="dashboard-column dashboard-column-cyan"
-            onClick={() => handleCardClick("dailyPnL")}
-          >
+          <div className="dashboard-column dashboard-column-cyan" onClick={() => handleCardClick("dailyPnL")}>
             <DailyPnL dailyData={dashboardData?.dailyPnL} />
           </div>
-          <div
-            className="dashboard-column dashboard-column-purple"
-            onClick={() => handleCardClick("bestTradingPairs")}
-          >
+          <div className="dashboard-column dashboard-column-purple" onClick={() => handleCardClick("bestTradingPairs")}>
             <BestTradingPairs pairsData={dashboardData?.bestTradingPairs} />
           </div>
         </div>
 
         <div className="mt-8">
-          <div
-            className="dashboard-column dashboard-column-green"
-            onClick={() => handleCardClick("openPositions")}
-          >
+          <div className="dashboard-column dashboard-column-green" onClick={() => handleCardClick("openPositions")}>
             <OpenPositions positionsData={dashboardData?.openPositions} />
           </div>
         </div>
 
-        {/* ✅ View All Positions Button - OUTSIDE columns */}
         <div className="mt-8 flex justify-center">
           <button
-            onClick={() => navigate("/user/positions")}
+            onClick={() => navigate(adminView ? `/admin/users/${userId}/positions` : "/user/positions")}
             className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2 rounded-lg shadow-md transition"
           >
             View All Positions
