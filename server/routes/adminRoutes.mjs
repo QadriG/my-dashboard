@@ -1,4 +1,3 @@
-// adminRoutes.mjs
 import express from "express";
 import {
   listAllUsers,
@@ -8,6 +7,8 @@ import {
   disableUser,
   getUserStats,
   getUserPositions,
+  unpauseUser,
+  enableUser,
 } from "../controllers/adminController.mjs";
 import { authMiddleware } from "../middleware/authMiddleware.mjs";
 import { roleMiddleware } from "../middleware/roleMiddleware.mjs";
@@ -41,9 +42,19 @@ router.patch("/users/:id/pause", authMiddleware, roleMiddleware(["admin"]), (req
   pauseUser(req, res, next);
 });
 
+router.patch("/users/:id/unpause", authMiddleware, roleMiddleware(["admin"]), (req, res, next) => {
+  info(`Admin ${req.user.id} unpausing user ${req.params.id}`);
+  unpauseUser(req, res, next);
+});
+
 router.patch("/users/:id/disable", authMiddleware, roleMiddleware(["admin"]), (req, res, next) => {
   info(`Admin ${req.user.id} disabling user ${req.params.id}`);
   disableUser(req, res, next);
+});
+
+router.patch("/users/:id/enable", authMiddleware, roleMiddleware(["admin"]), (req, res, next) => {
+  info(`Admin ${req.user.id} enabling user ${req.params.id}`);
+  enableUser(req, res, next);
 });
 
 router.get("/users/:id/stats", authMiddleware, roleMiddleware(["admin"]), (req, res, next) => {

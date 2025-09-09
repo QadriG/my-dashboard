@@ -65,6 +65,14 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
+    // 🚨 Block paused/disabled accounts
+    if (user.status === "paused") {
+      return res.status(403).json({ message: "Your account is paused. Contact admin." });
+    }
+    if (user.status === "disabled") {
+      return res.status(403).json({ message: "Your account is disabled. Contact admin." });
+    }
+
     const isMatch = await comparePassword(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid credentials" });
@@ -88,13 +96,15 @@ router.post("/login", async (req, res) => {
     res.json({
       message: "Login successful",
       token,
-      user: { id: user.id, name: user.name, role: user.role },
+      user: { id: user.id, name: user.name, role: user.role, status: user.status },
     });
   } catch (err) {
     logError("Error logging in", err);
     res.status(500).json({ message: "Error logging in", error: err.message });
   }
 });
+
+
 
 // ========================
 // ✅ Logout

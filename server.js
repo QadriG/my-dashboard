@@ -15,22 +15,20 @@ import http from "http";
 import { sendEmail } from "./src/utils/mailer.js";
 import webhookRoutes from "./server/routes/webhookRoutes.mjs";
 import { initWebSocket } from "./server/services/websocketService.mjs";
-import adminRoutes from "./server/routes/adminRoutes.mjs";
+import adminRoutes from "./server/routes/adminRoutes.mjs";   // existing admin routes
 import exchangesRoutes from "./server/routes/exchanges.mjs";
 import logger from "./server/utils/logger.mjs";
 import encryptUtils from "./server/utils/encrypt.mjs";
-import positionsRouter from "./server/routes/positions.mjs"; // ✅ Positions route
+import positionsRouter from "./server/routes/positions.mjs";
 import usersRouter from "./server/routes/users.mjs";
 import balancesRouter from "./server/routes/balances.mjs";
-
-
-const { info, error: logError } = logger;
-const { encryptPassword, comparePassword } = encryptUtils;
 
 // === Setup ===
 dotenv.config();
 const app = express();
 const prisma = new PrismaClient();
+const { info, error: logError } = logger;
+const { encryptPassword, comparePassword } = encryptUtils;
 
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
@@ -95,10 +93,13 @@ const adminMiddleware = (req, res, next) => {
 };
 
 // === Routes ===
-app.use("/api/positions", positionsRouter); // ✅ Positions route after app is defined
+app.use("/api/positions", positionsRouter);
 app.use("/api/exchanges", exchangesRoutes);
 app.use("/api/webhook", webhookRoutes);
+
+// Mount both admin routes
 app.use("/api/admin", authMiddleware, adminMiddleware, adminRoutes);
+
 app.use("/api/users", usersRouter);
 app.use("/api/balances", balancesRouter);
 
@@ -291,7 +292,6 @@ app.post("/api/auth/logout", (req, res) => {
 app.get("/user/profile", authMiddleware, (req, res) => {
   res.json({ user: req.user });
 });
-
 app.get("/admin/dashboard", authMiddleware, adminMiddleware, (req, res) => {
   res.json({ message: "Welcome Admin", user: req.user });
 });

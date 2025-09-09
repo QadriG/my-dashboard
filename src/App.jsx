@@ -102,6 +102,8 @@ function App() {
               <Route path="users" element={<AdminUsers />} />
               <Route path="logs" element={<AdminLogs />} />
               <Route path="manualpush" element={<AdminManualPush />} />
+              <Route path="users/:id/dashboard" element={<UserDashboard />} /> {/* Moved inside /admin */}
+              <Route path="users/:id/positions" element={<UserPositions />} /> {/* Moved inside /admin */}
             </Route>
 
             {/* User routes (fixed logout) */}
