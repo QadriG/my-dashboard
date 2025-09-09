@@ -122,12 +122,22 @@ export default function UserDashboard() {
         <source src={hoverSound} type="audio/mpeg" />
       </audio>
 
-      <UserSidebar isOpen={true} playHoverSound={playHoverSound} onLogout={logout} />
+      {/* ✅ Render sidebar ONLY if not admin view */}
+      {!adminView && (
+        <UserSidebar isOpen={true} playHoverSound={playHoverSound} onLogout={logout} />
+      )}
 
       <main
-        className="relative z-20 p-6 overflow-y-auto md:ml-64"
-        style={{ height: "100vh", width: "100%", maxWidth: "calc(100vw - 16rem)" }}
-      >
+  className={`relative z-20 p-6 overflow-y-auto ${
+    adminView ? "md:ml-64" : "md:ml-64" // adminView ? admin sidebar width : normal user sidebar width
+  }`}
+  style={{
+    height: "100vh",
+    width: "100%",
+    maxWidth: "calc(100vw - 16rem)", // leave space for sidebar
+  }}
+>
+
         <div className="shimmer-wrapper w-full py-4 px-6 mb-6 relative flex justify-between items-center">
           <h1 className="text-4xl font-semibold drop-shadow-md inline-block title-bar-text">
             Dashboard
