@@ -7,6 +7,8 @@ import ResetPassword from "./components/Auth/ResetPassword";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AdminAuthProvider } from "./hooks/useAdminAuth";
 import { UserAuthProvider } from "./hooks/useUserAuth";
+import { useAdminAuth } from "./hooks/useAdminAuth"; // adjust path if needed
+import { useUserAuth } from "./hooks/useUserAuth";   // adjust path if needed
 
 // Dashboards
 import AdminDashboard from "./components/Dashboard";
@@ -28,6 +30,8 @@ import UserSidebar from "./components/Users/Sidebar";
 // Live Chat
 import LiveChat from "./components/Users/LiveChat";
 import { ChatProvider } from "./context/ChatContext";
+import AdminChat from "./components/AdminChat"; // adjust path if needed
+
 
 // Theme
 import { useTheme } from "./context/ThemeContext";
@@ -43,12 +47,16 @@ import AdminManualPush from "./components/ManualPush";
 // ----------------------
 export function AdminLayout() {
   const { isDarkMode } = useTheme();
+  const { adminId } = useAdminAuth(); // Make sure you get admin ID from auth context
+
   return (
     <ChatProvider>
       <div className={`flex ${isDarkMode ? "dark-mode" : "light-mode"}`} style={{ minHeight: "100vh" }}>
         <Sidebar />
         <main className="flex-1 p-4 relative">
           <Outlet />
+          {/* Admin Live Chat */}
+          <AdminChat adminId={adminId} />
         </main>
       </div>
     </ChatProvider>

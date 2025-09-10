@@ -17,6 +17,17 @@ const prisma = new PrismaClient();
  */
 export const executeTrade = async ({ userId, exchange, symbol, action, amount, price }) => {
   try {
+    // ✅ Fetch user to check status
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new Error(`User ${userId} not found`);
+
+    // ✅ Prevent trades if user is paused or disabled
+    if (user.status !== "active") {
+      const msg = `User ${userId} is ${user.status}, skipping trade`;
+      info(msg);
+      return null; // don't execute trade
+    }
+
     // Fetch user's saved exchange credentials
     const userExchange = await prisma.userExchange.findFirst({
       where: { userId, exchange },
@@ -32,11 +43,9 @@ export const executeTrade = async ({ userId, exchange, symbol, action, amount, p
     const client = getExchangeClient(exchange, userExchange.apiKey, userExchange.apiSecret, "spot", userExchange.passphrase);
     info(`✅ Exchange client obtained for user ${userId} on ${exchange}`);
 
-    // Normalize CCXT params
-    const ccxtSide = action.toLowerCase(); // "buy" / "sell"
+    const ccxtSide = action.toLowerCase();
     const ccxtType = price ? "limit" : "market";
 
-    // Place order via CCXT
     const orderResult = await client.createOrder(
       symbol,
       ccxtType,
@@ -45,7 +54,6 @@ export const executeTrade = async ({ userId, exchange, symbol, action, amount, p
       price
     );
 
-    // Save trade to DB
     const trade = await prisma.trade.create({
       data: {
         userId,

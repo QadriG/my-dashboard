@@ -79,10 +79,15 @@ router.post("/login", async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user.id, role: user.role },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
-    );
+  { 
+    id: user.id, 
+    role: user.role, 
+    tokenVersion: user.tokenVersion  // <<<<< include token version
+  },
+  JWT_SECRET,
+  { expiresIn: JWT_EXPIRES_IN }
+);
+
 
     res.cookie("token", token, {
       httpOnly: true,
@@ -143,9 +148,19 @@ router.get("/check-auth", async (req, res) => {
       const user = await prisma.user.findUnique({ where: { id: decoded.id } });
       if (!user) return res.status(401).json({ message: "User not found" });
 
+      // 🚨 Block paused/disabled users
+      if (user.status === "paused" || user.status === "disabled") {
+        return res.status(403).json({ message: `Your account is ${user.status}` });
+      }
+
+      // 🚨 Token invalidation check
+      if (decoded.tokenVersion !== user.tokenVersion) {
+        return res.status(401).json({ message: "Token has been invalidated. Please log in again." });
+      }
+
       res.json({
         authenticated: true,
-        user: { id: user.id, name: user.name, role: user.role },
+        user: { id: user.id, name: user.name, role: user.role, status: user.status },
       });
     });
   } catch (err) {

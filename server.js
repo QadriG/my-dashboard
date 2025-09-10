@@ -23,6 +23,8 @@ import positionsRouter from "./server/routes/positions.mjs";
 import usersRouter from "./server/routes/users.mjs";
 import balancesRouter from "./server/routes/balances.mjs";
 
+
+
 // === Setup ===
 dotenv.config();
 const app = express();
@@ -76,6 +78,16 @@ const authMiddleware = async (req, res, next) => {
     const user = await prisma.user.findUnique({ where: { id: decoded.id } });
     if (!user) return res.status(401).json({ error: "Unauthorized: User not found" });
 
+    // 🚨 Block paused/disabled users
+    if (user.status === "paused" || user.status === "disabled") {
+      return res.status(403).json({ error: `Your account is ${user.status}` });
+    }
+
+    // 🚨 Token invalidation check
+    if (decoded.tokenVersion !== user.tokenVersion) {
+      return res.status(401).json({ error: "Token invalidated. Please log in again." });
+    }
+
     req.user = user;
     next();
   } catch (err) {
@@ -97,7 +109,7 @@ app.use("/api/positions", positionsRouter);
 app.use("/api/exchanges", exchangesRoutes);
 app.use("/api/webhook", webhookRoutes);
 
-// Mount both admin routes
+// Mount admin routes
 app.use("/api/admin", authMiddleware, adminMiddleware, adminRoutes);
 
 app.use("/api/users", usersRouter);
@@ -117,7 +129,7 @@ app.post("/api/auth/signup", async (req, res) => {
     const role = email === "info@tradingmachine.ai" ? "admin" : "user";
 
     const user = await prisma.user.create({
-      data: { name, email, password: hashed, role, isVerified: false },
+      data: { name, email, password: hashed, role, isVerified: false, tokenVersion: 1 },
     });
 
     const verifyToken = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "1d" });
@@ -147,40 +159,6 @@ app.post("/api/auth/signup", async (req, res) => {
   }
 });
 
-// === VERIFY EMAIL ===
-app.get("/api/auth/verify-email", async (req, res) => {
-  try {
-    const { token } = req.query;
-    if (!token) return res.status(400).send("Missing token");
-
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
-
-    if (!user || user.verificationToken !== token)
-      return res.status(400).send("Invalid or expired token");
-
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { isVerified: true, verificationToken: null },
-    });
-
-    try {
-      await sendEmail(
-        user.email,
-        "Welcome to QuantumCopyTrading!",
-        `<p>Hello ${user.name || "there"},</p><p>Your email verified. Welcome!</p>`
-      );
-    } catch (err) {
-      logError("Failed welcome email:", err);
-    }
-
-    return res.redirect(`${CLIENT_URL}/my-dashboard/login?verified=success`);
-  } catch (err) {
-    logError("Verify email error:", err);
-    return res.status(400).send("Invalid or expired token");
-  }
-});
-
 // === LOGIN ===
 app.post("/api/auth/login", async (req, res) => {
   try {
@@ -189,15 +167,25 @@ app.post("/api/auth/login", async (req, res) => {
     if (!user) return res.status(400).json({ message: "Invalid credentials" });
     if (!user.isVerified) return res.status(403).json({ message: "Email not verified" });
 
+    // Block paused/disabled accounts
+    if (user.status === "paused" || user.status === "disabled") {
+      return res.status(403).json({ message: `Your account is ${user.status}` });
+    }
+
     const valid = await comparePassword(password, user.password);
     if (!valid) return res.status(400).json({ message: "Invalid credentials" });
 
-    const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: "7d" });
+    // Include tokenVersion in JWT
+    const token = jwt.sign(
+      { id: user.id, role: user.role, tokenVersion: user.tokenVersion },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
     setAuthCookie(res, token);
 
     res.json({
       message: "Login successful",
-      user: { id: user.id, email: user.email, role: user.role },
+      user: { id: user.id, email: user.email, role: user.role, status: user.status },
     });
   } catch (err) {
     logError("Login error:", err);
@@ -212,6 +200,7 @@ app.get("/api/auth/check-auth", authMiddleware, async (req, res) => {
     id: user.id,
     email: user.email,
     role: user.role,
+    status: user.status,
     isVerified: user.isVerified,
   });
 });

@@ -1,4 +1,5 @@
-import React, { useEffect } from "react";
+// src/hoc/withUserAuthProtection.jsx
+import React, { useEffect, useState } from "react";
 import { useUserAuth } from "../hooks/useUserAuth";
 import { useNavigate } from "react-router-dom";
 
@@ -6,8 +7,8 @@ export default function withUserAuthProtection(WrappedComponent) {
   return function ProtectedComponent(props) {
     const { user, logout } = useUserAuth();
     const navigate = useNavigate();
+    const [checking, setChecking] = useState(true);
 
-    // Redirect immediately if not logged in
     useEffect(() => {
       const checkAuth = async () => {
         try {
@@ -22,6 +23,8 @@ export default function withUserAuthProtection(WrappedComponent) {
           }
         } catch {
           logout();
+        } finally {
+          setChecking(false);
         }
       };
 
@@ -29,13 +32,16 @@ export default function withUserAuthProtection(WrappedComponent) {
     }, [logout]);
 
     useEffect(() => {
-      if (!user) {
-        navigate("/user/login", { replace: true });
+      if (!user && !checking) {
+        navigate("/login", { replace: true }); // Redirect to login if not authenticated
       }
-    }, [user, navigate]);
+    }, [user, checking, navigate]);
 
-    // While user is null (checking auth), render nothing or loader
-    if (!user) return <div className="text-center mt-20 text-white">Checking authentication...</div>;
+    if (checking) {
+      return <div className="text-center mt-20 text-white">Checking authentication...</div>;
+    }
+
+    if (!user) return null; // Prevent rendering before redirect
 
     return <WrappedComponent {...props} />;
   };

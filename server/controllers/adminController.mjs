@@ -33,16 +33,43 @@ export const listAllUsers = async (req, res, next) => {
 };
 
 // ======================
+// Helper: Pause/cancel trades and positions
+// ======================
+const pauseUserTradesAndPositions = async (userId) => {
+  try {
+    await prisma.trade.updateMany({
+      where: { userId, status: "active" },
+      data: { status: "paused" },
+    });
+    await prisma.position.updateMany({
+      where: { userId, status: "open" },
+      data: { status: "paused" },
+    });
+    info(`Paused all active trades and positions for user ${userId}`);
+  } catch (err) {
+    error(`Error pausing trades/positions for user ${userId}:`, err);
+  }
+};
+
+// ======================
 // Pause user
 // ======================
 export const pauseUser = async (req, res, next) => {
   try {
     const { id } = req.params;
     if (isNaN(Number(id))) return res.status(400).json({ success: false, message: "Invalid user ID" });
+
     const user = await prisma.user.update({
-      where: { id: Number(id) },
-      data: { status: "paused" },
-    });
+  where: { id: Number(id) },
+  data: {
+    status: "disabled", // or "paused" for pauseUser function
+    tokenVersion: { increment: 1 }, // <<<<< invalidate old tokens
+  },
+});
+
+
+    await pauseUserTradesAndPositions(Number(id));
+
     info(`User ${id} paused by admin ${req.user?.id}`);
     res.json({ success: true, message: "User paused", user });
   } catch (err) {
@@ -58,10 +85,12 @@ export const unpauseUser = async (req, res, next) => {
   try {
     const { id } = req.params;
     if (isNaN(Number(id))) return res.status(400).json({ success: false, message: "Invalid user ID" });
+
     const user = await prisma.user.update({
       where: { id: Number(id) },
       data: { status: "active" },
     });
+
     info(`User ${id} unpaused by admin ${req.user?.id}`);
     res.json({ success: true, message: "User unpaused", user });
   } catch (err) {
@@ -77,10 +106,14 @@ export const disableUser = async (req, res, next) => {
   try {
     const { id } = req.params;
     if (isNaN(Number(id))) return res.status(400).json({ success: false, message: "Invalid user ID" });
+
     const user = await prisma.user.update({
       where: { id: Number(id) },
       data: { status: "disabled" },
     });
+
+    await pauseUserTradesAndPositions(Number(id));
+
     info(`User ${id} disabled by admin ${req.user?.id}`);
     res.json({ success: true, message: "User disabled", user });
   } catch (err) {
@@ -96,10 +129,12 @@ export const enableUser = async (req, res, next) => {
   try {
     const { id } = req.params;
     if (isNaN(Number(id))) return res.status(400).json({ success: false, message: "Invalid user ID" });
+
     const user = await prisma.user.update({
       where: { id: Number(id) },
       data: { status: "active" },
     });
+
     info(`User ${id} enabled by admin ${req.user?.id}`);
     res.json({ success: true, message: "User enabled", user });
   } catch (err) {
@@ -115,6 +150,7 @@ export const deleteUser = async (req, res, next) => {
   try {
     const { id } = req.params;
     if (isNaN(Number(id))) return res.status(400).json({ success: false, message: "Invalid user ID" });
+
     const user = await prisma.user.findUnique({ where: { id: Number(id) } });
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
@@ -149,7 +185,7 @@ export const getUserStats = async (req, res) => {
         lastActivity: true,
         createdAt: true,
         apis: { select: { exchangeName: true } },
-        trades: { select: { id: true, symbol: true, amount: true, price: true, tradeTime: true } },
+        trades: { select: { id: true, symbol: true, amount: true, price: true, tradeTime: true, status: true } },
         positions: { select: { id: true, symbol: true, amount: true, price: true, action: true, status: true } },
       },
     });
@@ -163,7 +199,6 @@ export const getUserStats = async (req, res) => {
   }
 };
 
-
 // ======================
 // Get user positions
 // ======================
@@ -171,6 +206,7 @@ export const getUserPositions = async (req, res, next) => {
   try {
     const { id } = req.params;
     if (isNaN(Number(id))) return res.status(400).json({ success: false, message: "Invalid user ID" });
+
     const positions = await prisma.position.findMany({
       where: { userId: Number(id) },
     });

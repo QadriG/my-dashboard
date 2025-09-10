@@ -1,9 +1,20 @@
+// src/components/Users/LiveChat.jsx
 import React, { useContext, useRef, useEffect } from "react";
 import Picker from "emoji-picker-react";
 import { ChatContext } from "../../context/ChatContext";
+import io from "socket.io-client";
+
+// Initialize socket outside component
+const socket = io("http://localhost:5001", {
+  withCredentials: true,
+  reconnection: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000,
+});
 
 export default function LiveChat() {
   const {
+    user,
     messages,
     setMessages,
     input,
@@ -17,10 +28,32 @@ export default function LiveChat() {
 
   const fileInputRef = useRef(null);
 
+  // Connect socket only after user exists
+  useEffect(() => {
+    if (!user?.id) return;
+
+    socket.emit("joinUser", { userId: user.id, username: user.name });
+
+    socket.on("message", (msg) => setMessages((prev) => [...prev, msg]));
+
+    return () => {
+      socket.off("message");
+    };
+  }, [user, setMessages]);
+
   const sendMessage = (e) => {
     e.preventDefault();
-    if (!input.trim()) return;
-    setMessages([...messages, { from: "user", text: input }]);
+    if (!input.trim() || !user?.id) return;
+
+    const msg = {
+      from: "user",
+      userId: user.id,
+      text: input,
+      id: Date.now(),
+    };
+
+    socket.emit("message", msg);
+    setMessages((prev) => [...prev, msg]);
     setInput("");
   };
 
@@ -29,65 +62,39 @@ export default function LiveChat() {
     setShowEmoji(false);
   };
 
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setMessages([...messages, { from: "user", text: `📎 File: ${file.name}` }]);
-    }
-  };
-
-  const handlePaste = (e) => {
-    if (e.clipboardData.files.length > 0) {
-      const file = e.clipboardData.files[0];
-      setMessages([...messages, { from: "user", text: `📷 Screenshot: ${file.name}` }]);
-    }
-  };
-
+  // Auto scroll
   useEffect(() => {
-    if (chatRef.current) {
-      chatRef.current.scrollTop = chatRef.current.scrollHeight;
-    }
-  }, [messages]);
+    if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
+  }, [messages, chatRef]);
+
+  if (!user?.id) {
+    return (
+      <div className="fixed bottom-4 right-4 z-50 p-4 bg-gray-700 text-white rounded-lg">
+        Loading chat...
+      </div>
+    );
+  }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end space-y-1">
-      {minimized && (
+    <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end space-y-2">
+      {minimized ? (
         <div
           onClick={() => setMinimized(false)}
-          className="bg-cyan-600 text-white px-4 py-2 rounded-lg shadow-lg cursor-pointer animate-bump"
+          className="cursor-pointer px-2 py-1 bg-gray-700 text-white rounded-lg"
         >
           💬 Need Help?
         </div>
-      )}
-
-      <div
-  className="w-96 bg-gray-200 dark:bg-gray-800 text-black dark:text-white px-4 py-2 rounded-t-lg cursor-pointer flex justify-between items-center shadow-lg"
-  onClick={() => setMinimized(!minimized)}
->
-  <span>Live Chat</span>
-  <span className="text-lg">{minimized ? "▲" : "▼"}</span>
-</div>
-
-
-      {!minimized && (
-        <div
-          className="w-96 bg-gray-900 text-white shadow-lg border border-cyan-400 rounded-b-lg"
-          onPaste={handlePaste}
-        >
-          <div
-            ref={chatRef}
-            className="h-80 overflow-y-auto p-3 space-y-2 bg-black"
-          >
-            {messages.map((msg, i) => (
+      ) : (
+        <div className="w-96 bg-gray-900 text-white rounded-2xl shadow-lg flex flex-col">
+          <div ref={chatRef} className="h-80 overflow-y-auto p-3 space-y-2">
+            {messages.map((msg) => (
               <div
-                key={i}
+                key={msg.id}
                 className={`flex ${msg.from === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`px-4 py-2 rounded-lg max-w-xs ${
-                    msg.from === "user"
-                      ? "bg-red-600 text-white"
-                      : "bg-blue-600 text-white"
+                  className={`px-4 py-2 rounded-2xl max-w-xs break-words ${
+                    msg.from === "user" ? "bg-red-500" : "bg-green-500"
                   }`}
                 >
                   {msg.text}
@@ -96,65 +103,24 @@ export default function LiveChat() {
             ))}
           </div>
 
-          <form
-            onSubmit={sendMessage}
-            className="flex items-center border-t border-gray-700 relative"
-          >
-            <button
-              type="button"
-              className="px-2 text-xl"
-              onClick={() => setShowEmoji(!showEmoji)}
-            >
+          <form className="flex p-2" onSubmit={sendMessage}>
+            <button type="button" onClick={() => setShowEmoji(!showEmoji)}>
               😀
             </button>
-            {showEmoji && (
-              <div className="absolute bottom-16 right-0 z-50">
-                <Picker onEmojiClick={onEmojiClick} theme="dark" />
-              </div>
-            )}
-
+            {showEmoji && <Picker onEmojiClick={onEmojiClick} />}
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Type a message..."
-              className="flex-grow bg-gray-800 px-3 py-2 focus:outline-none"
+              className="flex-grow px-2 mx-2 rounded-lg"
             />
-
-            <button
-              type="button"
-              className="px-2"
-              onClick={() => fileInputRef.current.click()}
-            >
-              📎
-            </button>
-            <input
-              type="file"
-              ref={fileInputRef}
-              className="hidden"
-              onChange={handleFileUpload}
-            />
-
-            <button type="submit" className="bg-red-600 px-4 py-2">
+            <button type="submit" className="bg-red-500 px-3 rounded-lg">
               Send
             </button>
           </form>
         </div>
       )}
-
-      <style>
-        {`
-          @keyframes bump {
-            0%, 100% { transform: translateY(0); }
-            25% { transform: translateY(-4px); }
-            50% { transform: translateY(2px); }
-            75% { transform: translateY(-2px); }
-          }
-          .animate-bump {
-            animation: bump 1s ease-in-out infinite;
-          }
-        `}
-      </style>
     </div>
   );
 }

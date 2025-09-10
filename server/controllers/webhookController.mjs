@@ -1,35 +1,25 @@
 // alertController.mjs
 import { PrismaClient } from "@prisma/client";
-import { broadcastToUsers } from "../services/websocketService.mjs";
-import { info, warn, error } from "../utils/logger.mjs"; // centralized logging
+import { sendToUser } from "../services/websocketService.mjs"; // 👈 updated to per-user broadcast
+import { info, warn, error } from "../utils/logger.mjs";
 
 const prisma = new PrismaClient();
 
 /**
  * Handle incoming TradingView webhook alerts
- * @param {*} req
- * @param {*} res
  */
 export const receiveAlert = async (req, res) => {
   try {
     const alert = req.body;
 
-    // Ensure required fields exist
     if (!alert || !alert.symbol || !alert.action) {
       warn("Webhook received invalid alert: missing symbol or action");
       return res.status(400).json({ error: "Missing required fields: symbol or action" });
     }
 
-    // Extract fields with fallback
-    const symbol = alert.symbol;
-    const action = alert.action; // buy / sell
-    const tp = alert.tp || null; // take profit
-    const sl = alert.sl || null; // stop loss
-    const exchange = alert.exchange || null;
-    const price = alert.price || null;
-    const extra = alert.extra || null; // any additional custom data
+    const { symbol, action, tp = null, sl = null, exchange = null, price = null, extra = null } = alert;
 
-    // Save alert to DB for logs
+    // Save alert in DB
     const savedAlert = await prisma.tradeLog.create({
       data: {
         symbol,
@@ -45,26 +35,36 @@ export const receiveAlert = async (req, res) => {
 
     info(`Webhook alert saved: ${symbol} ${action} on ${exchange}`);
 
-    // Broadcast alert to all connected users via WebSocket
-    broadcastToUsers({
-      id: savedAlert.id,
-      symbol,
-      action,
-      tp,
-      sl,
-      exchange,
-      price,
-      extra,
-      status: "pending",
-      rawPayload: JSON.stringify(alert),
+    // ✅ Fetch only ACTIVE users (exclude PAUSED & DISABLED)
+    const activeUsers = await prisma.user.findMany({
+      where: { status: "active" }, // must match exactly "active" in DB
+      select: { id: true },
     });
 
-    res.json({ message: "Alert received, verified, and broadcasted" });
+    // ✅ Broadcast only to active users
+    for (const user of activeUsers) {
+      sendToUser(user.id, {
+        type: "alert",
+        data: {
+          id: savedAlert.id,
+          symbol,
+          action,
+          tp,
+          sl,
+          exchange,
+          price,
+          extra,
+          status: "pending",
+          rawPayload: JSON.stringify(alert),
+        },
+      });
+    }
+
+    res.json({ message: `Alert received and broadcasted to ${activeUsers.length} active users` });
   } catch (err) {
     error("Webhook receiveAlert error:", err);
 
     try {
-      // Log error to DB
       await prisma.errorLog.create({
         data: {
           context: "webhook",

@@ -1,4 +1,5 @@
-import { createContext, useContext, useState } from "react";
+// src/hooks/useAdminAuth.js
+import { createContext, useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 const AdminAuthContext = createContext();
@@ -6,6 +7,15 @@ const AdminAuthContext = createContext();
 export function AdminAuthProvider({ children }) {
   const [admin, setAdmin] = useState(null);
   const navigate = useNavigate();
+
+  // On mount, check if token exists
+  useEffect(() => {
+    const token = localStorage.getItem("adminToken");
+    if (token) {
+      // Optional: fetch admin info from backend using token
+      setAdmin({ token });
+    }
+  }, []);
 
   const login = (adminData) => {
     setAdmin(adminData);
@@ -36,5 +46,7 @@ export function AdminAuthProvider({ children }) {
 }
 
 export function useAdminAuth() {
-  return useContext(AdminAuthContext);
+  const context = useContext(AdminAuthContext);
+  if (!context) throw new Error("useAdminAuth must be used within AdminAuthProvider");
+  return context;
 }

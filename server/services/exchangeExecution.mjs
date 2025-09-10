@@ -15,12 +15,23 @@ export const placeOrderOnExchange = async ({
   userId,
   userEmail
 }) => {
-  const client = getExchangeClient(exchange, apiKey, apiSecret, type);
-
   try {
+    // ✅ Check user status first
+    const { PrismaClient } = await import("@prisma/client");
+    const prisma = new PrismaClient();
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new Error(`User ${userId} not found`);
+
+    if (user.status !== "active") {
+      info(`User ${userId} is ${user.status}, skipping order`);
+      return null; // skip placing the order
+    }
+
+    const client = getExchangeClient(exchange, apiKey, apiSecret, type);
+
     let response;
 
-    // Normalize params for CCXT
     const ccxtSide = side.toLowerCase(); // "buy" or "sell"
     const ccxtType = orderType.toLowerCase(); // "market" or "limit"
     const amount = quantity;

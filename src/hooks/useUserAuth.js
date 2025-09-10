@@ -1,11 +1,47 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 const UserAuthContext = createContext();
 
 export function UserAuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true); // track loading state
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const token = localStorage.getItem("userToken");
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const res = await fetch("http://localhost:5000/api/auth/check-auth", {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data); // should include { id, name, role, ... }
+        } else {
+          setUser(null);
+        }
+      } catch (err) {
+        console.error("Failed to fetch user:", err);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, []);
 
   const login = (userData) => {
     setUser(userData);
@@ -29,12 +65,14 @@ export function UserAuthProvider({ children }) {
   };
 
   return (
-    <UserAuthContext.Provider value={{ user, login, logout }}>
+    <UserAuthContext.Provider value={{ user, loading, login, logout }}>
       {children}
     </UserAuthContext.Provider>
   );
 }
 
 export function useUserAuth() {
-  return useContext(UserAuthContext);
+  const context = useContext(UserAuthContext);
+  if (!context) throw new Error("useUserAuth must be used within UserAuthProvider");
+  return context;
 }
