@@ -1,3 +1,4 @@
+// src/components/Users/UserLayout.jsx
 import React from "react";
 import { Outlet } from "react-router-dom";
 import { useTheme } from "../../context/ThemeContext";
@@ -8,10 +9,10 @@ import { useUserAuth } from "../../hooks/useUserAuth";
 
 export function UserLayout() {
   const { isDarkMode } = useTheme();
-  const { logout } = useUserAuth(); // now mimics admin logout fully
+  const { user, logout } = useUserAuth();
 
   return (
-    <ChatProvider>
+    <ChatProvider userId={user?.id || user?._id || "guest"}>
       <div
         className={`flex ${isDarkMode ? "dark-mode" : "light-mode"}`}
         style={{ minHeight: "100vh", width: "100%", overflow: "hidden" }}
@@ -32,6 +33,8 @@ export function UserLayout() {
           </div>
 
           <Outlet />
+
+          {/* ✅ LiveChat always mounted */}
           <LiveChat />
         </main>
       </div>

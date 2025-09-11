@@ -47,39 +47,51 @@ import AdminManualPush from "./components/ManualPush";
 // ----------------------
 export function AdminLayout() {
   const { isDarkMode } = useTheme();
-  const { adminId } = useAdminAuth(); // Make sure you get admin ID from auth context
+  const { admin } = useAdminAuth(); // get admin object (not just id)
+
+  // normalize admin
+  const chatAdmin = admin
+    ? { id: admin.id || admin._id || admin.uid, name: admin.name || admin.email || "Admin" }
+    : null;
 
   return (
-    <ChatProvider>
+    <ChatProvider user={chatAdmin}>
       <div className={`flex ${isDarkMode ? "dark-mode" : "light-mode"}`} style={{ minHeight: "100vh" }}>
         <Sidebar />
         <main className="flex-1 p-4 relative">
           <Outlet />
-          {/* Admin Live Chat */}
-          <AdminChat adminId={adminId} />
+          {chatAdmin?.id && <AdminChat adminId={chatAdmin.id} />}
         </main>
       </div>
     </ChatProvider>
   );
 }
+
 
 // ----------------------
 // User Layout
 // ----------------------
 export function UserLayout() {
   const { isDarkMode } = useTheme();
+  const { user } = useUserAuth(); // get user from auth
+
+  const chatUser = user
+    ? { id: user.id || user._id || user.uid, name: user.name || user.email || "User" }
+    : null;
+
   return (
-    <ChatProvider>
+    <ChatProvider user={chatUser}>
       <div className={`flex ${isDarkMode ? "dark-mode" : "light-mode"}`} style={{ minHeight: "100vh" }}>
         <UserSidebar />
         <main className="flex-1 p-4 relative">
           <Outlet />
-          <LiveChat />
+          {chatUser?.id && <LiveChat />}
         </main>
       </div>
     </ChatProvider>
   );
 }
+
 
 // ----------------------
 // App Component

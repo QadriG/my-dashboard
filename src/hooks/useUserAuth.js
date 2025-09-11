@@ -8,6 +8,7 @@ export function UserAuthProvider({ children }) {
   const [loading, setLoading] = useState(true); // track loading state
   const navigate = useNavigate();
 
+  // ✅ Fetch user from backend DB
   useEffect(() => {
     const fetchUser = async () => {
       const token = localStorage.getItem("userToken");
@@ -28,7 +29,7 @@ export function UserAuthProvider({ children }) {
 
         if (res.ok) {
           const data = await res.json();
-          setUser(data); // should include { id, name, role, ... }
+          setUser(data); // { id, email, role, status, isVerified }
         } else {
           setUser(null);
         }
@@ -43,11 +44,13 @@ export function UserAuthProvider({ children }) {
     fetchUser();
   }, []);
 
+  // ✅ Login: just store user info & token
   const login = (userData) => {
     setUser(userData);
     localStorage.setItem("userToken", userData?.token || "");
   };
 
+  // ✅ Logout: clear session & redirect
   const logout = async () => {
     try {
       await fetch("http://localhost:5000/api/auth/logout", {

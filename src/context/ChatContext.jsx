@@ -1,34 +1,21 @@
-// src/context/ChatContext.js
-import React, { createContext, useState, useRef, useEffect } from "react";
+// src/context/ChatContext.jsx
+import { createContext, useState, useRef } from "react";
 
 export const ChatContext = createContext();
 
 export const ChatProvider = ({ children, user }) => {
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
+  const [messages, setMessages] = useState([]);   // store chat messages
+  const [input, setInput] = useState("");         // current input text
   const [showEmoji, setShowEmoji] = useState(false);
   const [minimized, setMinimized] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
-  const chatRef = useRef(null);
-
-  // Update currentUser whenever the prop `user` changes
-  useEffect(() => {
-    if (user) setCurrentUser(user);
-  }, [user]);
-
-  const addMessage = (msg) => {
-    if (!msg || typeof msg !== "object") return;
-    if (!msg.id) msg.id = Date.now();
-    setMessages((prev) => [...prev, msg]);
-  };
+  const chatRef = useRef(null);                   // for auto-scroll
 
   return (
     <ChatContext.Provider
       value={{
-        user: currentUser,
+        user,                // user object for DB requests
         messages,
         setMessages,
-        addMessage,
         input,
         setInput,
         showEmoji,
