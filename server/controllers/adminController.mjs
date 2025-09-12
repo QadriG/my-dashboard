@@ -60,13 +60,12 @@ export const pauseUser = async (req, res, next) => {
     if (isNaN(Number(id))) return res.status(400).json({ success: false, message: "Invalid user ID" });
 
     const user = await prisma.user.update({
-  where: { id: Number(id) },
-  data: {
-    status: "disabled", // or "paused" for pauseUser function
-    tokenVersion: { increment: 1 }, // <<<<< invalidate old tokens
-  },
-});
-
+      where: { id: Number(id) },
+      data: {
+        status: "disabled", // paused user logic
+        tokenVersion: { increment: 1 }, // invalidate old tokens
+      },
+    });
 
     await pauseUserTradesAndPositions(Number(id));
 
@@ -236,6 +235,79 @@ export const updateUserRole = async (req, res, next) => {
     res.json({ success: true, message: "User role updated", user: updatedUser });
   } catch (err) {
     error("updateUserRole error:", err);
+    next(err);
+  }
+};
+
+// ======================
+// CHAT MANAGEMENT
+// ======================
+
+// List all pending chat sessions
+export const listPendingChats = async (req, res, next) => {
+  try {
+    const sessions = await prisma.chatSession.findMany({
+      where: { status: "pending" },
+      include: { user: { select: { id: true, email: true, name: true } } },
+      orderBy: { createdAt: "asc" },
+    });
+
+    res.json({ success: true, sessions });
+  } catch (err) {
+    error("listPendingChats error:", err);
+    next(err);
+  }
+};
+
+// Assign self to a pending chat
+export const takeChatSession = async (req, res, next) => {
+  try {
+    const { sessionId } = req.body;
+
+    const session = await prisma.chatSession.update({
+      where: { id: Number(sessionId) },
+      data: { agentId: req.user.id, status: "active" },
+      include: { user: true },
+    });
+
+    info(`Admin ${req.user.id} took chat session ${sessionId}`);
+    res.json({ success: true, session });
+  } catch (err) {
+    error("takeChatSession error:", err);
+    next(err);
+  }
+};
+
+// List my active chat sessions
+export const listMyChats = async (req, res, next) => {
+  try {
+    const sessions = await prisma.chatSession.findMany({
+      where: { agentId: req.user.id, status: "active" },
+      include: { user: { select: { id: true, email: true, name: true } } },
+      orderBy: { updatedAt: "desc" },
+    });
+
+    res.json({ success: true, sessions });
+  } catch (err) {
+    error("listMyChats error:", err);
+    next(err);
+  }
+};
+
+// Force close a chat session
+export const forceCloseChat = async (req, res, next) => {
+  try {
+    const { sessionId } = req.body;
+
+    const session = await prisma.chatSession.update({
+      where: { id: Number(sessionId) },
+      data: { status: "closed" },
+    });
+
+    info(`Admin ${req.user.id} force closed chat session ${sessionId}`);
+    res.json({ success: true, session });
+  } catch (err) {
+    error("forceCloseChat error:", err);
     next(err);
   }
 };

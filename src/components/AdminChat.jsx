@@ -1,72 +1,73 @@
-// AdminChat.jsx
-import React, { useContext, useState, useEffect, useRef } from "react";
+// src/components/AdminChat.jsx
+import React, { useContext, useState, useEffect } from "react";
 import Picker from "emoji-picker-react";
 import { ChatContext } from "../context/ChatContext";
-import io from "socket.io-client";
-
-// ✅ Socket initialized outside component
-const socket = io("http://localhost:5001", {
-  withCredentials: true,
-  reconnection: true,
-  reconnectionAttempts: 5,
-  reconnectionDelay: 1000,
-});
 
 export default function AdminChat({ adminId }) {
-  const { messages, setMessages, input, setInput, showEmoji, setShowEmoji, chatRef } =
-    useContext(ChatContext);
+  const {
+    user,          // admin object from ChatProvider
+    messages,
+    input,
+    setInput,
+    sendMessage,
+    showEmoji,
+    setShowEmoji,
+    chatRef,
+  } = useContext(ChatContext);
 
   const [requests, setRequests] = useState([]);
   const [currentRoom, setCurrentRoom] = useState(null);
   const [minimized, setMinimized] = useState(false);
 
-  // 🔹 Join admin & listen to events
+  // 🔹 Fetch pending requests periodically
   useEffect(() => {
     if (!adminId) return;
 
-    socket.emit("joinAdmin", { adminId });
-
-    socket.on("newChatRequest", (req) => setRequests((prev) => [...prev, req]));
-    socket.on("message", (msg) => {
-      if (msg.roomId === currentRoom) setMessages((prev) => [...prev, msg]);
-    });
-
-    return () => {
-      socket.off("newChatRequest");
-      socket.off("message");
+    const fetchRequests = async () => {
+      try {
+        const res = await fetch("/api/chat/requests", { credentials: "include" });
+        if (!res.ok) throw new Error("Failed to fetch requests");
+        const data = await res.json();
+        setRequests(data.requests || []);
+      } catch (err) {
+        console.error("Failed to fetch requests", err);
+      }
     };
-  }, [adminId, currentRoom, setMessages]);
+
+    fetchRequests();
+    const interval = setInterval(fetchRequests, 5000);
+    return () => clearInterval(interval);
+  }, [adminId]);
 
   // 🔹 Assign session
-  const assignToMe = (userId) => {
-    if (!adminId) return;
-    const roomId = `room_${userId}`;
-    socket.emit("assignSession", { userId, agentId: adminId });
-    setCurrentRoom(roomId);
-    setRequests((prev) => prev.filter((r) => r.userId !== userId));
-    setMessages([]);
-    setMinimized(false); // auto-open chat when assigned
+  const assignToMe = async (userId) => {
+    try {
+      const res = await fetch("/api/chat/assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ userId, agentId: adminId }),
+      });
+      if (!res.ok) throw new Error("Failed to assign session");
+      const data = await res.json();
+      setCurrentRoom(data.roomId || null);
+      setRequests((prev) => prev.filter((r) => r.userId !== userId));
+      setMinimized(false);
+    } catch (err) {
+      console.error("Failed to assign session", err);
+    }
   };
 
-  // 🔹 Send message
-  const sendMessage = (e) => {
-    e.preventDefault();
-    if (!input.trim() || !currentRoom) return;
-
-    const msg = { from: "admin", text: input, id: Date.now(), roomId: currentRoom };
-    socket.emit("message", msg);
-    setMessages((prev) => [...prev, msg]);
-    setInput("");
-  };
-
-  // 🔹 Auto-scroll
+  // 🔹 Auto-scroll on messages
   useEffect(() => {
-    if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
+    if (chatRef?.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
   }, [messages, chatRef]);
+
+  if (!user) return null; // Ensure admin exists
 
   return (
     <div className="fixed bottom-4 right-4 z-50 w-96">
-      {/* Toggle Button */}
+      {/* Toggle */}
       <button
         onClick={() => setMinimized(!minimized)}
         className="bg-blue-600 text-white px-4 py-2 rounded-t-xl w-full shadow-lg"
@@ -89,7 +90,7 @@ export default function AdminChat({ adminId }) {
                     key={req.userId}
                     className="flex justify-between items-center p-2 bg-gray-100 rounded-lg mb-2"
                   >
-                    <span>{req.username}</span>
+                    <span>{req.username || "Unknown User"}</span>
                     <button
                       onClick={() => assignToMe(req.userId)}
                       className="bg-blue-500 text-white px-2 py-1 rounded-lg"
@@ -102,34 +103,38 @@ export default function AdminChat({ adminId }) {
             </div>
           )}
 
-          {/* Chat Messages */}
+          {/* Messages */}
           {currentRoom && (
             <>
               <div
                 ref={chatRef}
                 className="flex-1 overflow-y-auto p-3 space-y-2 bg-gray-50"
               >
-                {messages.map((msg) => (
+                {Array.isArray(messages) && messages.map((msg) => (
                   <div
-                    key={msg.id}
-                    className={`flex ${msg.from === "admin" ? "justify-end" : "justify-start"}`}
+                    key={msg.id || Math.random()}
+                    className={`flex ${msg.senderId === user.id ? "justify-end" : "justify-start"}`}
                   >
                     <div
                       className={`px-4 py-2 rounded-2xl max-w-xs break-words ${
-                        msg.from === "admin" ? "bg-blue-500" : "bg-green-500"
+                        msg.senderId === user.id ? "bg-blue-500" : "bg-green-500"
                       } text-white`}
                     >
-                      {msg.text}
+                      {msg.content || ""}
                     </div>
                   </div>
                 ))}
               </div>
 
-              {/* Input Box */}
-              <form className="flex items-center p-2 border-t border-gray-300" onSubmit={sendMessage}>
-                <button type="button" onClick={() => setShowEmoji(!showEmoji)}>
-                  😀
-                </button>
+              {/* Input */}
+              <form
+                className="flex items-center p-2 border-t border-gray-300"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  sendMessage(currentRoom);
+                }}
+              >
+                <button type="button" onClick={() => setShowEmoji(!showEmoji)}>😀</button>
                 {showEmoji && (
                   <Picker
                     onEmojiClick={(e) => {

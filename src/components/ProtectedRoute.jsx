@@ -8,12 +8,11 @@ export default function ProtectedRoute({ children, allowedRoles }) {
   const [authorized, setAuthorized] = useState(false);
   const navigate = useNavigate();
 
-  // Always call both hooks
   const adminAuth = useAdminAuth();
   const userAuth = useUserAuth();
 
-  // Unified logout function mimicking admin style
-  const logout = async () => {
+  // Role-specific logout
+  const logout = async (role) => {
     try {
       await fetch("http://localhost:5000/api/auth/logout", {
         method: "POST",
@@ -22,21 +21,23 @@ export default function ProtectedRoute({ children, allowedRoles }) {
     } catch (err) {
       console.error("Logout failed:", err);
     } finally {
-      if (allowedRoles.includes("admin")) {
+      if (role === "admin") {
         localStorage.removeItem("adminToken");
-        setAuthorized(false);
         adminAuth.logout && adminAuth.logout();
       } else {
         localStorage.removeItem("userToken");
-        setAuthorized(false);
         userAuth.logout && userAuth.logout();
       }
+      localStorage.removeItem("role");
       sessionStorage.clear();
+      setAuthorized(false);
       navigate("/login", { replace: true });
     }
   };
 
   useEffect(() => {
+    let isMounted = true;
+
     const checkAuth = async () => {
       try {
         const res = await fetch("http://localhost:5000/api/auth/check-auth", {
@@ -44,27 +45,38 @@ export default function ProtectedRoute({ children, allowedRoles }) {
           credentials: "include",
           headers: { "Cache-Control": "no-store" },
         });
-        const data = await res.json();
 
-        if (res.ok && allowedRoles.includes(data.role)) {
-          setAuthorized(true);
+        let data = {};
+        if (res.status !== 304 && res.status !== 204) data = await res.json();
+
+        // Admin fix: fallback to localStorage if backend returns 204
+        const role = data.role || localStorage.getItem("role");
+
+        if ((res.ok || res.status === 304) && role && allowedRoles.includes(role)) {
+          if (isMounted) setAuthorized(true);
         } else {
-          await logout();
+          await logout(role);
         }
-      } catch {
-        await logout();
+      } catch (err) {
+        console.error("Auth check failed:", err);
+        await logout(localStorage.getItem("role"));
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     checkAuth();
 
     const handlePopState = () => {
-      if (!authorized) logout();
+      if (!authorized) return;
+      logout(localStorage.getItem("role"));
     };
+
     window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
+    return () => {
+      isMounted = false;
+      window.removeEventListener("popstate", handlePopState);
+    };
   }, [allowedRoles, authorized]);
 
   if (loading) return <div className="text-white text-center mt-20">Checking authentication...</div>;

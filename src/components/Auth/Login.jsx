@@ -50,7 +50,7 @@ export default function Login() {
     }
   }, [location]);
 
-  // Background animation
+  // Background animation (unchanged)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -122,6 +122,7 @@ export default function Login() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
+    setSuccess("");
     try {
       const res = await fetch(`${API_BASE}/login`, {
         method: "POST",
@@ -129,17 +130,30 @@ export default function Login() {
         credentials: "include",
         body: JSON.stringify({ email, password }),
       });
+
       const data = await res.json();
-      if (res.ok && data.user?.role) {
-        localStorage.clear();
+      if (res.ok && data.user?.role && data.token) {
+        // Clear previous tokens
+        localStorage.removeItem("adminToken");
+        localStorage.removeItem("userToken");
         sessionStorage.clear();
+
+        // Store role-specific token
+        if (data.user.role === "admin") {
+          localStorage.setItem("adminToken", data.token);
+        } else {
+          localStorage.setItem("userToken", data.token);
+        }
+
         localStorage.setItem("role", data.user.role);
+        setSuccess("Login successful!");
         navigate(data.user.role === "admin" ? "/admin" : "/user", { replace: true });
       } else {
         setError(data.message || "Invalid credentials");
       }
-    } catch {
-      setError("Server error");
+    } catch (err) {
+      console.error(err);
+      setError("Server error. Try again later.");
     }
   };
 
@@ -190,7 +204,9 @@ export default function Login() {
       await fetch(`${API_BASE}/logout`, { method: "POST", credentials: "include" });
       setEmail("");
       setPassword("");
-      localStorage.clear();
+      localStorage.removeItem("adminToken");
+      localStorage.removeItem("userToken");
+      localStorage.removeItem("role");
       sessionStorage.clear();
       navigate("/login", { replace: true });
     } catch {
@@ -212,31 +228,18 @@ export default function Login() {
         style={{ minHeight: "480px", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)" }}
       >
         <div className="form-container flex flex-col justify-between h-full">
-
           {/* LOGIN FORM */}
           <div className={formClass("login")}>
             <h2 className="text-2xl font-bold mb-6">
-  Sign In to<br />
-  <span className="block whitespace-nowrap">QuantumCopyTrading.com</span>
-</h2>
-
-
+              Sign In to<br />
+              <span className="block whitespace-nowrap">QuantumCopyTrading.com</span>
+            </h2>
             <form onSubmit={handleLogin} className="flex flex-col gap-4">
               <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="input-field w-full px-4 py-3 rounded-lg bg-transparent text-white placeholder-white border border-white focus:outline-none" required />
               <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="input-field w-full px-4 py-3 rounded-lg bg-transparent text-white placeholder-white border border-white focus:outline-none" required />
               <button type="submit" className="neon-button w-full py-3 text-white font-semibold rounded-lg">Sign In</button>
             </form>
-            {error && (
-  <p className="text-red-500 mt-2">
-    {error}
-    {error === "Your account is disabled" && (
-      <span className="block mt-1 text-sm text-yellow-400">
-        Contact <a href="mailto:support@quantumcopytrading.com" className="underline">support@quantumcopytrading.com</a>
-      </span>
-    )}
-  </p>
-)}
-
+            {error && <p className="text-red-500 mt-2">{error}</p>}
             {success && <p className="text-green-500 mt-2">{success}</p>}
             <div className="mt-4 text-sm">
               <button type="button" onClick={() => switchForm("forgot")} className="text-white hover:underline">Forgot Password?</button>
@@ -245,11 +248,6 @@ export default function Login() {
               Don't have an account?{" "}
               <button onClick={() => switchForm("signup")} className="text-white underline">Sign Up</button>
             </div>
-            {localStorage.getItem("role") && (
-              <div className="mt-4 text-sm">
-                <button type="button" onClick={handleLogout} className="text-white hover:underline">Logout</button>
-              </div>
-            )}
           </div>
 
           {/* SIGNUP FORM */}
@@ -262,12 +260,6 @@ export default function Login() {
               <input type="password" placeholder="Confirm Password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="input-field w-full px-4 py-3 rounded-lg bg-transparent text-white placeholder-white focus:outline-none" required />
               <button type="submit" className="neon-button w-full py-3 text-white font-semibold rounded-lg mt-2">Sign Up</button>
             </form>
-            {error && <p className="text-red-500 mt-2">{error}</p>}
-            {success && <p className="text-green-500 mt-2">{success}</p>}
-            <div className="mt-4 text-sm flex justify-center">
-              Already have an account?{" "}
-              <button onClick={() => switchForm("login")} className="text-white underline ml-1">Back to Login</button>
-            </div>
           </div>
 
           {/* FORGOT PASSWORD FORM */}
@@ -277,19 +269,7 @@ export default function Login() {
               <input type="email" placeholder="Enter your email" value={email} onChange={(e) => setEmail(e.target.value)} className="input-field w-full px-4 py-3 rounded-lg bg-transparent text-white placeholder-white border border-white focus:outline-none" required />
               <button type="submit" className="neon-button w-full py-3 text-white font-semibold rounded-lg">Send Reset Link</button>
             </form>
-            {error && <p className="text-red-500 mt-2">{error}</p>}
-            {success && <p className="text-green-500 mt-2">{success}</p>}
-            <div className="mt-4 text-sm flex justify-center">
-              Remember your password?{" "}
-              <button onClick={() => switchForm("login")} className="text-white underline ml-1">Back to Login</button>
-            </div>
-            {localStorage.getItem("role") && (
-              <div className="mt-4 text-sm">
-                <button type="button" onClick={handleLogout} className="text-white hover:underline">Logout</button>
-              </div>
-            )}
           </div>
-
         </div>
       </div>
     </div>

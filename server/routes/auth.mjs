@@ -3,16 +3,18 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
-import { hashPassword, comparePassword } from "../utils/encrypt.mjs";
+import encryptUtils from "../utils/encrypt.mjs"; // ✅ Fixed import
 import { info, error as logError } from "../utils/logger.mjs";
 
 dotenv.config();
 
 const router = express.Router();
 const prisma = new PrismaClient();
+const { encryptPassword: hashPassword, comparePassword } = encryptUtils; // ✅ Alias for hashPassword
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key";
 const JWT_EXPIRES_IN = "7d"; // 7 days
+
 
 // ========================
 // ✅ Register

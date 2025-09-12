@@ -1,50 +1,110 @@
 // server/services/websocketService.mjs
 import WebSocket, { WebSocketServer } from "ws";
-import { info, error as logError, warn } from "../utils/logger.mjs";
-// import jwt from "jsonwebtoken"; // optional if you want JWT validation
+import { PrismaClient } from "@prisma/client";
+import { info, error as logError } from "../utils/logger.mjs";
+
+const prisma = new PrismaClient();
 
 let wss;
+
 // Map of userId -> array of active WebSocket connections
 const userConnections = new Map();
 
+// Map of roomId -> Set of userIds (for chat rooms)
+const roomSubscriptions = new Map();
+
 /**
  * Initialize WebSocket server
- * @param {*} server - HTTP server instance
  */
 export const initWebSocket = (server) => {
   wss = new WebSocketServer({ server });
 
-  wss.on("connection", (ws, req) => {
+  wss.on("connection", (ws) => {
     info("New WebSocket connection established");
-
     ws.isAlive = true;
 
-    ws.on("message", (message) => {
+    ws.on("message", async (rawMessage) => {
       try {
-        const msg = JSON.parse(message.toString());
+        const msg = JSON.parse(rawMessage.toString());
 
-        if (msg.type === "auth" && msg.token) {
-          // Example: validate token -> extract userId
-          // let decoded;
-          // try {
-          //   decoded = jwt.verify(msg.token, process.env.JWT_SECRET);
-          // } catch (err) {
-          //   ws.close(4001, "Invalid token");
-          //   return;
-          // }
-          // const userId = decoded.userId;
+        // ✅ Handle authentication
+        if (msg.type === "auth" && msg.userId) {
+          ws.userId = msg.userId;
+          if (!userConnections.has(ws.userId)) userConnections.set(ws.userId, []);
+          userConnections.get(ws.userId).push(ws);
+          info(`Registered WebSocket for userId: ${ws.userId}`);
 
-          const userId = msg.userId; // fallback if no JWT validation
-          if (!userId) {
-            warn("Auth message missing userId");
-            return;
+          // 🔥 Send unread messages on connect
+          const unread = await prisma.chatMessage.findMany({
+            where: { recipientId: ws.userId, read: false },
+            orderBy: { createdAt: "asc" },
+          });
+
+          if (unread.length > 0) {
+            for (const m of unread) {
+              sendToUser(ws.userId, {
+                type: "chat",
+                id: m.id,
+                senderId: m.senderId,
+                recipientId: m.recipientId,
+                text: m.message,
+                timestamp: m.createdAt,
+              });
+            }
+
+            // Mark all as read
+            await prisma.chatMessage.updateMany({
+              where: { recipientId: ws.userId, read: false },
+              data: { read: true },
+            });
+
+            info(`Delivered ${unread.length} unread messages to user ${ws.userId}`);
+          }
+          return;
+        }
+
+        // ✅ Handle room join
+        if (msg.type === "joinRoom" && msg.roomId && ws.userId) {
+          joinRoom(ws.userId, msg.roomId);
+          info(`User ${ws.userId} joined room ${msg.roomId}`);
+          return;
+        }
+
+        // ✅ Handle chat message
+        if (msg.type === "chat" && msg.recipientId && msg.text && ws.userId) {
+          // 1. Save to DB
+          const chatMessage = await prisma.chatMessage.create({
+            data: {
+              senderId: ws.userId,
+              recipientId: msg.recipientId,
+              message: msg.text,
+              read: false,
+            },
+          });
+
+          const payload = {
+            type: "chat",
+            id: chatMessage.id,
+            senderId: ws.userId,
+            recipientId: msg.recipientId,
+            text: msg.text,
+            timestamp: chatMessage.createdAt,
+          };
+
+          // 2. Send to recipient (if online)
+          if (sendToUser(msg.recipientId, payload)) {
+            // mark as read instantly if delivered live
+            await prisma.chatMessage.update({
+              where: { id: chatMessage.id },
+              data: { read: true },
+            });
           }
 
-          ws.userId = userId;
-          if (!userConnections.has(userId)) userConnections.set(userId, []);
-          userConnections.get(userId).push(ws);
+          // 3. Echo back to sender
+          sendToUser(ws.userId, payload);
 
-          info(`Registered WebSocket for userId: ${userId}`);
+          info(`Chat message stored & delivered from ${ws.userId} -> ${msg.recipientId}`);
+          return;
         }
       } catch (err) {
         logError("WebSocket message parse error:", err);
@@ -84,7 +144,7 @@ export const initWebSocket = (server) => {
 };
 
 /**
- * Clean up userConnections map when a socket closes or errors
+ * Clean up on disconnect
  */
 function cleanupConnection(ws) {
   if (ws.userId && userConnections.has(ws.userId)) {
@@ -94,13 +154,29 @@ function cleanupConnection(ws) {
     } else {
       userConnections.delete(ws.userId);
     }
+
+    // Remove user from rooms
+    for (const [roomId, members] of roomSubscriptions.entries()) {
+      if (members.has(ws.userId)) {
+        members.delete(ws.userId);
+        if (members.size === 0) roomSubscriptions.delete(roomId);
+      }
+    }
   }
 }
 
 /**
- * Broadcast alert to specific users
- * @param {*} alert - alert object from webhook
- * @param {*} userIds - array of userIds to send the alert to
+ * Subscribe user to a chat room
+ */
+function joinRoom(userId, roomId) {
+  if (!roomSubscriptions.has(roomId)) {
+    roomSubscriptions.set(roomId, new Set());
+  }
+  roomSubscriptions.get(roomId).add(userId);
+}
+
+/**
+ * Broadcast alert to specific users (trade alerts, system alerts, etc.)
  */
 export const broadcastToUsers = (alert, userIds) => {
   if (!wss) return logError("WebSocket server not initialized");
@@ -123,14 +199,12 @@ export const broadcastToUsers = (alert, userIds) => {
   userIds.forEach((uid) => {
     if (userConnections.has(uid)) {
       userConnections.get(uid).forEach((ws) => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(payload);
-        }
+        if (ws.readyState === WebSocket.OPEN) ws.send(payload);
       });
     }
   });
 
-  info(`Broadcasted alert to users [${userIds.join(", ")}]:`, {
+  info(`Broadcasted alert to users [${userIds.join(", ")}]`, {
     exchange: alert.exchange,
     symbol: alert.symbol,
     action: alert.action,
@@ -138,7 +212,7 @@ export const broadcastToUsers = (alert, userIds) => {
 };
 
 /**
- * Send a message to a single user
+ * Send a chat message object to a single user
  */
 export const sendToUser = (userId, message) => {
   if (!userConnections.has(userId)) return false;
