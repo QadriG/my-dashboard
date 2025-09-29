@@ -1,4 +1,3 @@
-// src/components/Users/Dashboard.jsx
 import React, { useRef, useState, useEffect } from "react";
 import { isMobile } from "react-device-detect";
 import { useTheme } from "../../context/ThemeContext";
@@ -16,8 +15,8 @@ import BestTradingPairs from "./BestTradingPairs.jsx";
 import OpenPositions from "./OpenPositions.jsx";
 import { useUserAuth } from "../../hooks/useUserAuth";
 import { useNavigate, useLocation } from "react-router-dom";
-import LiveChat from "./LiveChat.jsx"; // always mounted
 
+// Light/Dark mode toggle
 export function LightModeToggle({ className, style }) {
   const { isDarkMode, toggleTheme } = useTheme();
   return (
@@ -45,7 +44,7 @@ export default function UserDashboard() {
   const audioRef = useRef(null);
   const [expandedCard, setExpandedCard] = useState(null);
   const { isDarkMode } = useTheme();
-  const { user, logout, loading } = useUserAuth(); // get loading from context
+  const { user, logout, loading } = useUserAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const adminView = location.state?.adminView || false;
@@ -65,36 +64,35 @@ export default function UserDashboard() {
 
   // Fetch dashboard data
   useEffect(() => {
-  if (!user) return; // wait until user is loaded
+    if (!user) return;
 
-  const fetchDashboard = async () => {
-    try {
-      const dashUrl = adminView
-        ? `http://localhost:5000/api/admin/users/${userId}/dashboard`
-        : "http://localhost:5000/api/user/dashboard";
+    const fetchDashboard = async () => {
+      try {
+        const dashUrl = adminView
+          ? `http://localhost:5000/api/admin/users/${userId}/dashboard`
+          : "http://localhost:5000/api/user/dashboard";
 
-      const dashRes = await fetch(dashUrl, {
-        method: "GET",
-        credentials: "include",
-        headers: { "Cache-Control": "no-store" },
-      });
+        const dashRes = await fetch(dashUrl, {
+          method: "GET",
+          credentials: "include",
+          headers: { "Cache-Control": "no-store" },
+        });
 
-      if (dashRes.ok) {
-        const dashData = await dashRes.json();
-        setDashboardData(dashData);
-      } else {
-        console.error("Failed to fetch dashboard data");
+        if (dashRes.ok) {
+          const dashData = await dashRes.json();
+          setDashboardData(dashData);
+        } else {
+          console.error("Failed to fetch dashboard data");
+        }
+      } catch (err) {
+        console.error("Dashboard fetch error:", err);
       }
-    } catch (err) {
-      console.error("Dashboard fetch error:", err);
-    }
-  };
+    };
 
-  fetchDashboard();
-}, [user, adminView, userId]);
+    fetchDashboard();
+  }, [user, adminView, userId]);
 
-
-  if (loading) return <div>Loading dashboard...</div>; // wait until user context is ready
+  if (loading) return <div>Loading dashboard...</div>;
 
   return (
     <div className="zoom-out-container relative h-screen w-screen overflow-x-hidden overflow-y-auto">
@@ -163,9 +161,6 @@ export default function UserDashboard() {
           </button>
         </div>
       </main>
-
-      {/* ✅ LiveChat always mounted, no conditions */}
-      <LiveChat />
     </div>
   );
 }

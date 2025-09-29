@@ -9,12 +9,10 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import bodyParser from "body-parser";
 import crypto from "crypto";
-import http from "http";
 
 // Utils & services
 import { sendEmail } from "./src/utils/mailer.js";
 import webhookRoutes from "./server/routes/webhookRoutes.mjs";
-import { initWebSocket } from "./server/services/websocketService.mjs";
 import adminRoutes from "./server/routes/adminRoutes.mjs";   // existing admin routes
 import exchangesRoutes from "./server/routes/exchanges.mjs";
 import logger from "./server/utils/logger.mjs";
@@ -285,9 +283,6 @@ app.get("/admin/dashboard", authMiddleware, adminMiddleware, (req, res) => {
   res.json({ message: "Welcome Admin", user: req.user });
 });
 
-// === Create HTTP server & WebSocket ===
-const server = http.createServer(app);
-initWebSocket(server);
-
 // === Start server ===
-server.listen(PORT, () => info(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () => info(`🚀 Server running on port ${PORT}`));
+

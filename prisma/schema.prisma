@@ -8,61 +8,31 @@ datasource db {
 }
 
 model User {
-  id          Int       @id @default(autoincrement())
-  email       String    @unique
-  password    String
-  name        String?
-  role        String    @default("user")
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  resetToken  String?
-  resetTokenExp DateTime?
-  isVerified  Boolean   @default(false)
+  id                Int       @id @default(autoincrement())
+  email             String    @unique
+  password          String
+  name              String?
+  role              String    @default("user") // user, admin, agent
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  resetToken        String?
+  resetTokenExp     DateTime?
+  isVerified        Boolean   @default(false)
   verificationToken String?
-  status      String    @default("active")
-  tokenVersion Int      @default(0)
-  free        Float     @default(0)
-  used        Float     @default(0)
-  total       Float     @default(0)
-  lastActivity DateTime?
 
-  trades    Trade[]
-  alerts    AlertLog[]
-  exchanges UserExchange[]
-  apis      UserAPI[]
-  logs      Log[]
-  positions Position[]
+  status            String    @default("active")  // active, paused, disabled
+  tokenVersion      Int       @default(0)
+  free              Float     @default(0)
+  used              Float     @default(0)
+  total             Float     @default(0)
+  lastActivity      DateTime?
 
-  // Keep if you want chat DB storage
-  agentSessions ChatSession[] @relation("AgentSessions")
-  ChatSession   ChatSession[]
-  ChatMessage   ChatMessage[]
-}
-
-model ChatSession {
-  id        Int  @id @default(autoincrement())
-  user      User @relation(fields: [userId], references: [id])
-  userId    Int
-  agent     User? @relation("AgentSessions", fields: [agentId], references: [id])
-  agentId   Int? 
-  messages  Json[] @default([])
-  status    String @default("pending")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  ChatMessage ChatMessage[]
-}
-
-model ChatMessage {
-  id        Int         @id @default(autoincrement())
-  session   ChatSession @relation(fields: [sessionId], references: [id])
-  sessionId Int
-  sender    User        @relation(fields: [senderId], references: [id])
-  senderId  Int
-  content   String
-  fileUrl   String?
-  fileName  String?
-  fileType  String?
-  createdAt DateTime    @default(now())
+  trades            Trade[]
+  alerts            AlertLog[]
+  exchanges         UserExchange[]
+  apis              UserAPI[]
+  logs              Log[]
+  positions         Position[]
 }
 
 model Trade {
@@ -76,18 +46,18 @@ model Trade {
 }
 
 model AlertLog {
-  id         Int      @id @default(autoincrement())
-  user       User?    @relation(fields: [userId], references: [id])
-  userId     Int?
-  exchange   String
-  symbol     String
-  action     String
-  tp         Float?
-  sl         Float?
-  rawPayload Json
-  status     String   @default("pending")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id          Int       @id @default(autoincrement())
+  user        User?     @relation(fields: [userId], references: [id])
+  userId      Int?
+  exchange    String
+  symbol      String
+  action      String
+  tp          Float?
+  sl          Float?
+  rawPayload  Json
+  status      String    @default("pending")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model UserExchange {
@@ -127,13 +97,13 @@ model Log {
 }
 
 model Position {
-  id       Int      @id @default(autoincrement())
-  user     User     @relation(fields: [userId], references: [id])
-  userId   Int
-  symbol   String
-  amount   Float
-  price    Float
-  action   String // buy/sell
-  openedAt DateTime @default(now())
-  status   String   @default("open")
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  symbol    String
+  amount    Float
+  price     Float
+  action    String   // buy/sell
+  openedAt  DateTime @default(now())
+  status    String   @default("open")
 }

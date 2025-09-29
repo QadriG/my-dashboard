@@ -7,16 +7,16 @@ import ResetPassword from "./components/Auth/ResetPassword";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AdminAuthProvider } from "./hooks/useAdminAuth";
 import { UserAuthProvider } from "./hooks/useUserAuth";
-import { useAdminAuth } from "./hooks/useAdminAuth"; // adjust path if needed
-import { useUserAuth } from "./hooks/useUserAuth";   // adjust path if needed
+import { useAdminAuth } from "./hooks/useAdminAuth";
+import { useUserAuth } from "./hooks/useUserAuth";
 
 // Dashboards
 import AdminDashboard from "./components/Dashboard";
 import UserDashboard from "./components/Users/Dashboard";
 
 // Settings
-import AdminSettings from "./components/settings";        
-import UserSettings from "./components/Users/settings";  
+import AdminSettings from "./components/settings";
+import UserSettings from "./components/Users/settings";
 import ApiDetails from "./components/Users/ApiDetails";
 
 // Positions
@@ -24,14 +24,8 @@ import AdminPositions from "./components/Positions";
 import UserPositions from "./components/Users/Positions";
 
 // Sidebars
-import Sidebar from "./components/Sidebar";              
-import UserSidebar from "./components/Users/Sidebar";   
-
-// Live Chat
-import LiveChat from "./components/Users/LiveChat";
-import { ChatProvider } from "./context/ChatContext";
-import AdminChat from "./components/AdminChat"; // adjust path if needed
-
+import Sidebar from "./components/Sidebar";
+import UserSidebar from "./components/Users/Sidebar";
 
 // Theme
 import { useTheme } from "./context/ThemeContext";
@@ -43,55 +37,38 @@ import AdminUsers from "./components/Users";
 import AdminManualPush from "./components/ManualPush";
 
 // ----------------------
-// Admin Layout
+// Admin Layout (chat-free)
 // ----------------------
 export function AdminLayout() {
   const { isDarkMode } = useTheme();
-  const { admin } = useAdminAuth(); // get admin object (not just id)
-
-  // normalize admin
-  const chatAdmin = admin
-    ? { id: admin.id || admin._id || admin.uid, name: admin.name || admin.email || "Admin" }
-    : null;
+  useAdminAuth(); // still get auth
 
   return (
-    <ChatProvider user={chatAdmin}>
-      <div className={`flex ${isDarkMode ? "dark-mode" : "light-mode"}`} style={{ minHeight: "100vh" }}>
-        <Sidebar />
-        <main className="flex-1 p-4 relative">
-          <Outlet />
-          {chatAdmin?.id && <AdminChat adminId={chatAdmin.id} />}
-        </main>
-      </div>
-    </ChatProvider>
+    <div className={`flex ${isDarkMode ? "dark-mode" : "light-mode"}`} style={{ minHeight: "100vh" }}>
+      <Sidebar />
+      <main className="flex-1 p-4 relative">
+        <Outlet />
+      </main>
+    </div>
   );
 }
 
-
 // ----------------------
-// User Layout
+// User Layout (chat-free)
 // ----------------------
 export function UserLayout() {
   const { isDarkMode } = useTheme();
-  const { user } = useUserAuth(); // get user from auth
-
-  const chatUser = user
-    ? { id: user.id || user._id || user.uid, name: user.name || user.email || "User" }
-    : null;
+  useUserAuth(); // still get auth
 
   return (
-    <ChatProvider user={chatUser}>
-      <div className={`flex ${isDarkMode ? "dark-mode" : "light-mode"}`} style={{ minHeight: "100vh" }}>
-        <UserSidebar />
-        <main className="flex-1 p-4 relative">
-          <Outlet />
-          {chatUser?.id && <LiveChat />}
-        </main>
-      </div>
-    </ChatProvider>
+    <div className={`flex ${isDarkMode ? "dark-mode" : "light-mode"}`} style={{ minHeight: "100vh" }}>
+      <UserSidebar />
+      <main className="flex-1 p-4 relative">
+        <Outlet />
+      </main>
+    </div>
   );
 }
-
 
 // ----------------------
 // App Component
@@ -110,11 +87,14 @@ function App() {
             <Route path="/verify-email/:token" element={<Navigate to="/login" replace />} />
 
             {/* Admin routes */}
-            <Route path="/admin" element={
-              <ProtectedRoute allowedRoles={["admin"]}>
-                <AdminLayout />
-              </ProtectedRoute>
-            }>
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <AdminLayout />
+                </ProtectedRoute>
+              }
+            >
               <Route index element={<AdminDashboard />} />
               <Route path="settings" element={<AdminSettings />} />
               <Route path="api-details" element={<ApiDetails />} />
@@ -122,16 +102,19 @@ function App() {
               <Route path="users" element={<AdminUsers />} />
               <Route path="logs" element={<AdminLogs />} />
               <Route path="manualpush" element={<AdminManualPush />} />
-              <Route path="users/:id/dashboard" element={<UserDashboard />} /> {/* Moved inside /admin */}
-              <Route path="users/:id/positions" element={<UserPositions />} /> {/* Moved inside /admin */}
+              <Route path="users/:id/dashboard" element={<UserDashboard />} />
+              <Route path="users/:id/positions" element={<UserPositions />} />
             </Route>
 
-            {/* User routes (fixed logout) */}
-            <Route path="/user" element={
-              <ProtectedRoute allowedRoles={["user"]}>
-                <UserLayout />
-              </ProtectedRoute>
-            }>
+            {/* User routes */}
+            <Route
+              path="/user"
+              element={
+                <ProtectedRoute allowedRoles={["user"]}>
+                  <UserLayout />
+                </ProtectedRoute>
+              }
+            >
               <Route index element={<UserDashboard />} />
               <Route path="settings" element={<UserSettings />} />
               <Route path="api-details" element={<ApiDetails />} />

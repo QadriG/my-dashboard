@@ -153,9 +153,10 @@ export default function AdminUsers() {
   return (
     <main className="ml-64 p-8 overflow-y-auto space-y-10">
       {/* Title */}
-      <div className="w-full py-4 px-6 mb-6">
+      <div className="shimmer-wrapper w-full py-4 px-6 mb-6">
         <h1 className="text-3xl font-semibold drop-shadow-md">Users</h1>
       </div>
+
 
       {/* Search */}
       <div className="flex items-center mb-4">
