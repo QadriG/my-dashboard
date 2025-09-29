@@ -1,26 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
+import axios from "axios";
 import "../styles/globals.css";
 import "../styles/sidebar.css";
 
 export default function ManualPush() {
-  const [users] = useState([
-    { id: 0, name: "System User", balance: 15.35497025 },
-    { id: 4, name: "Tayub", balance: 264.97476998 },
-    { id: 6, name: "Charles Crawford", balance: 1077.82397781 },
-    { id: 10, name: "Master Copy Trader", balance: 1231.17703507 },
-    { id: 16, name: "Charles Bybit Main", balance: 1063.44955248 },
-    { id: 106, name: "Charles BingX", balance: 368.5895 },
-    { id: 148, name: "Charles", balance: 650.24124483 },
-    { id: 238, name: "Charles", balance: 344.19886136 },
-    { id: 479, name: "Willems Nikki", balance: 590.3681 },
-    { id: 495, name: "Tiago Wottrich", balance: 500.26249035 },
-  ]);
-
-  const textareaRef = useRef(null);
-  const [isDarkMode, setIsDarkMode] = useState(
-    window.matchMedia("(prefers-color-scheme: dark)").matches
-  );
-
+  const [users, setUsers] = useState([]);
+  const [selectedUsers, setSelectedUsers] = useState([]);
   const [jsonInput, setJsonInput] = useState(`{
   "id": "1L",
   "exchange": "bybit",
@@ -31,22 +16,66 @@ export default function ManualPush() {
   "qty": "3",
   "tp": 3
 }`);
+  const [isDarkMode, setIsDarkMode] = useState(
+    window.matchMedia("(prefers-color-scheme: dark)").matches
+  );
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState("");
 
+  const textareaRef = useRef(null);
+
+  // Fetch users from backend
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const handleChange = (e) => setIsDarkMode(e.matches);
     mediaQuery.addEventListener("change", handleChange);
+
+    const fetchUsers = async () => {
+      try {
+        setLoading(true);
+        const res = await axios.get("/api/users"); // Adjust endpoint if needed
+        setUsers(res.data || []);
+        setLoading(false);
+      } catch (err) {
+        setError("Failed to fetch users");
+        setLoading(false);
+      }
+    };
+
+    fetchUsers();
     return () => mediaQuery.removeEventListener("change", handleChange);
   }, []);
 
-  const handlePush = () => {
+  // Handle checkbox selection
+  const toggleUserSelection = (userId) => {
+    setSelectedUsers((prev) =>
+      prev.includes(userId)
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
+  // Push JSON to backend
+  const handlePush = async () => {
+    if (selectedUsers.length === 0) {
+      alert("Please select at least one user to push.");
+      return;
+    }
+
     try {
       const parsed = JSON.parse(jsonInput);
-      console.log("Pushed JSON:", parsed);
-      alert("Manual push triggered! Check console for JSON output.");
+      const payload = {
+        users: selectedUsers,
+        data: parsed,
+      };
+
+      const res = await axios.post("/api/manual-push", payload); // Backend endpoint
+      setSuccessMessage("Push successful!");
+      console.log("Push response:", res.data);
     } catch (err) {
-      console.error("Invalid JSON:", err);
-      alert("Invalid JSON! Please fix and try again.");
+      console.error("Push failed:", err);
+      alert("Push failed! Check console for details.");
     }
   };
 
@@ -57,6 +86,10 @@ export default function ManualPush() {
         <h1 className="text-3xl font-semibold drop-shadow-md">Manual Push</h1>
       </div>
 
+      {/* Error / Success Messages */}
+      {error && <p className="text-red-500 font-semibold">{error}</p>}
+      {successMessage && <p className="text-green-500 font-semibold">{successMessage}</p>}
+
       {/* Push JSON Section */}
       <div className="flex flex-col lg:flex-row gap-4 w-full">
         {/* JSON Input */}
@@ -65,7 +98,11 @@ export default function ManualPush() {
             ref={textareaRef}
             value={jsonInput}
             onChange={(e) => setJsonInput(e.target.value)}
-            className="w-full h-60 border rounded p-4 font-mono resize-none bg-white text-black dark:bg-black dark:text-white"
+            className={`w-full h-60 border rounded p-4 font-mono resize-none ${
+              isDarkMode
+                ? "bg-black text-white border-cyan-400"
+                : "bg-white text-black border-gray-400"
+            }`}
           />
           <button
             onClick={handlePush}
@@ -77,16 +114,27 @@ export default function ManualPush() {
 
         {/* Users List */}
         <div className="glass-box neon-hover rounded-xl p-6 w-full border border-cyan-400 transition duration-300">
-          <div className="max-h-[30rem] overflow-y-auto space-y-2">
-            {users.map((user) => (
-              <div
-                key={user.id}
-                className="border border-cyan-400 rounded-lg p-2 transition hover:scale-[1.01] neon-row-hover"
-              >
-                {user.id} : {user.name} ${user.balance}
-              </div>
-            ))}
-          </div>
+          {loading ? (
+            <p>Loading users...</p>
+          ) : (
+            <div className="max-h-[30rem] overflow-y-auto space-y-2">
+              {users.map((user) => (
+                <label
+                  key={user.id}
+                  className="flex items-center justify-between border border-cyan-400 rounded-lg p-2 transition hover:scale-[1.01] neon-row-hover"
+                >
+                  <span>
+                    {user.id} : {user.name} (${user.balance})
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={selectedUsers.includes(user.id)}
+                    onChange={() => toggleUserSelection(user.id)}
+                  />
+                </label>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </main>
