@@ -18,6 +18,7 @@ import UserDashboard from "./components/Users/Dashboard";
 import AdminSettings from "./components/settings";
 import UserSettings from "./components/Users/settings";
 import ApiDetails from "./components/Users/ApiDetails";
+import AdminApiDetails from "./components/ApiDetails";
 
 // Positions
 import AdminPositions from "./components/Positions";
@@ -97,7 +98,7 @@ function App() {
             >
               <Route index element={<AdminDashboard />} />
               <Route path="settings" element={<AdminSettings />} />
-              <Route path="api-details" element={<ApiDetails />} />
+              <Route path="api-details" element={<AdminApiDetails />} /> {/* ✅ now correct */}
               <Route path="positions" element={<AdminPositions />} />
               <Route path="users" element={<AdminUsers />} />
               <Route path="logs" element={<AdminLogs />} />

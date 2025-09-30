@@ -1,7 +1,8 @@
-// server/routes/manualPush.js
-const express = require("express");
+// server/routes/manualPush.mjs
+import express from "express";
+import axios from "axios"; // For sending requests to exchange APIs
+
 const router = express.Router();
-const axios = require("axios"); // For sending requests to exchange APIs
 
 // Example in-memory user API keys
 // In production, fetch these securely from your database
@@ -48,4 +49,4 @@ router.post("/", async (req, res) => {
   res.json({ results });
 });
 
-module.exports = router;
+export default router;

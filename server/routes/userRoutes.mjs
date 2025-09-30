@@ -1,51 +1,100 @@
-// userRoutes.mjs
 import express from "express";
+import { PrismaClient } from "@prisma/client";
 import { authMiddleware } from "../middleware/authMiddleware.mjs";
 import { errorHandler } from "../middleware/errorHandler.mjs";
-import {
-  listUserExchanges,
-  addUserExchange,
-  removeUserExchange,
-} from "../controllers/userController.mjs";
 import { info, error as logError } from "../utils/logger.mjs";
+import ccxt from "ccxt";
 
 const router = express.Router();
+const prisma = new PrismaClient();
 
 /**
  * ======================
- * User Exchange Routes
+ * User API Key Routes
  * ======================
  */
 
-// List all user exchanges
-router.get("/exchanges", authMiddleware, async (req, res, next) => {
+// List all API keys for the logged-in user
+router.get("/apis", authMiddleware, async (req, res, next) => {
   try {
-    await listUserExchanges(req, res, next);
-    info(`User ${req.user.id} fetched their exchanges`);
+    const apis = await prisma.userAPI.findMany({
+      where: { userId: req.user.id },
+    });
+    info(`User ${req.user.id} fetched their API keys`);
+    res.json({ success: true, apis });
   } catch (err) {
-    logError(`Error listing exchanges for user ${req.user?.id}`, err);
+    logError(`Error listing API keys for user ${req.user?.id}`, err);
     next(err);
   }
 });
 
-// Add a new exchange for the user
-router.post("/exchanges", authMiddleware, async (req, res, next) => {
+// Save a new API key with validation
+router.post("/apis", authMiddleware, async (req, res, next) => {
   try {
-    await addUserExchange(req, res, next);
-    info(`User ${req.user.id} added a new exchange: ${req.body.exchange}`);
+    const { exchangeName, apiKey, apiSecret, spotEnabled, futuresEnabled } = req.body;
+
+    if (!exchangeName || !apiKey || !apiSecret) {
+      return res.status(400).json({ success: false, message: "Missing required fields" });
+    }
+
+    // ✅ Validate keys using CCXT
+    try {
+      const exchangeClass = ccxt[exchangeName];
+      if (!exchangeClass) {
+        return res.status(400).json({ success: false, message: "Unsupported exchange" });
+      }
+
+      const exchange = new exchangeClass({
+        apiKey,
+        secret: apiSecret,
+        enableRateLimit: true,
+      });
+
+      // Ping account balance (safe, non-trading call)
+      await exchange.fetchBalance();
+
+    } catch (validationErr) {
+      logError(`Invalid API key for exchange ${exchangeName}`, validationErr);
+      return res.status(400).json({
+        success: false,
+        message: "Invalid API key or secret. Please check permissions.",
+      });
+    }
+
+    // ✅ If valid, save in DB
+    const api = await prisma.userAPI.create({
+      data: {
+        userId: req.user.id,
+        exchangeName,
+        apiKey,
+        apiSecret,
+        spotEnabled: spotEnabled || false,
+        futuresEnabled: futuresEnabled || false,
+      },
+    });
+
+    info(`User ${req.user.id} added API key for ${exchangeName}`);
+    res.json({ success: true, api });
+
   } catch (err) {
-    logError(`Error adding exchange for user ${req.user?.id}`, err);
+    logError(`Error saving API key for user ${req.user?.id}`, err);
     next(err);
   }
 });
 
-// Remove a user exchange
-router.delete("/exchanges/:id", authMiddleware, async (req, res, next) => {
+// Delete an API key
+router.delete("/apis/:id", authMiddleware, async (req, res, next) => {
   try {
-    await removeUserExchange(req, res, next);
-    info(`User ${req.user.id} removed exchange ID: ${req.params.id}`);
+    const id = parseInt(req.params.id, 10);
+
+    await prisma.userAPI.delete({
+      where: { id },
+    });
+
+    info(`User ${req.user.id} removed API key ID: ${id}`);
+    res.json({ success: true, message: "API key deleted" });
   } catch (err) {
-    logError(`Error removing exchange ID ${req.params.id} for user ${req.user?.id}`, err);
+    logError(`Error deleting API key ${req.params.id} for user ${req.user?.id}`, err);
     next(err);
   }
 });

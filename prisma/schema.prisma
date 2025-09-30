@@ -68,6 +68,8 @@ model UserExchange {
   apiKey    String
   apiSecret String
   createdAt DateTime @default(now())
+
+  @@unique([userId, exchange]) // ✅ ensures one set of keys per exchange per user
 }
 
 model UserAPI {

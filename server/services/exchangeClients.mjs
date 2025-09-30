@@ -1,27 +1,23 @@
-// server/services/exchangeClients.mjs
 import ccxt from "ccxt";
 import { info, error as logError } from "../utils/logger.mjs";
+import { BitunixClient } from "./bitunixClient.mjs";
 
 // ====================== CCXT Factory ======================
 export const getCCXTClient = (exchange, apiKey, apiSecret, type = "spot", passphrase = null) => {
   try {
     const exchangeId = exchange.toLowerCase();
 
-    // Map futures support (ccxt uses 'defaultType')
-    const options = {};
-    if (type === "futures" || type === "future") {
-      options.defaultType = "future"; // some exchanges use 'swap' instead
+    if (exchangeId === "bitunix") {
+      const client = new BitunixClient({ apiKey, apiSecret, type });
+      info(`✅ ${exchange} client created`);
+      return client;
     }
 
-    // Exchange-specific credentials
-    const creds = {
-      apiKey,
-      secret: apiSecret,
-      password: passphrase || undefined, // required for OKX, Coinbase, etc.
-      options,
-    };
+    const options = {};
+    if (type === "futures" || type === "future") options.defaultType = "future";
 
-    // Dynamically load the exchange
+    const creds = { apiKey, secret: apiSecret, password: passphrase || undefined, options };
+
     if (!(exchangeId in ccxt)) {
       throw new Error(`❌ Unsupported exchange: ${exchange}`);
     }
@@ -29,6 +25,7 @@ export const getCCXTClient = (exchange, apiKey, apiSecret, type = "spot", passph
     const client = new ccxt[exchangeId](creds);
     info(`✅ ${exchange} ${type} client created`);
     return client;
+
   } catch (err) {
     logError(`❌ ${exchange} ${type} client creation failed`, err.message || err);
     throw err;

@@ -1,3 +1,4 @@
+// src/pages/UserDashboard.jsx
 import React, { useRef, useState, useEffect } from "react";
 import { isMobile } from "react-device-detect";
 import { useTheme } from "../../context/ThemeContext";
@@ -15,9 +16,12 @@ import BestTradingPairs from "./BestTradingPairs.jsx";
 import OpenPositions from "./OpenPositions.jsx";
 import { useUserAuth } from "../../hooks/useUserAuth";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useSocket } from "../../hooks/useSocket";
+import DashboardCards from "../DashboardCards";
+import PositionsTable from "../PositionsTable";
 
-// Light/Dark mode toggle
-export function LightModeToggle({ className, style }) {
+// ✅ Light/Dark mode toggle component
+function LightModeToggle({ className, style }) {
   const { isDarkMode, toggleTheme } = useTheme();
   return (
     <button
@@ -40,6 +44,7 @@ export function LightModeToggle({ className, style }) {
   );
 }
 
+// ✅ Main UserDashboard component
 export default function UserDashboard() {
   const audioRef = useRef(null);
   const [expandedCard, setExpandedCard] = useState(null);
@@ -117,44 +122,72 @@ export default function UserDashboard() {
 
         {/* Dashboard Cards */}
         <div className="grid grid-cols-3 gap-7 max-lg:grid-cols-1">
-          <div className="dashboard-column dashboard-column-cyan" onClick={() => handleCardClick("profit")}>
+          <div
+            className="dashboard-column dashboard-column-cyan"
+            onClick={() => handleCardClick("profit")}
+          >
             <Profit profitData={dashboardData?.profit} />
           </div>
-          <div className="dashboard-column dashboard-column-purple" onClick={() => handleCardClick("upl")}>
+          <div
+            className="dashboard-column dashboard-column-purple"
+            onClick={() => handleCardClick("upl")}
+          >
             <UPL uplData={dashboardData?.upl} />
           </div>
-          <div className="dashboard-column dashboard-column-green" onClick={() => handleCardClick("fundsDistribution")}>
+          <div
+            className="dashboard-column dashboard-column-green"
+            onClick={() => handleCardClick("fundsDistribution")}
+          >
             <FundsDistribution fundsData={dashboardData?.fundsDistribution} />
           </div>
         </div>
 
         <div className="flex gap-4 w-full items-start mt-8 max-lg:flex-col">
-          <div className="dashboard-column dashboard-column-cyan balance-graph w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden" onClick={() => handleCardClick("balanceGraph")}>
+          <div
+            className="dashboard-column dashboard-column-cyan balance-graph w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden"
+            onClick={() => handleCardClick("balanceGraph")}
+          >
             <BalanceGraph balanceData={dashboardData?.balanceGraph} />
           </div>
-          <div className="dashboard-column dashboard-column-purple weekly-revenue w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden" onClick={() => handleCardClick("weeklyRevenue")}>
+          <div
+            className="dashboard-column dashboard-column-purple weekly-revenue w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden"
+            onClick={() => handleCardClick("weeklyRevenue")}
+          >
             <WeeklyRevenue weeklyData={dashboardData?.weeklyRevenue} />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-7 mt-8 max-sm:grid-cols-1">
-          <div className="dashboard-column dashboard-column-cyan" onClick={() => handleCardClick("dailyPnL")}>
+          <div
+            className="dashboard-column dashboard-column-cyan"
+            onClick={() => handleCardClick("dailyPnL")}
+          >
             <DailyPnL dailyData={dashboardData?.dailyPnL} />
           </div>
-          <div className="dashboard-column dashboard-column-purple" onClick={() => handleCardClick("bestTradingPairs")}>
+          <div
+            className="dashboard-column dashboard-column-purple"
+            onClick={() => handleCardClick("bestTradingPairs")}
+          >
             <BestTradingPairs pairsData={dashboardData?.bestTradingPairs} />
           </div>
         </div>
 
         <div className="mt-8">
-          <div className="dashboard-column dashboard-column-green" onClick={() => handleCardClick("openPositions")}>
+          <div
+            className="dashboard-column dashboard-column-green"
+            onClick={() => handleCardClick("openPositions")}
+          >
             <OpenPositions positionsData={dashboardData?.openPositions} />
           </div>
         </div>
 
         <div className="mt-8 flex justify-center">
           <button
-            onClick={() => navigate(adminView ? `/admin/users/${userId}/positions` : "/user/positions")}
+            onClick={() =>
+              navigate(
+                adminView ? `/admin/users/${userId}/positions` : "/user/positions"
+              )
+            }
             className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2 rounded-lg shadow-md transition"
           >
             View All Positions

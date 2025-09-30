@@ -37,38 +37,39 @@ export default function ApiDetails() {
   }, []);
 
   // ✅ Save API key
-  const handleSave = async () => {
-    setLoading(true);
-    setMessage("");
+  // ✅ Save API key
+const handleSave = async () => {
+  setLoading(true);
+  setMessage("");
 
-    try {
-      const res = await fetch("http://localhost:5000/api/save-api-key", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          exchange,
-          apiKey,
-          apiSecret,
-          passphrase,
-        }),
-      });
+  try {
+    const res = await fetch("http://localhost:5000/api/exchanges/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        exchange,
+        apiKey,
+        apiSecret,
+        passphrase,
+      }),
+    });
 
-      const data = await res.json();
-      if (res.ok) {
-        setMessage("✅ API key saved successfully.");
-        setApiKey("");
-        setApiSecret("");
-        setPassphrase("");
-      } else {
-        setMessage(`❌ ${data.message || "Error saving API key."}`);
-      }
-    } catch (err) {
-      setMessage("❌ Server error. Please try again later.");
+    const data = await res.json();
+    if (res.ok && data.success) {
+      setMessage("✅ API key saved successfully.");
+      setApiKey("");
+      setApiSecret("");
+      setPassphrase("");
+    } else {
+      setMessage(`❌ ${data.message || "Error saving API key."}`);
     }
+  } catch (err) {
+    setMessage("❌ Server error. Please try again later.");
+  }
 
-    setLoading(false);
-  };
+  setLoading(false);
+};
 
   return (
     <main className="ml-64 flex-1 p-8 overflow-y-auto space-y-10 text-white">

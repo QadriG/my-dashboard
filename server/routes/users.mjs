@@ -4,14 +4,24 @@ import { PrismaClient } from "@prisma/client";
 const router = express.Router();
 const prisma = new PrismaClient();
 
-router.get("/active", async (req, res) => {
+// GET /api/users
+router.get("/", async (req, res) => {
   try {
-    const total = await prisma.user.count({ where: { isVerified: true } });
-    console.log("Total active users:", total); // server log
-    res.json({ success: true, total });
+    // fetch all users, optionally filter verified ones
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        balance: true, // make sure 'balance' exists in your user table
+        role: true,
+        isVerified: true,
+      },
+    });
+
+    res.json(users); // frontend expects an array
   } catch (err) {
-    console.error("Error fetching active users:", err);
-    res.status(500).json({ success: false, error: err.message });
+    console.error("Error fetching users:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 

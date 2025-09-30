@@ -1,4 +1,3 @@
-// === Imports ===
 import express from "express";
 import { PrismaClient } from "@prisma/client";
 import jwt from "jsonwebtoken";
@@ -13,18 +12,23 @@ import crypto from "crypto";
 // Utils & services
 import { sendEmail } from "./src/utils/mailer.js";
 import webhookRoutes from "./server/routes/webhookRoutes.mjs";
-import adminRoutes from "./server/routes/adminRoutes.mjs";   // existing admin routes
+import adminRoutes from "./server/routes/adminRoutes.mjs";
 import exchangesRoutes from "./server/routes/exchanges.mjs";
 import logger from "./server/utils/logger.mjs";
 import encryptUtils from "./server/utils/encrypt.mjs";
 import positionsRouter from "./server/routes/positions.mjs";
 import usersRouter from "./server/routes/users.mjs";
 import balancesRouter from "./server/routes/balances.mjs";
+import manualPushRouter from "./server/routes/manualPush.mjs";
+import apiEncrypt from "./server/utils/apiencrypt.mjs"; // ✅ for API key encryption
 
-
-
-// === Setup ===
+// Load environment variables
 dotenv.config();
+import { startPeriodicExchangeSync } from "./server/services/exchangeDataSync.mjs";
+
+startPeriodicExchangeSync(60_000); // every 60s
+
+
 const app = express();
 const prisma = new PrismaClient();
 const { info, error: logError } = logger;
@@ -104,7 +108,7 @@ const adminMiddleware = (req, res, next) => {
 
 // === Routes ===
 app.use("/api/positions", positionsRouter);
-app.use("/api/exchanges", exchangesRoutes);
+app.use("/api/exchanges", authMiddleware, exchangesRoutes);  // ✅ secure with auth
 app.use("/api/webhook", webhookRoutes);
 
 // Mount admin routes
@@ -112,6 +116,10 @@ app.use("/api/admin", authMiddleware, adminMiddleware, adminRoutes);
 
 app.use("/api/users", usersRouter);
 app.use("/api/balances", balancesRouter);
+
+// Manual Push route
+app.use("/api/manual-push", authMiddleware, manualPushRouter);
+
 
 // === Auth Routes ===
 app.post("/api/auth/signup", async (req, res) => {

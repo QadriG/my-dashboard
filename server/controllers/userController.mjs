@@ -4,7 +4,7 @@ import { info, warn, error } from "../utils/logger.mjs";
 const prisma = new PrismaClient();
 
 // ======================
-// Add a new exchange connection
+// Add a new exchange connection (with validation)
 // ======================
 export const addUserExchange = async (req, res, next) => {
   try {
@@ -30,12 +30,51 @@ export const addUserExchange = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "Exchange already connected" });
     }
 
+    // ============ VALIDATE API KEY WITH EXCHANGE ============
+    try {
+      if (exchange.toLowerCase() === "binance") {
+        // Example: validate with Binance
+        const Binance = (await import("binance-api-node")).default;
+        const client = Binance({ apiKey, apiSecret });
+
+        // Simple test request
+        await client.accountInfo(); 
+        // If fails -> throws error
+      }
+      else if (exchange.toLowerCase() === "bybit") {
+        const { RestClientV5 } = await import("bybit-api");
+        const client = new RestClientV5({ key: apiKey, secret: apiSecret });
+        await client.getWalletBalance({ accountType: "UNIFIED" });
+      }
+      else if (exchange.toLowerCase() === "kucoin") {
+        const Kucoin = (await import("kucoin-node-sdk")).default;
+        Kucoin.init({ apiKey, secretKey: apiSecret, passphrase: req.body.passphrase, environment: "live" });
+        await Kucoin.rest.User.getUserInfo();
+      }
+      // Add other exchanges similarly
+    } catch (exErr) {
+      error(`Exchange validation failed for ${exchange}:`, exErr);
+
+      let msg = "Failed to validate API key with exchange";
+      if (exErr.response?.data?.msg) {
+        msg = exErr.response.data.msg;
+      } else if (exErr.message?.includes("Invalid API-key")) {
+        msg = "Invalid API key or secret";
+      } else if (exErr.message?.includes("permission")) {
+        msg = "API key is missing required permissions";
+      }
+
+      return res.status(400).json({ success: false, message: msg });
+    }
+
+    // ============ SAVE ONLY IF VALID ============
     const newExchange = await prisma.userExchange.create({
       data: { userId: req.user.id, exchange, apiKey, apiSecret },
     });
 
     info(`User ${req.user.id} added exchange ${exchange}`);
     return res.status(201).json({ success: true, message: "Exchange added", exchange: newExchange });
+
   } catch (err) {
     error("addUserExchange error:", err);
     next(err);
