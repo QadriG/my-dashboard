@@ -1,5 +1,4 @@
 import express from "express";
-import { PrismaClient } from "@prisma/client";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
@@ -8,6 +7,9 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import bodyParser from "body-parser";
 import crypto from "crypto";
+
+// ✅ Import wrapped Prisma client (with encryption middleware applied)
+import prisma from "./prisma/client.mjs";
 
 // Utils & services
 import { sendEmail } from "./src/utils/mailer.js";
@@ -20,7 +22,6 @@ import positionsRouter from "./server/routes/positions.mjs";
 import usersRouter from "./server/routes/users.mjs";
 import balancesRouter from "./server/routes/balances.mjs";
 import manualPushRouter from "./server/routes/manualPush.mjs";
-import apiEncrypt from "./server/utils/apiencrypt.mjs"; // ✅ for API key encryption
 
 // Load environment variables
 dotenv.config();
@@ -28,9 +29,7 @@ import { startPeriodicExchangeSync } from "./server/services/exchangeDataSync.mj
 
 startPeriodicExchangeSync(60_000); // every 60s
 
-
 const app = express();
-const prisma = new PrismaClient();
 const { info, error: logError } = logger;
 const { encryptPassword, comparePassword } = encryptUtils;
 
@@ -80,12 +79,10 @@ const authMiddleware = async (req, res, next) => {
     const user = await prisma.user.findUnique({ where: { id: decoded.id } });
     if (!user) return res.status(401).json({ error: "Unauthorized: User not found" });
 
-    // 🚨 Block paused/disabled users
     if (user.status === "paused" || user.status === "disabled") {
       return res.status(403).json({ error: `Your account is ${user.status}` });
     }
 
-    // 🚨 Token invalidation check
     if (decoded.tokenVersion !== user.tokenVersion) {
       return res.status(401).json({ error: "Token invalidated. Please log in again." });
     }
@@ -110,16 +107,10 @@ const adminMiddleware = (req, res, next) => {
 app.use("/api/positions", positionsRouter);
 app.use("/api/exchanges", authMiddleware, exchangesRoutes);  // ✅ secure with auth
 app.use("/api/webhook", webhookRoutes);
-
-// Mount admin routes
 app.use("/api/admin", authMiddleware, adminMiddleware, adminRoutes);
-
 app.use("/api/users", usersRouter);
 app.use("/api/balances", balancesRouter);
-
-// Manual Push route
 app.use("/api/manual-push", authMiddleware, manualPushRouter);
-
 
 // === Auth Routes ===
 app.post("/api/auth/signup", async (req, res) => {
@@ -141,9 +132,7 @@ app.post("/api/auth/signup", async (req, res) => {
     const verifyToken = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "1d" });
     await prisma.user.update({ where: { id: user.id }, data: { verificationToken: verifyToken } });
 
-    const verifyLink = `${SERVER_URL}/api/auth/verify-email?token=${encodeURIComponent(
-      verifyToken
-    )}`;
+    const verifyLink = `${SERVER_URL}/api/auth/verify-email?token=${encodeURIComponent(verifyToken)}`;
 
     try {
       await sendEmail(
@@ -173,7 +162,6 @@ app.post("/api/auth/login", async (req, res) => {
     if (!user) return res.status(400).json({ message: "Invalid credentials" });
     if (!user.isVerified) return res.status(403).json({ message: "Email not verified" });
 
-    // Block paused/disabled accounts
     if (user.status === "paused" || user.status === "disabled") {
       return res.status(403).json({ message: `Your account is ${user.status}` });
     }
@@ -181,7 +169,6 @@ app.post("/api/auth/login", async (req, res) => {
     const valid = await comparePassword(password, user.password);
     if (!valid) return res.status(400).json({ message: "Invalid credentials" });
 
-    // Include tokenVersion in JWT
     const token = jwt.sign(
       { id: user.id, role: user.role, tokenVersion: user.tokenVersion },
       JWT_SECRET,
@@ -293,4 +280,3 @@ app.get("/admin/dashboard", authMiddleware, adminMiddleware, (req, res) => {
 
 // === Start server ===
 app.listen(PORT, () => info(`🚀 Server running on port ${PORT}`));
-

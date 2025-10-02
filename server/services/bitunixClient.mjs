@@ -1,102 +1,78 @@
-// server/services/bitunixClient.mjs
+import crypto from "crypto";
 import fetch from "node-fetch";
 import { info, error as logError } from "../utils/logger.mjs";
+import { decrypt } from "../utils/apiencrypt.mjs";
+import { decrypt as decryptLegacy } from "../utils/apiencrypt.mjs";
 
 export class BitunixClient {
   constructor({ apiKey, apiSecret, type = "spot" }) {
-    this.apiKey = apiKey;
-    this.apiSecret = apiSecret;
+  try {
+    if (!apiKey || !apiSecret) throw new Error("API key or secret missing");
+    info(`Received API key: ${apiKey}, API secret: ${apiSecret}`); // Debug log
+
+    try {
+      this.apiKey = decrypt(apiKey);
+      this.apiSecret = decrypt(apiSecret);
+    } catch {
+      // fallback legacy decrypt
+      this.apiKey = decryptLegacy(apiKey);
+      this.apiSecret = decryptLegacy(apiSecret);
+      info("Used legacy decrypt for BitunixClient");
+    }
+
+    if (!this.apiKey || !this.apiSecret) {
+      throw new Error("Failed to decrypt API credentials");
+    }
+
     this.type = type.toLowerCase();
-    this.baseUrl = "https://api.bitunix.com"; // replace with actual Bitunix API base
+    this.baseUrl = "https://openapi.bitunix.com";
+  } catch (err) {
+    logError("BitunixClient decryption failed", err);
+    throw err;
+  }
+}
+
+  sign(params) {
+    const query = new URLSearchParams(params).toString();
+    const signature = crypto
+      .createHmac("sha256", this.apiSecret)
+      .update(query)
+      .digest("hex");
+    return { query, signature };
   }
 
-  // ====================== Helper ======================
-  async request(endpoint, method = "GET", body = null) {
+  async request(endpoint, method = "GET", params = {}, body = null) {
     try {
-      const url = `${this.baseUrl}${endpoint}`;
-      const headers = {
-        "API-KEY": this.apiKey,
-        "API-SECRET": this.apiSecret,
-        "Content-Type": "application/json",
-      };
+      const timestamp = Date.now().toString();
+      const recvWindow = "5000";
 
-      const options = { method, headers };
+      const allParams = { ...params, apiKey: this.apiKey, timestamp, recvWindow };
+      const { query, signature } = this.sign(allParams);
+      const url = `${this.baseUrl}${endpoint}?${query}&sign=${signature}`;
+
+      const options = { method, headers: { "Content-Type": "application/json" } };
       if (body) options.body = JSON.stringify(body);
 
       const res = await fetch(url, options);
       const data = await res.json();
 
-      if (!res.ok || data.error) {
-        throw new Error(data.error || `HTTP ${res.status}`);
-      }
-
+      if (!res.ok || data.code !== "0") throw new Error(data.msg || `HTTP ${res.status}`);
       return data;
     } catch (err) {
-      logError("❌ Bitunix API error", err.message || err);
+      logError("Bitunix API request failed", err);
       throw err;
     }
   }
 
-  // ====================== API Verification ======================
-  async verifyAPI() {
-    try {
-      // Example: fetch account info to check permissions
-      const info = await this.request("/account");
-      // Validate required rights depending on type (spot/futures)
-      const requiredRights = this.type === "spot" ? ["trade", "balance"] : ["trade", "futures"];
-      const missingRights = requiredRights.filter(r => !info.permissions?.includes(r));
-
-      if (missingRights.length) {
-        return { valid: false, missingRights };
-      }
-
-      return { valid: true, info };
-    } catch (err) {
-      return { valid: false, error: err.message };
-    }
-  }
-
-  // ====================== Balance ======================
   async fetchBalance() {
-    return await this.request("/balance");
+    const endpoint = this.type === "spot" ? "/api/spot/v1/account" : "/api/mix/v1/account";
+    return this.request(endpoint, "GET");
   }
 
-  // ====================== Market Data ======================
-  async fetchTicker(symbol) {
-    return await this.request(`/ticker?symbol=${symbol}`);
-  }
-
-  // ====================== Orders ======================
   async fetchOpenOrders(symbol = null) {
-    let endpoint = "/orders/open";
-    if (symbol) endpoint += `?symbol=${symbol}`;
-    return await this.request(endpoint);
-  }
-
-  async placeOrder(symbol, side, amount, price) {
-    return await this.request("/order", "POST", {
-      symbol,
-      side,
-      amount,
-      price,
-      type: "limit",
-      trade_type: this.type,
-    });
-  }
-
-  async closeOrder(orderId) {
-    return await this.request(`/order/${orderId}/cancel`, "POST");
-  }
-
-  // ====================== TradingView Alerts ======================
-  async executeAlert({ symbol, side, amount, price }) {
-    try {
-      const order = await this.placeOrder(symbol, side, amount, price);
-      info(`✅ Bitunix ${side} order placed for ${symbol} @ ${price}`);
-      return order;
-    } catch (err) {
-      logError("❌ Failed executing TradingView alert", err.message || err);
-      throw err;
-    }
+    const endpoint = this.type === "spot" ? "/api/spot/v1/open-orders" : "/api/mix/v1/open-orders";
+    const params = {};
+    if (symbol) params.symbol = symbol;
+    return this.request(endpoint, "GET", params);
   }
 }

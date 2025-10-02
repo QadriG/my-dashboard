@@ -4,6 +4,9 @@ import { authMiddleware } from "../middleware/authMiddleware.mjs";
 import { errorHandler } from "../middleware/errorHandler.mjs";
 import { info, error as logError } from "../utils/logger.mjs";
 import ccxt from "ccxt";
+// imports
+import { encrypt, decrypt } from "../utils/apiencrypt.mjs";
+
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -97,6 +100,30 @@ router.delete("/apis/:id", authMiddleware, async (req, res, next) => {
     logError(`Error deleting API key ${req.params.id} for user ${req.user?.id}`, err);
     next(err);
   }
+});
+
+// GET
+const apis = await prisma.userAPI.findMany({
+  where: { userId: req.user.id },
+});
+const decryptedApis = apis.map(api => ({
+  ...api,
+  apiKey: decrypt(api.apiKey),
+  apiSecret: decrypt(api.apiSecret),
+}));
+res.json({ success: true, apis: decryptedApis });
+
+
+// POST
+const api = await prisma.userAPI.create({
+  data: {
+    userId: req.user.id,
+    exchangeName,
+    apiKey: encrypt(apiKey),
+    apiSecret: encrypt(apiSecret),
+    spotEnabled: spotEnabled || false,
+    futuresEnabled: futuresEnabled || false,
+  },
 });
 
 /**

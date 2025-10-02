@@ -9,30 +9,30 @@ const method = 'GET';
 const timestamp = Date.now().toString();
 const nonce = crypto.randomBytes(16).toString('hex');
 
-// For GET, body is empty string
-const body = '';
-const payload = timestamp + method + endpoint + nonce + body;
+// For GET, no query params and no body
+const queryParams = '';  // empty since GET and no query string
+const body = '';          // empty string
 
-// Correct signature: HMAC SHA256 of payload with secret
-const sign = crypto.createHmac('sha256', secretKey).update(payload).digest('hex');
+// Step 1: digest = SHA256(nonce + timestamp + apiKey + queryParams + body)
+const digestInput = nonce + timestamp + apiKey + queryParams + body;
+const digest = crypto.createHash('sha256').update(digestInput).digest('hex');
+
+// Step 2: sign = SHA256(digest + secretKey)
+const signInput = digest + secretKey;
+const sign = crypto.createHash('sha256').update(signInput).digest('hex');
 
 const url = `https://openapi.bitunix.com${endpoint}`;
 
-try {
-  const res = await fetch(url, {
-    method,
-    headers: {
-      'api-key': apiKey,
-      'timestamp': timestamp,
-      'nonce': nonce,
-      'sign': sign,
-      'Content-Type': 'application/json',
-    },
-  });
+const response = await fetch(url, {
+  method,
+  headers: {
+    'api-key': apiKey,
+    'nonce': nonce,
+    'timestamp': timestamp,
+    'sign': sign,
+    'Content-Type': 'application/json'
+  }
+});
 
-  const data = await res.json();
-  console.log(data);
-} catch (err) {
-  console.error('Error fetching balance:', err);
-}
-
+const data = await response.json();
+console.log(data);
