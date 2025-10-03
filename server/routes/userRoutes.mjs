@@ -4,18 +4,10 @@ import { authMiddleware } from "../middleware/authMiddleware.mjs";
 import { errorHandler } from "../middleware/errorHandler.mjs";
 import { info, error as logError } from "../utils/logger.mjs";
 import ccxt from "ccxt";
-// imports
-import { encrypt, decrypt } from "../utils/apiencrypt.mjs";
-
+import { encrypt } from "../utils/apiencrypt.mjs";
 
 const router = express.Router();
 const prisma = new PrismaClient();
-
-/**
- * ======================
- * User API Key Routes
- * ======================
- */
 
 // List all API keys for the logged-in user
 router.get("/apis", authMiddleware, async (req, res, next) => {
@@ -24,7 +16,12 @@ router.get("/apis", authMiddleware, async (req, res, next) => {
       where: { userId: req.user.id },
     });
     info(`User ${req.user.id} fetched their API keys`);
-    res.json({ success: true, apis });
+    const decryptedApis = apis.map(api => ({
+      ...api,
+      apiKey: encrypt.decrypt(api.apiKey),
+      apiSecret: encrypt.decrypt(api.apiSecret),
+    }));
+    res.json({ success: true, apis: decryptedApis });
   } catch (err) {
     logError(`Error listing API keys for user ${req.user?.id}`, err);
     next(err);
@@ -55,7 +52,6 @@ router.post("/apis", authMiddleware, async (req, res, next) => {
 
       // Ping account balance (safe, non-trading call)
       await exchange.fetchBalance();
-
     } catch (validationErr) {
       logError(`Invalid API key for exchange ${exchangeName}`, validationErr);
       return res.status(400).json({
@@ -64,13 +60,17 @@ router.post("/apis", authMiddleware, async (req, res, next) => {
       });
     }
 
-    // ✅ If valid, save in DB
+    // ✅ Encrypt before saving
+    const encryptedKey = encrypt(apiKey);
+    const encryptedSecret = encrypt(apiSecret);
+
+    // ✅ Save in DB
     const api = await prisma.userAPI.create({
       data: {
         userId: req.user.id,
         exchangeName,
-        apiKey,
-        apiSecret,
+        apiKey: encryptedKey,
+        apiSecret: encryptedSecret,
         spotEnabled: spotEnabled || false,
         futuresEnabled: futuresEnabled || false,
       },
@@ -78,7 +78,6 @@ router.post("/apis", authMiddleware, async (req, res, next) => {
 
     info(`User ${req.user.id} added API key for ${exchangeName}`);
     res.json({ success: true, api });
-
   } catch (err) {
     logError(`Error saving API key for user ${req.user?.id}`, err);
     next(err);
@@ -100,30 +99,6 @@ router.delete("/apis/:id", authMiddleware, async (req, res, next) => {
     logError(`Error deleting API key ${req.params.id} for user ${req.user?.id}`, err);
     next(err);
   }
-});
-
-// GET
-const apis = await prisma.userAPI.findMany({
-  where: { userId: req.user.id },
-});
-const decryptedApis = apis.map(api => ({
-  ...api,
-  apiKey: decrypt(api.apiKey),
-  apiSecret: decrypt(api.apiSecret),
-}));
-res.json({ success: true, apis: decryptedApis });
-
-
-// POST
-const api = await prisma.userAPI.create({
-  data: {
-    userId: req.user.id,
-    exchangeName,
-    apiKey: encrypt(apiKey),
-    apiSecret: encrypt(apiSecret),
-    spotEnabled: spotEnabled || false,
-    futuresEnabled: futuresEnabled || false,
-  },
 });
 
 /**

@@ -8,7 +8,7 @@ import rateLimit from "express-rate-limit";
 import bodyParser from "body-parser";
 import crypto from "crypto";
 
-// ✅ Import wrapped Prisma client (with encryption middleware applied)
+// ✅ Import wrapped Prisma client
 import prisma from "./prisma/client.mjs";
 
 // Utils & services
@@ -22,6 +22,7 @@ import positionsRouter from "./server/routes/positions.mjs";
 import usersRouter from "./server/routes/users.mjs";
 import balancesRouter from "./server/routes/balances.mjs";
 import manualPushRouter from "./server/routes/manualPush.mjs";
+import { encrypt } from "./server/utils/apiencrypt.mjs"; // Import for manual encryption if needed
 
 // Load environment variables
 dotenv.config();
@@ -105,7 +106,7 @@ const adminMiddleware = (req, res, next) => {
 
 // === Routes ===
 app.use("/api/positions", positionsRouter);
-app.use("/api/exchanges", authMiddleware, exchangesRoutes);  // ✅ secure with auth
+app.use("/api/exchanges", authMiddleware, exchangesRoutes); // ✅ secure with auth
 app.use("/api/webhook", webhookRoutes);
 app.use("/api/admin", authMiddleware, adminMiddleware, adminRoutes);
 app.use("/api/users", usersRouter);

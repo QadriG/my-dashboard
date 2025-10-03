@@ -2,35 +2,28 @@ import crypto from "crypto";
 import fetch from "node-fetch";
 import { info, error as logError } from "../utils/logger.mjs";
 import { decrypt } from "../utils/apiencrypt.mjs";
-import { decrypt as decryptLegacy } from "../utils/apiencrypt.mjs";
 
 export class BitunixClient {
   constructor({ apiKey, apiSecret, type = "spot" }) {
-  try {
-    if (!apiKey || !apiSecret) throw new Error("API key or secret missing");
-    info(`Received API key: ${apiKey}, API secret: ${apiSecret}`); // Debug log
-
     try {
-      this.apiKey = decrypt(apiKey);
-      this.apiSecret = decrypt(apiSecret);
-    } catch {
-      // fallback legacy decrypt
-      this.apiKey = decryptLegacy(apiKey);
-      this.apiSecret = decryptLegacy(apiSecret);
-      info("Used legacy decrypt for BitunixClient");
-    }
+      if (!apiKey || !apiSecret) throw new Error("API key or secret missing");
 
-    if (!this.apiKey || !this.apiSecret) {
-      throw new Error("Failed to decrypt API credentials");
-    }
+      try {
+        this.apiKey = decrypt(apiKey);
+        this.apiSecret = decrypt(apiSecret);
+      } catch (err) {
+        logError("BitunixClient decryption failed", err);
+        throw err;
+      }
 
-    this.type = type.toLowerCase();
-    this.baseUrl = "https://openapi.bitunix.com";
-  } catch (err) {
-    logError("BitunixClient decryption failed", err);
-    throw err;
+      info(`BitunixClient initialized with decrypted credentials for ${type}`); // Masked log
+      this.type = type.toLowerCase();
+      this.baseUrl = "https://openapi.bitunix.com";
+    } catch (err) {
+      logError("BitunixClient initialization failed", err);
+      throw err;
+    }
   }
-}
 
   sign(params) {
     const query = new URLSearchParams(params).toString();

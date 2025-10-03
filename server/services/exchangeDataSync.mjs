@@ -2,9 +2,8 @@ import client from "../../prisma/client.mjs";
 import { getExchangeClient } from "./exchangeClients.mjs";
 import { info, error as logError } from "../utils/logger.mjs";
 import { sendToUser } from "./websocketService.mjs";
-import { decrypt, decrypt as decryptLegacy } from "../utils/apiencrypt.mjs";
+import { decrypt, encrypt } from "../utils/apiencrypt.mjs";
 
-// --- Fetch all data for a single user across all exchanges ---
 export const fetchUserExchangeData = async (userId) => {
   try {
     const userExchanges = await client.userExchange.findMany({ where: { userId } });
@@ -19,18 +18,27 @@ export const fetchUserExchangeData = async (userId) => {
           continue;
         }
 
-        // Try new decryption, fallback to legacy
         try {
           apiKey = decrypt(ux.apiKey);
           apiSecret = decrypt(ux.apiSecret);
-        } catch {
-          apiKey = decryptLegacy(ux.apiKey);
-          apiSecret = decryptLegacy(ux.apiSecret);
-          info(`Used legacy decrypt for user ${userId} on ${ux.exchange}`);
+        } catch (decErr) {
+          if (decErr.message.includes("Invalid encrypted data format")) {
+            info(`Detected plain text for user ${userId} on ${ux.exchange}, re-encrypting`);
+            apiKey = ux.apiKey;
+            apiSecret = ux.apiSecret;
+            await client.userExchange.update({
+              where: { id: ux.id },
+              data: { apiKey: encrypt(apiKey), apiSecret: encrypt(apiSecret) },
+            });
+            apiKey = decrypt(encrypt(apiKey));
+            apiSecret = decrypt(encrypt(apiSecret));
+          } else {
+            throw decErr;
+          }
         }
 
         passphrase = ux.passphrase
-          ? ((() => { try { return decrypt(ux.passphrase); } catch { return decryptLegacy(ux.passphrase); } })())
+          ? ((() => { try { return decrypt(ux.passphrase); } catch { return ux.passphrase; } })())
           : undefined;
 
         const exchangeClient = getExchangeClient(ux.exchange, apiKey, apiSecret, "spot", passphrase);
@@ -39,7 +47,6 @@ export const fetchUserExchangeData = async (userId) => {
           continue;
         }
 
-        // Fetch data
         const balances = await exchangeClient.fetchBalance();
         const openOrders = await exchangeClient.fetchOpenOrders();
         const positions = exchangeClient.has?.fetchPositions
@@ -49,13 +56,10 @@ export const fetchUserExchangeData = async (userId) => {
         const exchangeData = { exchange: ux.exchange, balances, openOrders, positions };
         allData.push(exchangeData);
 
-        // Push to user dashboard via WebSocket
         sendToUser(userId, { type: "exchangeData", data: exchangeData });
-
       } catch (err) {
         logError(`Failed fetching data for user ${userId} on ${ux.exchange}`, err);
       } finally {
-        // Clear sensitive info
         apiKey = apiSecret = passphrase = null;
       }
     }
@@ -67,9 +71,10 @@ export const fetchUserExchangeData = async (userId) => {
   }
 };
 
-// --- Trigger sync for a specific user (UI action or immediate call) ---
 export const syncUserExchangesImmediately = async (userId) => {
   try {
+    // Delay to ensure database update completes
+    await new Promise(resolve => setTimeout(resolve, 1000));
     const data = await fetchUserExchangeData(userId);
     const admins = await client.user.findMany({ where: { role: "admin" } });
     const payload = { type: "userExchangeData", userId, exchanges: data };
@@ -79,7 +84,6 @@ export const syncUserExchangesImmediately = async (userId) => {
   }
 };
 
-// --- Trigger sync for all active users (server startup or periodic) ---
 export const syncAllUsersImmediately = async () => {
   try {
     const users = await client.user.findMany({ where: { status: "active" } });
@@ -91,7 +95,6 @@ export const syncAllUsersImmediately = async () => {
   }
 };
 
-// --- Periodic sync every N milliseconds ---
 export const startPeriodicExchangeSync = (intervalMs = 60_000) => {
   setInterval(syncAllUsersImmediately, intervalMs);
   info(`✅ Started periodic exchange data sync every ${intervalMs / 1000}s`);

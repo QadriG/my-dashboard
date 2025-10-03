@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { info, warn, error } from "../utils/logger.mjs";
+import { encrypt } from "../utils/apiencrypt.mjs"; // Import encrypt function
 
 const prisma = new PrismaClient();
 
@@ -33,25 +34,18 @@ export const addUserExchange = async (req, res, next) => {
     // ============ VALIDATE API KEY WITH EXCHANGE ============
     try {
       if (exchange.toLowerCase() === "binance") {
-        // Example: validate with Binance
         const Binance = (await import("binance-api-node")).default;
         const client = Binance({ apiKey, apiSecret });
-
-        // Simple test request
-        await client.accountInfo(); 
-        // If fails -> throws error
-      }
-      else if (exchange.toLowerCase() === "bybit") {
+        await client.accountInfo();
+      } else if (exchange.toLowerCase() === "bybit") {
         const { RestClientV5 } = await import("bybit-api");
         const client = new RestClientV5({ key: apiKey, secret: apiSecret });
         await client.getWalletBalance({ accountType: "UNIFIED" });
-      }
-      else if (exchange.toLowerCase() === "kucoin") {
+      } else if (exchange.toLowerCase() === "kucoin") {
         const Kucoin = (await import("kucoin-node-sdk")).default;
         Kucoin.init({ apiKey, secretKey: apiSecret, passphrase: req.body.passphrase, environment: "live" });
         await Kucoin.rest.User.getUserInfo();
       }
-      // Add other exchanges similarly
     } catch (exErr) {
       error(`Exchange validation failed for ${exchange}:`, exErr);
 
@@ -69,7 +63,7 @@ export const addUserExchange = async (req, res, next) => {
 
     // ============ SAVE ONLY IF VALID ============
     const newExchange = await prisma.userExchange.create({
-      data: { userId: req.user.id, exchange, apiKey, apiSecret },
+      data: { userId: req.user.id, exchange, apiKey: encrypt(apiKey), apiSecret: encrypt(apiSecret) },
     });
 
     info(`User ${req.user.id} added exchange ${exchange}`);

@@ -1,5 +1,4 @@
-// prisma/middleware/encryptDecrypt.mjs
-import { encrypt } from "../../server/utils/apiencrypt.mjs"; // ✅ fixed path
+import { encrypt } from "../../server/utils/apiencrypt.mjs";
 
 export function registerEncryptionMiddleware(client) {
   if (typeof client.$use !== "function") {
@@ -7,7 +6,6 @@ export function registerEncryptionMiddleware(client) {
   }
 
   client.$use(async (params, next) => {
-    // Only handle UserExchange or UserAPI
     if (params.model === "UserExchange" || params.model === "UserAPI") {
       if (["create", "update"].includes(params.action)) {
         try {

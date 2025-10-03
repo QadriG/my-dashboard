@@ -1,8 +1,7 @@
-// server/routes/exchanges.mjs
 import express from "express";
 import { PrismaClient } from "@prisma/client";
 import { authMiddleware } from "../middleware/authMiddleware.mjs";
-import apiEncrypt from "../utils/apiencrypt.mjs";
+import { encrypt } from "../utils/apiencrypt.mjs";
 import ccxt from "ccxt";
 
 const router = express.Router();
@@ -45,18 +44,16 @@ router.post("/save", authMiddleware, async (req, res) => {
       return res.status(400).json({ success: false, error: "Unsupported exchange" });
     }
 
-    // 🔐 Encrypt before saving
-    const encryptedKey = apiEncrypt.encrypt(apiKey);
-    const encryptedSecret = apiEncrypt.encrypt(apiSecret);
+    // Manually encrypt before saving
+    const encryptedKey = encrypt(apiKey);
+    const encryptedSecret = encrypt(apiSecret);
 
-    // ✅ Upsert user exchange record
     await prisma.userExchange.upsert({
       where: { userId_exchange: { userId, exchange } },
       update: { apiKey: encryptedKey, apiSecret: encryptedSecret },
       create: { userId, exchange, apiKey: encryptedKey, apiSecret: encryptedSecret },
     });
 
-    // Trigger fetch & WebSocket push
     syncUserExchangesImmediately(userId);
 
     res.json({ success: true, message: "API credentials saved" });
@@ -80,11 +77,10 @@ router.get("/test/:exchange", authMiddleware, async (req, res) => {
       return res.status(404).json({ success: false, error: "No API keys found for this exchange" });
     }
 
-    // 🔓 Decrypt keys
-    const realKey = apiEncrypt.decrypt(userExchange.apiKey);
-    const realSecret = apiEncrypt.decrypt(userExchange.apiSecret);
+    // Decrypt keys for use
+    const realKey = encrypt.decrypt(userExchange.apiKey);
+    const realSecret = encrypt.decrypt(userExchange.apiSecret);
 
-    // ✅ Initialize CCXT exchange safely
     const ccxtExchangeClass = ccxt[exchange.toLowerCase()];
     if (!ccxtExchangeClass) {
       return res.status(400).json({
@@ -99,13 +95,7 @@ router.get("/test/:exchange", authMiddleware, async (req, res) => {
       enableRateLimit: true,
     });
 
-    let balances;
-    try {
-      balances = await client.fetchBalance();
-    } catch (err) {
-      console.error(`CCXT fetchBalance error for ${exchange}:`, err);
-      return res.status(500).json({ success: false, error: "Failed to fetch balances" });
-    }
+    const balances = await client.fetchBalance();
 
     res.json({ success: true, balances });
   } catch (err) {
