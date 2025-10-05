@@ -1,4 +1,3 @@
-// authMiddleware.mjs
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
 import { info, warn, error } from "../utils/logger.mjs";
@@ -19,7 +18,7 @@ export const authMiddleware = async (req, res, next) => {
     try {
       decoded = jwt.verify(token, JWT_SECRET);
     } catch (jwtErr) {
-      warn("JWT verification failed:", jwtErr);
+      warn(`JWT verification failed: ${jwtErr.message}`);
       return res.status(401).json({ error: "Unauthorized: Invalid or expired token" });
     }
 
@@ -36,20 +35,19 @@ export const authMiddleware = async (req, res, next) => {
     // =========================
 
     if (user.status === "disabled") {
-      // Disabled users cannot log in
       warn(`Disabled user tried to authenticate: ${user.email}`);
       return res.status(403).json({ error: "Account disabled by admin" });
     }
 
-    // Paused users can log in but we flag them for downstream usage
-    user.isPaused = user.status === "paused";
+    // Clone Prisma user object to safely add extra properties
+    const userWithFlags = { ...user, isPaused: user.status === "paused" };
 
-    req.user = user; // attach user to request
+    req.user = userWithFlags; // attach to request
     info(`User authenticated: ID ${user.id}, email ${user.email}, status ${user.status}`);
     next();
 
   } catch (err) {
-    error("Auth middleware error:", err);
+    error(`Auth middleware error: ${err.message}`);
     return res.status(500).json({ error: "Internal server error" });
   }
 };

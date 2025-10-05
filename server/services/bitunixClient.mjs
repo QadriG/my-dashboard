@@ -1,50 +1,54 @@
+// server/services/bitunixClient.mjs
 import crypto from "crypto";
 import fetch from "node-fetch";
 import { info, error as logError } from "../utils/logger.mjs";
-import { decrypt } from "../utils/apiencrypt.mjs";
 
 export class BitunixClient {
   constructor({ apiKey, apiSecret, type = "spot" }) {
-    try {
-      if (!apiKey || !apiSecret) throw new Error("API key or secret missing");
+    if (!apiKey || !apiSecret) throw new Error("API key or secret missing");
 
-      try {
-        this.apiKey = decrypt(apiKey);
-        this.apiSecret = decrypt(apiSecret);
-      } catch (err) {
-        logError("BitunixClient decryption failed", err);
-        throw err;
-      }
+    this.apiKey = apiKey;
+    this.apiSecret = apiSecret;
+    this.type = type.toLowerCase(); // "spot", "mix", "futures"
+    this.baseUrl = "https://openapi.bitunix.com";
 
-      info(`BitunixClient initialized with decrypted credentials for ${type}`); // Masked log
-      this.type = type.toLowerCase();
-      this.baseUrl = "https://openapi.bitunix.com";
-    } catch (err) {
-      logError("BitunixClient initialization failed", err);
-      throw err;
-    }
+    info(`BitunixClient initialized with provided credentials for ${type}`);
   }
 
-  sign(params) {
-    const query = new URLSearchParams(params).toString();
-    const signature = crypto
-      .createHmac("sha256", this.apiSecret)
-      .update(query)
+  generateSign({ nonce, timestamp, queryParams = "", body = "" }) {
+    const digest = crypto
+      .createHash("sha256")
+      .update(nonce + timestamp + this.apiKey + queryParams + body)
       .digest("hex");
-    return { query, signature };
+    return crypto
+      .createHash("sha256")
+      .update(digest + this.apiSecret)
+      .digest("hex");
   }
 
   async request(endpoint, method = "GET", params = {}, body = null) {
     try {
       const timestamp = Date.now().toString();
-      const recvWindow = "5000";
+      const nonce = crypto.randomBytes(16).toString("hex");
 
-      const allParams = { ...params, apiKey: this.apiKey, timestamp, recvWindow };
-      const { query, signature } = this.sign(allParams);
-      const url = `${this.baseUrl}${endpoint}?${query}&sign=${signature}`;
+      const bodyStr = body ? JSON.stringify(body) : "";
+      const queryParams = method.toUpperCase() === "GET" && Object.keys(params).length
+        ? new URLSearchParams(params).toString()
+        : "";
 
-      const options = { method, headers: { "Content-Type": "application/json" } };
-      if (body) options.body = JSON.stringify(body);
+      const sign = this.generateSign({ nonce, timestamp, queryParams, body: bodyStr });
+      const url = `${this.baseUrl}${endpoint}${queryParams ? "?" + queryParams : ""}`;
+      const options = {
+        method,
+        headers: {
+          "api-key": this.apiKey,
+          nonce,
+          timestamp,
+          sign,
+          "Content-Type": "application/json",
+        },
+      };
+      if (bodyStr && method.toUpperCase() !== "GET") options.body = bodyStr;
 
       const res = await fetch(url, options);
       const data = await res.json();
@@ -57,15 +61,57 @@ export class BitunixClient {
     }
   }
 
+  // ====================== Account Info ======================
   async fetchBalance() {
-    const endpoint = this.type === "spot" ? "/api/spot/v1/account" : "/api/mix/v1/account";
+    const endpoint = this.type === "spot"
+      ? "/api/spot/v1/user/account"
+      : "/api/mix/v1/user/account";
     return this.request(endpoint, "GET");
   }
 
+  // ====================== Pending/Open Orders ======================
   async fetchOpenOrders(symbol = null) {
-    const endpoint = this.type === "spot" ? "/api/spot/v1/open-orders" : "/api/mix/v1/open-orders";
-    const params = {};
-    if (symbol) params.symbol = symbol;
-    return this.request(endpoint, "GET", params);
+    let endpoint;
+    const body = symbol ? { symbol } : {};
+    
+    if (this.type === "spot") endpoint = "/api/spot/v1/order/pending/list";
+    else if (this.type === "mix" || this.type === "futures") endpoint = "/api/mix/v1/order/pending/list";
+
+    const data = await this.request(endpoint, "POST", {}, body);
+    return data.data?.list?.length ? data.data.list : 0;
+  }
+
+  // ====================== Place Order ======================
+  async placeOrder({ symbol, side, type = "LIMIT", price = null, amount, reduceOnly = false }) {
+    let endpoint;
+    if (this.type === "spot") endpoint = "/api/spot/v1/order/place_order";
+    else if (this.type === "mix" || this.type === "futures") endpoint = "/api/mix/v1/order/place_order";
+
+    const body = { symbol, side, type, amount, reduceOnly };
+    if (price) body.price = price;
+
+    return this.request(endpoint, "POST", {}, body);
+  }
+
+  // ====================== Cancel Order ======================
+  async cancelOrder(orderId, symbol = null) {
+    let endpoint;
+    if (this.type === "spot") endpoint = "/api/spot/v1/order/cancel";
+    else if (this.type === "mix" || this.type === "futures") endpoint = "/api/mix/v1/order/cancel";
+
+    const body = { orderId };
+    if (symbol) body.symbol = symbol;
+
+    return this.request(endpoint, "POST", {}, body);
+  }
+
+  // ====================== Verify API ======================
+  async verifyAPI() {
+    try {
+      const balance = await this.fetchBalance();
+      return { valid: true, info: balance };
+    } catch (err) {
+      return { valid: false, error: err.message };
+    }
   }
 }

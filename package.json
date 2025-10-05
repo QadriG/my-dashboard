@@ -47,7 +47,11 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d build"
+    "deploy": "gh-pages -d build",
+    "server": "node server.js",
+    "secure": "node secureServer.js",
+    "client": "react-scripts start",
+    "dev": "concurrently \"node server.js\" \"node secureServer.js\" \"react-scripts start\""
   },
   "eslintConfig": {
     "extends": [
@@ -70,6 +74,7 @@
   "devDependencies": {
     "@babel/eslint-parser": "^7.28.0",
     "autoprefixer": "^10.4.21",
+    "concurrently": "^9.2.1",
     "eslint": "^8.57.1",
     "eslint-plugin-react": "^7.37.5",
     "gh-pages": "^6.3.0",

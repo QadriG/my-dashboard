@@ -1,7 +1,5 @@
-// server/services/exchangeManager.mjs
 import ccxt from "ccxt";
 import { BitunixClient } from "./bitunixClient.mjs";
-// (later we can add BlofinClient if not in ccxt)
 
 export class ExchangeManager {
   constructor({ exchange, apiKey, apiSecret, passphrase = null, type = "spot" }) {
@@ -24,27 +22,48 @@ export class ExchangeManager {
     }
   }
 
+  // Fetch account balance
   async fetchBalance() {
+    return await this.client.fetchBalance();
+  }
+
+  // Fetch open orders (spot & futures)
+  async fetchOpenOrders(symbol = null) {
     if (this.exchange === "bitunix") {
-      return await this.client.fetchBalance();
+      return await this.client.fetchOpenOrders(symbol);
     } else {
-      return await this.client.fetchBalance();
+      try {
+        const orders = await this.client.fetchOpenOrders(symbol);
+        return orders.length ? orders : 0;
+      } catch {
+        return 0;
+      }
     }
   }
 
-  async placeOrder({ symbol, side, amount, price, type = "market" }) {
+  // Place order
+  async placeOrder({ symbol, side, amount, price = null, type = "market", reduceOnly = false }) {
     if (this.exchange === "bitunix") {
-      return await this.client.placeOrder(symbol, side, amount, price);
+      return await this.client.placeOrder({ symbol, side, amount, price, type, reduceOnly });
     } else {
       return await this.client.createOrder(symbol, type, side, amount, price);
     }
   }
 
-  async closeOrder(orderId, symbol) {
+  // Cancel/close order
+  async closeOrder(orderId, symbol = null) {
     if (this.exchange === "bitunix") {
-      return await this.client.closeOrder(orderId);
+      return await this.client.cancelOrder(orderId, symbol);
     } else {
       return await this.client.cancelOrder(orderId, symbol);
     }
+  }
+
+  // Fetch positions if supported
+  async fetchPositions() {
+    if (this.client.has?.fetchPositions) {
+      return await this.client.fetchPositions();
+    }
+    return [];
   }
 }

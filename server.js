@@ -26,6 +26,7 @@ import { encrypt } from "./server/utils/apiencrypt.mjs"; // Import for manual en
 
 // Load environment variables
 dotenv.config();
+
 import { startPeriodicExchangeSync } from "./server/services/exchangeDataSync.mjs";
 
 startPeriodicExchangeSync(60_000); // every 60s
@@ -199,12 +200,48 @@ app.get("/api/auth/check-auth", authMiddleware, async (req, res) => {
   });
 });
 
+// === VERIFY EMAIL ===
+app.get("/api/auth/verify-email", async (req, res) => {
+  try {
+    const { token } = req.query;
+    if (!token) {
+      return res.status(400).send("Missing verification token");
+    }
+
+    // Decode token
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.status(400).send("Invalid or expired verification link");
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+    if (!user) return res.status(400).send("User not found");
+    if (user.isVerified) return res.send("Email already verified. You can log in.");
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { isVerified: true, verificationToken: null },
+    });
+
+    // 🔄 Redirect back to frontend login page
+    return res.redirect(`${CLIENT_URL}/login?verified=success`);
+  } catch (err) {
+    logError("Verify email error:", err);
+    return res.status(500).send("Server error verifying email");
+  }
+});
+
 // === FORGOT PASSWORD ===
 app.post("/api/auth/forgot-password", async (req, res) => {
   try {
     const { email } = req.body;
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) return res.status(400).json({ message: "Email not found" });
+    
+    // ... (rest of your forgot password code)
+
 
     const resetToken = crypto.randomBytes(32).toString("hex");
     const resetExp = new Date(Date.now() + 15 * 60 * 1000);
@@ -270,6 +307,58 @@ app.post("/api/auth/logout", (req, res) => {
   });
   return res.json({ message: "Logged out" });
 });
+
+
+app.post("/api/save-api-key", authMiddleware, async (req, res) => {
+  try {
+    const { exchange, apiKey, apiSecret, passphrase } = req.body;
+    if (!exchange || !apiKey || !apiSecret) {
+      return res.status(400).json({ message: "Missing fields" });
+    }
+
+    const encryptedKey = encrypt(apiKey);
+    const encryptedSecret = encrypt(apiSecret);
+    const encryptedPassphrase = passphrase ? encrypt(passphrase) : null;
+
+    await prisma.userExchange.upsert({
+      where: { userId_exchange: { userId: req.user.id, exchange } },
+      update: { apiKey: encryptedKey, apiSecret: encryptedSecret, passphrase: encryptedPassphrase },
+      create: { userId: req.user.id, exchange, apiKey: encryptedKey, apiSecret: encryptedSecret, passphrase: encryptedPassphrase },
+    });
+
+    //await syncUserExchangesImmediately(req.user.id);
+
+    res.json({ message: "API key saved successfully" });
+  } catch (err) {
+    logError("Error saving API key", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Run both Servers
+const startServers = async () => {
+  const { concurrently } = await import("concurrently"); // ✅ ESM safe
+
+  const processes = concurrently(
+    [
+      { command: "node server.js --port 5000", name: "MainServer", prefixColor: "blue" },
+      { command: "node secureServer.js --port 5001", name: "SecureServer", prefixColor: "green" },
+    ],
+    {
+      killOthersOnFail: true,   // ✅ modern option name
+      killOthersOnSuccess: true,
+      restartTries: 3,
+    }
+  );
+
+  processes.result.catch((err) => {
+    logError("Error starting servers:", err);
+  });
+
+  processes.result.then(() => {
+    info("All servers stopped");
+  });
+};
 
 // === Extra secured routes ===
 app.get("/user/profile", authMiddleware, (req, res) => {
