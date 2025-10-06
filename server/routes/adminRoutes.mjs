@@ -15,15 +15,20 @@ import { authMiddleware } from "../middleware/authMiddleware.mjs";
 import { roleMiddleware } from "../middleware/roleMiddleware.mjs";
 import { errorHandler } from "../middleware/errorHandler.mjs";
 import { info, error as logError } from "../utils/logger.mjs";
-import ccxt from "ccxt";
 import { encrypt } from "../utils/apiencrypt.mjs";
+import {
+  getUserApis,
+  fetchBalances,
+  fetchPositions,
+  getDashboard,
+} from "../services/exchangeService.mjs";
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
 /**
  * ======================
- * Admin User Management Routes
+ * Admin: User Management
  * ======================
  */
 router.get("/users", authMiddleware, roleMiddleware(["admin"]), (req, res, next) => {
@@ -73,122 +78,49 @@ router.get("/users/:id/positions", authMiddleware, roleMiddleware(["admin"]), (r
 
 /**
  * ======================
- * Admin: User API Keys, Balances, Positions
+ * Admin: User Exchange Data
  * ======================
  */
 
-// Fetch a user's API keys
+// Fetch API keys for a user
 router.get("/users/:id/apis", authMiddleware, roleMiddleware(["admin"]), async (req, res) => {
   try {
     const userId = parseInt(req.params.id, 10);
-    const apis = await prisma.userAPI.findMany({ where: { userId } });
-    const decryptedApis = apis.map(api => ({
-      ...api,
-      apiKey: encrypt.decrypt(api.apiKey),
-      apiSecret: encrypt.decrypt(api.apiSecret),
-    }));
-    res.json({ success: true, apis: decryptedApis });
+    const apis = await getUserApis(userId, true);
+    res.json({ success: true, apis });
   } catch (err) {
     logError(`Admin failed to fetch API keys for user ${req.params.id}`, err);
     res.status(500).json({ success: false, message: "Error fetching API keys" });
   }
 });
 
-// Fetch a user's balances
+// Fetch balances for a user
 router.get("/users/:id/balances", authMiddleware, roleMiddleware(["admin"]), async (req, res) => {
   try {
     const userId = parseInt(req.params.id, 10);
-    const apis = await prisma.userAPI.findMany({ where: { userId } });
-    const balances = [];
-
-    for (const api of apis) {
-      try {
-        const exchangeClass = ccxt[api.exchangeName];
-        const exchange = new exchangeClass({
-          apiKey: encrypt.decrypt(api.apiKey),
-          secret: encrypt.decrypt(api.apiSecret),
-          enableRateLimit: true,
-        });
-        const balance = await exchange.fetchBalance();
-        balances.push({ exchange: api.exchangeName, balance });
-      } catch (err) {
-        logError(`Failed to fetch balance for ${api.exchangeName}`, err);
-        balances.push({ exchange: api.exchangeName, balance: null, error: "Failed to fetch" });
-      }
-    }
-
-    res.json({ success: true, balances });
+    res.json({ success: true, balances: await fetchBalances(userId) });
   } catch (err) {
     logError(`Admin failed to fetch balances for user ${req.params.id}`, err);
     res.status(500).json({ success: false, message: "Error fetching balances" });
   }
 });
 
-// Fetch a user's positions
+// Fetch positions for a user
 router.get("/users/:id/positions-ccxt", authMiddleware, roleMiddleware(["admin"]), async (req, res) => {
   try {
     const userId = parseInt(req.params.id, 10);
-    const apis = await prisma.userAPI.findMany({ where: { userId } });
-    const positions = [];
-
-    for (const api of apis) {
-      try {
-        const exchangeClass = ccxt[api.exchangeName];
-        const exchange = new exchangeClass({
-          apiKey: encrypt.decrypt(api.apiKey),
-          secret: encrypt.decrypt(api.apiSecret),
-          enableRateLimit: true,
-        });
-        let openPositions = [];
-        if (exchange.has["fetchPositions"]) {
-          openPositions = await exchange.fetchPositions();
-        }
-        positions.push({ exchange: api.exchangeName, positions: openPositions });
-      } catch (err) {
-        logError(`Failed to fetch positions for ${api.exchangeName}`, err);
-        positions.push({ exchange: api.exchangeName, positions: null, error: "Failed to fetch" });
-      }
-    }
-
-    res.json({ success: true, positions });
+    res.json({ success: true, positions: await fetchPositions(userId) });
   } catch (err) {
     logError(`Admin failed to fetch positions for user ${req.params.id}`, err);
     res.status(500).json({ success: false, message: "Error fetching positions" });
   }
 });
 
-// Admin dashboard summary for a user
+// Fetch dashboard summary for a user
 router.get("/users/:id/dashboard", authMiddleware, roleMiddleware(["admin"]), async (req, res) => {
   try {
     const userId = parseInt(req.params.id, 10);
-    const apis = await prisma.userAPI.findMany({ where: { userId } });
-    const dashboard = { balances: [], positions: [] };
-
-    for (const api of apis) {
-      try {
-        const exchangeClass = ccxt[api.exchangeName];
-        const exchange = new exchangeClass({
-          apiKey: encrypt.decrypt(api.apiKey),
-          secret: encrypt.decrypt(api.apiSecret),
-          enableRateLimit: true,
-        });
-
-        const balance = await exchange.fetchBalance();
-        let openPositions = [];
-        if (exchange.has["fetchPositions"]) {
-          openPositions = await exchange.fetchPositions();
-        }
-
-        dashboard.balances.push({ exchange: api.exchangeName, balance });
-        dashboard.positions.push({ exchange: api.exchangeName, positions: openPositions });
-      } catch (err) {
-        logError(`Failed to fetch dashboard data for ${api.exchangeName}`, err);
-        dashboard.balances.push({ exchange: api.exchangeName, balance: null, error: "Failed to fetch" });
-        dashboard.positions.push({ exchange: api.exchangeName, positions: null, error: "Failed to fetch" });
-      }
-    }
-
-    res.json({ success: true, dashboard });
+    res.json({ success: true, dashboard: await getDashboard(userId) });
   } catch (err) {
     logError(`Admin failed to fetch dashboard for user ${req.params.id}`, err);
     res.status(500).json({ success: false, message: "Error fetching dashboard" });

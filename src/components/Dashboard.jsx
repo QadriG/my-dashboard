@@ -4,6 +4,7 @@ import { isMobile } from "react-device-detect";
 import { useTheme } from "../context/ThemeContext";
 import { useAdminAuth } from "../hooks/useAdminAuth";
 import { useNavigate } from "react-router-dom";
+import { useSocket } from "../hooks/useSocket";
 import "../styles/globals.css";
 import Layout from "./Layout";
 
@@ -21,7 +22,9 @@ import DailyPnL from "../components/DailyPnL.jsx";
 import BestTradingPairs from "../components/BestTradingPairs.jsx";
 import OpenPositions from "../components/OpenPositions.jsx";
 
-// Reusable LightModeToggle
+// ---------------------
+// LightModeToggle
+// ---------------------
 export function LightModeToggle({ className, style }) {
   const { isDarkMode, toggleTheme } = useTheme();
   return (
@@ -29,16 +32,6 @@ export function LightModeToggle({ className, style }) {
       onClick={toggleTheme}
       className={`theme-toggle ${className || ""}`}
       style={style}
-      onMouseEnter={(e) =>
-        (e.target.style.boxShadow = isDarkMode
-          ? "0 0 15px #00ffff, 0 0 25px #00ffff, 0 0 40px #00ffff"
-          : "0 0 15px #0000ff, 0 0 25px #0000ff, 0 0 40px #0000ff")
-      }
-      onMouseLeave={(e) =>
-        (e.target.style.boxShadow = isDarkMode
-          ? "0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff"
-          : "0 0 10px #0000ff, 0 0 20px #0000ff, 0 0 30px #0000ff")
-      }
     >
       {isDarkMode ? "Light Mode" : "Dark Mode"}
     </button>
@@ -51,10 +44,27 @@ export function LightModeToggle({ className, style }) {
 export default function AdminDashboard() {
   const audioRef = useRef(null);
   const { isDarkMode } = useTheme();
-  const { logout, admin } = useAdminAuth(); // get admin info
+  const { logout } = useAdminAuth();
   const navigate = useNavigate();
+  const socket = useSocket("http://localhost:5000");
 
   const [expandedCard, setExpandedCard] = useState(null);
+
+  // --- Centralized state for all cards ---
+  const [cardsData, setCardsData] = useState({
+    activeUsers: null,
+    activeExchange: null,
+    activePositions: null,
+    totalBalances: null,
+    profit: null,
+    upl: null,
+    fundsDistribution: null,
+    balanceGraph: null,
+    weeklyRevenue: null,
+    dailyPnL: null,
+    bestTradingPairs: null,
+    openPositions: null,
+  });
 
   // JWT check on mount
   useEffect(() => {
@@ -74,41 +84,58 @@ export default function AdminDashboard() {
     checkAuth();
   }, [logout]);
 
+  // --- Real-time data subscription for admin ---
+  useEffect(() => {
+    if (!socket) return;
+
+    // Admin channel: all users & system-wide data
+    socket.on("dashboard/all", (update) => {
+      setCardsData((prev) => ({ ...prev, ...update }));
+    });
+
+    return () => socket.off("dashboard/all");
+  }, [socket]);
+
   const handleCardClick = (key) => {
     if (!isMobile) setExpandedCard(expandedCard === key ? null : key);
   };
 
   const cards = {
-    activeUsers: <ActiveUsers />,
-    activeExchange: <ActiveExchange />,
-    activePositions: <ActivePositions />,
-    totalBalances: <TotalBalances />,
-    profit: <Profit />,
-    upl: <UPL />,
-    fundsDistribution: <FundsDistribution />,
-    balanceGraph: <BalanceGraph />,
-    weeklyRevenue: <WeeklyRevenue />,
-    dailyPnL: <DailyPnL />,
-    bestTradingPairs: <BestTradingPairs />,
-    openPositions: <OpenPositions />,
+    activeUsers: <ActiveUsers data={cardsData.activeUsers} />,
+    activeExchange: <ActiveExchange data={cardsData.activeExchange} />,
+    activePositions: <ActivePositions data={cardsData.activePositions} />,
+    totalBalances: <TotalBalances data={cardsData.totalBalances} />,
+    profit: <Profit profitData={cardsData.profit} />,
+    upl: <UPL uplData={cardsData.upl} />,
+    fundsDistribution: (
+      <FundsDistribution fundsData={cardsData.fundsDistribution} />
+    ),
+    balanceGraph: <BalanceGraph balanceData={cardsData.balanceGraph} />,
+    weeklyRevenue: <WeeklyRevenue weeklyData={cardsData.weeklyRevenue} />,
+    dailyPnL: <DailyPnL dailyData={cardsData.dailyPnL} />,
+    bestTradingPairs: (
+      <BestTradingPairs pairsData={cardsData.bestTradingPairs} />
+    ),
+    openPositions: <OpenPositions positionsData={cardsData.openPositions} />,
   };
 
   return (
     <Layout onLogout={logout}>
       {/* Title */}
-      <div className="shimmer-wrapper w-full py-4 px-6 mb-6 relative flex justify-between items-center">
+      <div className="shimmer-wrapper w-full py-4 px-6 mb-6 flex justify-between items-center">
         <h1
-          className={`text-4xl font-semibold drop-shadow-md inline-block ${
+          className={`text-4xl font-semibold drop-shadow-md ${
             isDarkMode ? "text-white" : "text-black"
           }`}
         >
-          Dashboard
+          Admin Dashboard
         </h1>
         <LightModeToggle />
       </div>
 
       {/* Dashboard content */}
       <div className="dashboard-content">
+        {/* First Row */}
         {!isMobile && (
           <div className="grid grid-cols-4 gap-7 max-lg:grid-cols-2 max-sm:grid-cols-1 mb-6">
             <div
@@ -138,6 +165,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* Profit, UPL, Funds */}
         <div className="grid grid-cols-3 gap-7 max-lg:grid-cols-1">
           <div
             className="dashboard-column dashboard-column-cyan"
@@ -159,21 +187,23 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* Balance + Weekly */}
         <div className="flex gap-4 w-full items-start mt-8 max-lg:flex-col">
           <div
-            className="dashboard-column dashboard-column-cyan balance-graph w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden"
+            className="dashboard-column dashboard-column-cyan w-full lg:w-1/2"
             onClick={() => handleCardClick("balanceGraph")}
           >
             {cards.balanceGraph}
           </div>
           <div
-            className="dashboard-column dashboard-column-purple weekly-revenue w-full lg:w-1/2 p-4 max-h-[75px] h-[75px] overflow-hidden"
+            className="dashboard-column dashboard-column-purple w-full lg:w-1/2"
             onClick={() => handleCardClick("weeklyRevenue")}
           >
             {cards.weeklyRevenue}
           </div>
         </div>
 
+        {/* Daily + Best Pairs */}
         <div className="grid grid-cols-2 gap-7 mt-8 max-sm:grid-cols-1">
           <div
             className="dashboard-column dashboard-column-cyan"
@@ -189,6 +219,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* Open Positions */}
         <div className="mt-8">
           <div
             className="dashboard-column dashboard-column-green"
@@ -198,11 +229,11 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* View All Positions Button */}
+        {/* View All Positions */}
         <div className="mt-10 flex justify-center">
           <button
             onClick={() => navigate("/admin/positions")}
-            className="bg-red-500 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-[0_0_10px_#ff1a1a] hover:shadow-[0_0_20px_5px_#ff1a1a] hover:scale-[1.05]"
+            className="bg-red-500 text-white px-6 py-3 rounded-xl font-bold transition-all"
           >
             View All Positions
           </button>

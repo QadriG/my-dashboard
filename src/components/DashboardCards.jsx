@@ -1,6 +1,5 @@
 // src/components/DashboardCards.jsx
 import { useEffect, useState } from "react";
-import { useSocket } from "../hooks/useSocket";
 import Profit from "./Profit";
 import UPL from "./UPL";
 import FundsDistribution from "./FundsDistribution";
@@ -11,8 +10,6 @@ import BestTradingPairs from "./BestTradingPairs";
 import OpenPositions from "./OpenPositions";
 
 export default function DashboardCards({ userId, isAdmin = false }) {
-  const socket = useSocket("http://localhost:5000");
-
   const [cardsData, setCardsData] = useState({
     profit: null,
     upl: null,
@@ -24,17 +21,39 @@ export default function DashboardCards({ userId, isAdmin = false }) {
     openPositions: null,
   });
 
-  // Subscribe to live dashboard updates
+  // Fetch dashboard data from backend (which should fetch Bitunix balances/orders etc.)
+  const fetchDashboardData = async () => {
+    try {
+      const url = isAdmin
+        ? "http://localhost:5000/api/admin/dashboard"
+        : "http://localhost:5000/api/user/dashboard";
+
+      const res = await fetch(url, {
+        method: "GET",
+        credentials: "include",
+        headers: { "Cache-Control": "no-store" },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setCardsData((prev) => ({ ...prev, ...data }));
+      } else {
+        console.error("Failed to fetch dashboard data");
+      }
+    } catch (err) {
+      console.error("Error fetching dashboard data:", err);
+    }
+  };
+
   useEffect(() => {
-    if (!socket) return;
+    // Fetch once on mount
+    fetchDashboardData();
 
-    const channel = isAdmin ? "dashboard/all" : `dashboard/${userId}`;
-    socket.on(channel, (update) => {
-      setCardsData((prev) => ({ ...prev, ...update }));
-    });
+    // ✅ Poll every 5 seconds for live updates
+    const interval = setInterval(fetchDashboardData, 5000);
 
-    return () => socket.off(channel);
-  }, [socket, userId, isAdmin]);
+    return () => clearInterval(interval);
+  }, [isAdmin, userId]);
 
   return (
     <>

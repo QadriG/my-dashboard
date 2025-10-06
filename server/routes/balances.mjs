@@ -1,6 +1,7 @@
 import express from "express";
 import { PrismaClient } from "@prisma/client";
-import { authMiddleware, adminMiddleware } from "./middlewares.mjs"; // adjust path if needed
+import { authMiddleware } from "./middlewares.mjs"; // keep adminMiddleware if you want to protect admin-only
+import { fetchUserExchangeData } from "../services/exchangeService.mjs"; // <-- this is where Bitunix/Binance fetch happens
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -10,6 +11,7 @@ router.get("/total", authMiddleware, async (req, res) => {
   try {
     const onlyAdmin = req.query.admin === "true";
 
+    // Fetch users
     let users;
     if (onlyAdmin) {
       users = await prisma.user.findMany({ where: { role: "admin" } });
@@ -17,8 +19,25 @@ router.get("/total", authMiddleware, async (req, res) => {
       users = await prisma.user.findMany();
     }
 
-    // If balance stored in DB (or replace with API fetch)
-    const total = users.reduce((sum, u) => sum + (u.balance || 0), 0);
+    // Fetch balances from DB + exchange APIs
+    let total = 0;
+
+    for (const u of users) {
+      let dbBalance = u.balance || 0;
+
+      // try to get balance from exchange API (Bitunix, Binance, etc.)
+      let exchangeBalance = 0;
+      try {
+        const exchangeData = await fetchUserExchangeData(u.id);
+        if (exchangeData?.totalBalance) {
+          exchangeBalance = exchangeData.totalBalance;
+        }
+      } catch (err) {
+        console.warn(`Could not fetch exchange balance for user ${u.id}:`, err.message);
+      }
+
+      total += dbBalance + exchangeBalance;
+    }
 
     res.json({ success: true, total });
   } catch (err) {
