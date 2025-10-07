@@ -1,8 +1,9 @@
 import express from "express";
 import { PrismaClient } from "@prisma/client";
 import { BitunixClient } from "../services/bitunixClient.mjs"; 
-import { encrypt } from "../utils/apiencrypt.mjs"; // assuming same encrypt util you use in userRoutes
+import { encrypt } from "../utils/apiencrypt.mjs"; 
 import { info, error as logError } from "../utils/logger.mjs";
+import { fetchUserExchangeData } from "../services/exchangeDataSync.mjs"; // Add this import
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -27,16 +28,7 @@ router.get("/", async (req, res) => {
 
         try {
           if (user.APIs?.length) {
-            // Use first API key for demo, extend later if multiple
-            const api = user.APIs[0];
-            const client = new BitunixClient({
-              apiKey: encrypt.decrypt(api.apiKey),
-              apiSecret: encrypt.decrypt(api.apiSecret),
-              type: "spot",
-            });
-
-            const balanceRes = await client.fetchBalance();
-            liveBalance = balanceRes?.data?.assets || balanceRes?.data || null;
+            liveBalance = await fetchUserExchangeData(user.id); // Use the imported function
           }
         } catch (err) {
           logError(`Live balance fetch failed for user ${user.id}`, err);

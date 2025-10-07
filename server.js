@@ -113,6 +113,82 @@ app.use("/api/users", usersRouter);
 app.use("/api/balances", balancesRouter);
 app.use("/api/manual-push", authMiddleware, manualPushRouter);
 
+// === Dashboard Routes ===
+app.get("/api/user/balance", authMiddleware, async (req, res) => {
+  console.log(`Fetching balance for user ${req.user.id}`);
+  try {
+    // Mock data instead of fetchUserExchangeData
+    const mockExchangeData = [
+      {
+        exchange: "Bitunix",
+        balances: { total: { USDT: 1500 }, free: { USDT: 1200 } },
+        positions: [{}, {}, {}], // 3 positions
+      },
+    ];
+
+    const balanceData = mockExchangeData.map((ex) => ({
+      exchange: ex.exchange,
+      totalBalance: ex.balances.total?.USDT || 0,
+      available: ex.balances.free?.USDT || 0,
+      long: 0, // Mock value
+      short: 0, // Mock value
+      totalPositions: ex.positions.length || 0,
+    }));
+
+    res.json({ success: true, balanceData });
+  } catch (err) {
+    logError(`Error fetching balance for user ${req.user.id}`, err);
+    res.status(500).json({ success: false, message: "Error fetching balance" });
+  }
+});
+
+app.get("/api/user/dashboard", authMiddleware, async (req, res) => {
+  console.log(`Fetching dashboard for user ${req.user.id}`);
+  try {
+    // Mock data instead of fetchUserExchangeData
+    const mockExchangeData = [
+      {
+        exchange: "Bitunix",
+        balances: { total: { USDT: 1500 }, free: { USDT: 1200 } },
+        positions: [
+          { symbol: "BTC/USDT", side: "long", size: 0.1, price: 60000 },
+          { symbol: "ETH/USDT", side: "short", size: 1.5, price: 3000 },
+        ],
+      },
+    ];
+
+    const dashboardData = {
+      profit: { total: 200, long: 150, short: 50 }, // Mock profit values
+      upl: { total: 180, totalPercent: 12, long: 120, longPercent: 8, short: 60, shortPercent: 4 }, // Mock unrealized P&L
+      fundsDistribution: {
+        totalBalance: mockExchangeData.reduce((sum, ex) => sum + (ex.balances.total?.USDT || 0), 0),
+        available: mockExchangeData.reduce((sum, ex) => sum + (ex.balances.free?.USDT || 0), 0),
+        long: 100, // Mock value
+        short: 50, // Mock value
+        totalPositions: mockExchangeData.reduce((sum, ex) => sum + ex.positions.length, 0),
+      },
+      balanceGraph: {
+        balances: {
+          data: mockExchangeData.map((ex) => ({
+            exchange: ex.exchange,
+            balance: ex.balances.total?.USDT || 0,
+            timestamp: new Date().toISOString(),
+          })),
+        },
+      },
+      weeklyRevenue: { labels: ["Week 1", "Week 2"], revenues: [100, 150] }, // Mock weekly revenue
+      dailyPnL: { "2025-10-07": 50 }, // Mock daily P&L
+      bestTradingPairs: { "BTC/USDT": 200, "ETH/USDT": 150 }, // Mock best pairs
+      openPositions: mockExchangeData.reduce((acc, ex) => ({ ...acc, [ex.exchange]: ex.positions }), {}),
+    };
+
+    res.json(dashboardData);
+  } catch (err) {
+    logError(`Error fetching dashboard for user ${req.user.id}`, err);
+    res.status(500).json({ success: false, message: "Error fetching dashboard" });
+  }
+});
+
 // === Auth Routes ===
 app.post("/api/auth/signup", async (req, res) => {
   try {
@@ -155,7 +231,6 @@ app.post("/api/auth/signup", async (req, res) => {
   }
 });
 
-// === LOGIN ===
 app.post("/api/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -187,7 +262,6 @@ app.post("/api/auth/login", async (req, res) => {
   }
 });
 
-// === CHECK AUTH ===
 app.get("/api/auth/check-auth", authMiddleware, async (req, res) => {
   const user = req.user;
   res.json({
@@ -199,7 +273,6 @@ app.get("/api/auth/check-auth", authMiddleware, async (req, res) => {
   });
 });
 
-// === VERIFY EMAIL ===
 app.get("/api/auth/verify-email", async (req, res) => {
   try {
     const { token } = req.query;
@@ -207,7 +280,6 @@ app.get("/api/auth/verify-email", async (req, res) => {
       return res.status(400).send("Missing verification token");
     }
 
-    // Decode token
     let decoded;
     try {
       decoded = jwt.verify(token, JWT_SECRET);
@@ -224,7 +296,6 @@ app.get("/api/auth/verify-email", async (req, res) => {
       data: { isVerified: true, verificationToken: null },
     });
 
-    // 🔄 Redirect back to frontend login page
     return res.redirect(`${CLIENT_URL}/login?verified=success`);
   } catch (err) {
     logError("Verify email error:", err);
@@ -232,7 +303,6 @@ app.get("/api/auth/verify-email", async (req, res) => {
   }
 });
 
-// === FORGOT PASSWORD ===
 app.post("/api/auth/forgot-password", async (req, res) => {
   try {
     const { email } = req.body;
@@ -268,7 +338,6 @@ app.post("/api/auth/forgot-password", async (req, res) => {
   }
 });
 
-// === RESET PASSWORD ===
 app.post("/api/auth/reset-password/:token", async (req, res) => {
   try {
     const { token } = req.params;
@@ -292,7 +361,6 @@ app.post("/api/auth/reset-password/:token", async (req, res) => {
   }
 });
 
-// === LOGOUT ===
 app.post("/api/auth/logout", (req, res) => {
   res.clearCookie("token", {
     httpOnly: true,
@@ -328,7 +396,16 @@ app.post("/api/save-api-key", authMiddleware, async (req, res) => {
   }
 });
 
-// Run both Servers
+// === Extra secured routes ===
+app.get("/user/profile", authMiddleware, (req, res) => {
+  res.json({ user: req.user });
+});
+
+app.get("/admin/dashboard", authMiddleware, adminMiddleware, (req, res) => {
+  res.json({ message: "Welcome Admin", user: req.user });
+});
+
+// === Run both Servers ===
 const startServers = async () => {
   const { concurrently } = await import("concurrently"); // ✅ ESM safe
 
@@ -338,7 +415,7 @@ const startServers = async () => {
       { command: "node secureServer.js --port 5001", name: "SecureServer", prefixColor: "green" },
     ],
     {
-      killOthersOnFail: true,   // ✅ modern option name
+      killOthersOnFail: true,
       killOthersOnSuccess: true,
       restartTries: 3,
     }
@@ -352,26 +429,6 @@ const startServers = async () => {
     info("All servers stopped");
   });
 };
-
-// === Extra secured routes ===
-app.get("/user/profile", authMiddleware, (req, res) => {
-  res.json({ user: req.user });
-});
-
-app.get("/admin/dashboard", authMiddleware, adminMiddleware, (req, res) => {
-  res.json({ message: "Welcome Admin", user: req.user });
-});
-
-// === New route to fetch and send balance data ===
-app.get("/api/user/balance", authMiddleware, async (req, res) => {
-  try {
-    const data = await fetchUserExchangeData(req.user.id);
-    res.json({ success: true, balanceData: data });
-  } catch (err) {
-    logError(`Error fetching balance for user ${req.user.id}`, err);
-    res.status(500).json({ success: false, message: "Error fetching balance" });
-  }
-});
 
 // === Start server ===
 if (!process.argv.includes("--port")) {

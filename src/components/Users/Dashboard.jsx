@@ -1,4 +1,3 @@
-// src/pages/UserDashboard.jsx
 import React, { useRef, useState, useEffect } from "react";
 import { useTheme } from "../../context/ThemeContext";
 import "../../styles/sidebar.css";
@@ -54,12 +53,14 @@ export default function UserDashboard() {
           credentials: "include",
         });
         const data = await res.json();
+        console.log("Balance API Response:", data); // Debug log
         if (data.success) {
           setBalance(data.balanceData || []);
         } else {
-          setError(data.message);
+          setError(data.message || "No data received");
         }
       } catch (err) {
+        console.error("Fetch Balance Error:", err);
         setError("Failed to fetch balance");
       } finally {
         setLoading(false);
@@ -99,28 +100,11 @@ export default function UserDashboard() {
           <LightModeToggle />
         </div>
 
-        {/* ✅ Centralized dashboard cards component (auto-updates from Bitunix via backend) */}
-        <DashboardCards userId={userId || user?.id} isAdmin={adminView} balanceData={balance} />
-
-        {loading && <p>Loading balance...</p>}
-        {error && <p className="text-red-500">{error}</p>}
-        {!loading && !error && (!balance || balance.length === 0) && (
-          <p className="mt-6">No balance data available</p>
-        )}
-
-        <div className="mt-8 flex justify-center">
-          <button
-            onClick={() =>
-              navigate(
-                adminView ? `/admin/users/${userId}/positions` : "/user/positions"
-              )
-            }
-            className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2 rounded-lg shadow-md transition"
-            onMouseEnter={playHoverSound}
-          >
-            View All Positions
-          </button>
-        </div>
+        <DashboardCards
+          userId={userId || user?.id}
+          isAdmin={adminView}
+          balanceData={balance}
+        />
       </main>
     </div>
   );
