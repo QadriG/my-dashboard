@@ -1,6 +1,5 @@
 // src/pages/UserDashboard.jsx
-import React, { useRef, useState } from "react";
-import { isMobile } from "react-device-detect";
+import React, { useRef, useState, useEffect } from "react";
 import { useTheme } from "../../context/ThemeContext";
 import "../../styles/sidebar.css";
 import "../../styles/globals.css";
@@ -38,11 +37,37 @@ function LightModeToggle({ className, style }) {
 export default function UserDashboard() {
   const audioRef = useRef(null);
   const { isDarkMode } = useTheme();
-  const { user, logout, loading } = useUserAuth();
+  const { user, logout, loading: authLoading } = useUserAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const adminView = location.state?.adminView || false;
   const userId = location.state?.userId || null;
+
+  const [balance, setBalance] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchBalance = async () => {
+      try {
+        const res = await fetch("http://localhost:5000/api/user/balance", {
+          credentials: "include",
+        });
+        const data = await res.json();
+        if (data.success) {
+          setBalance(data.balanceData || []);
+        } else {
+          setError(data.message);
+        }
+      } catch (err) {
+        setError("Failed to fetch balance");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBalance();
+  }, [userId || user?.id]);
 
   const playHoverSound = () => {
     if (audioRef.current) {
@@ -51,7 +76,7 @@ export default function UserDashboard() {
     }
   };
 
-  if (loading) return <div>Loading dashboard...</div>;
+  if (authLoading) return <div>Loading dashboard...</div>;
 
   return (
     <div className="zoom-out-container relative h-screen w-screen overflow-x-hidden overflow-y-auto">
@@ -75,7 +100,13 @@ export default function UserDashboard() {
         </div>
 
         {/* ✅ Centralized dashboard cards component (auto-updates from Bitunix via backend) */}
-        <DashboardCards userId={userId || user?.id} isAdmin={adminView} />
+        <DashboardCards userId={userId || user?.id} isAdmin={adminView} balanceData={balance} />
+
+        {loading && <p>Loading balance...</p>}
+        {error && <p className="text-red-500">{error}</p>}
+        {!loading && !error && (!balance || balance.length === 0) && (
+          <p className="mt-6">No balance data available</p>
+        )}
 
         <div className="mt-8 flex justify-center">
           <button
@@ -85,6 +116,7 @@ export default function UserDashboard() {
               )
             }
             className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2 rounded-lg shadow-md transition"
+            onMouseEnter={playHoverSound}
           >
             View All Positions
           </button>

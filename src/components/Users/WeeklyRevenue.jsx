@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Chart, registerables } from "chart.js";
 Chart.register(...registerables);
 
-export default function WeeklyRevenue({ isDarkMode }) {
+export default function WeeklyRevenue({ isDarkMode, balanceData }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
 
@@ -10,6 +10,17 @@ export default function WeeklyRevenue({ isDarkMode }) {
   const [revenues, setRevenues] = useState([]);
   const [range, setRange] = useState("4w"); // default = last 4 weeks
   const [customRange, setCustomRange] = useState({ start: "", end: "" });
+
+  // 🔹 Use balanceData if available, otherwise fetch from backend
+  useEffect(() => {
+    if (balanceData && balanceData.length > 0) {
+      const latestData = balanceData[0];
+      setLabels(["Current Week"]); // Simplistic label, adjust based on data
+      setRevenues([latestData.revenue || 0]); // Adjust based on actual revenue field
+    } else {
+      fetchWeeklyRevenue();
+    }
+  }, [balanceData, range, customRange]);
 
   // 🔹 Fetch revenue data from backend
   async function fetchWeeklyRevenue() {
@@ -28,10 +39,6 @@ export default function WeeklyRevenue({ isDarkMode }) {
       console.error("Error fetching weekly revenue:", err);
     }
   }
-
-  useEffect(() => {
-    fetchWeeklyRevenue();
-  }, [range, customRange]);
 
   useEffect(() => {
     if (!canvasRef.current || revenues.length === 0) return;

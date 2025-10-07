@@ -1,12 +1,13 @@
 import React from "react";
 
-export default function UPL({ uplData }) {
-  const total = uplData?.total ?? 0;
-  const totalPercent = uplData?.totalPercent ?? 0;
-  const long = uplData?.long ?? 0;
-  const longPercent = uplData?.longPercent ?? 0;
-  const short = uplData?.short ?? 0;
-  const shortPercent = uplData?.shortPercent ?? 0;
+export default function UPL({ uplData, balanceData }) {
+  // Use uplData if available, fall back to balanceData, default to 0
+  const total = Number(uplData?.total ?? (balanceData && balanceData[0]?.totalUPL != null ? balanceData[0].totalUPL : 0));
+  const totalPercent = Number(uplData?.totalPercent ?? (balanceData && balanceData[0]?.totalUPLPercent != null ? balanceData[0].totalUPLPercent : 0));
+  const long = Number(uplData?.long ?? (balanceData && balanceData[0]?.longUPL != null ? balanceData[0].longUPL : 0));
+  const longPercent = Number(uplData?.longPercent ?? (balanceData && balanceData[0]?.longUPLPercent != null ? balanceData[0].longUPLPercent : 0));
+  const short = Number(uplData?.short ?? (balanceData && balanceData[0]?.shortUPL != null ? balanceData[0].shortUPL : 0));
+  const shortPercent = Number(uplData?.shortPercent ?? (balanceData && balanceData[0]?.shortUPLPercent != null ? balanceData[0].shortUPLPercent : 0));
 
   const formatAmount = (amount) => Number(amount).toFixed(2);
   const formatPercent = (percent) => Number(percent).toFixed(2);

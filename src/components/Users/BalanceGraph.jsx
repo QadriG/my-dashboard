@@ -1,8 +1,9 @@
+// src/components/BalanceGraph.jsx
 import React, { useEffect, useRef, useState } from "react";
 import { Chart, registerables } from "chart.js";
 Chart.register(...registerables);
 
-export default function BalanceGraph({ isDarkMode }) {
+export default function BalanceGraph({ isDarkMode, balanceData }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
 
@@ -10,6 +11,17 @@ export default function BalanceGraph({ isDarkMode }) {
   const [balances, setBalances] = useState([]);
   const [range, setRange] = useState("30"); // default last 30 days
   const [customRange, setCustomRange] = useState({ start: "", end: "" });
+
+  // Use balanceData if available, otherwise fetch from API
+  useEffect(() => {
+    if (balanceData && balanceData.length > 0) {
+      const latestData = balanceData[0]; // Assuming the first entry is the latest
+      setLabels([new Date().toLocaleDateString()]); // Simplistic label for now
+      setBalances([parseFloat(latestData.balances.data[0]?.balance) || 0]);
+    } else {
+      fetchBalanceHistory(range);
+    }
+  }, [balanceData, range, customRange]);
 
   async function fetchBalanceHistory(days, startDate, endDate) {
     try {
@@ -27,14 +39,6 @@ export default function BalanceGraph({ isDarkMode }) {
       console.error("Error fetching balance history:", err);
     }
   }
-
-  useEffect(() => {
-    if (range !== "custom") {
-      fetchBalanceHistory(range);
-    } else if (customRange.start && customRange.end) {
-      fetchBalanceHistory(null, customRange.start, customRange.end);
-    }
-  }, [range, customRange]);
 
   useEffect(() => {
     if (!canvasRef.current || balances.length === 0) return;

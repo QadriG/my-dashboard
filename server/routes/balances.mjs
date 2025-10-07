@@ -1,7 +1,6 @@
 import express from "express";
 import { PrismaClient } from "@prisma/client";
 import { authMiddleware } from "./middlewares.mjs"; // keep adminMiddleware if you want to protect admin-only
-import { fetchUserExchangeData } from "../services/exchangeService.mjs"; // <-- this is where Bitunix/Binance fetch happens
 
 const router = express.Router();
 const prisma = new PrismaClient();

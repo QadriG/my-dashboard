@@ -4,7 +4,6 @@ import { authMiddleware } from "../middleware/authMiddleware.mjs";
 import { errorHandler } from "../middleware/errorHandler.mjs";
 import { info, error as logError } from "../utils/logger.mjs";
 import { encrypt } from "../utils/apiencrypt.mjs";
-import { getUserApis, fetchBalances, fetchPositions, getDashboard } from "../services/exchangeService.mjs";
 
 const router = express.Router();
 const prisma = new PrismaClient();

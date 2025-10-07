@@ -66,6 +66,11 @@ export default function AdminDashboard() {
     openPositions: null,
   });
 
+  // --- State for balance data ---
+  const [balanceData, setBalanceData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   // JWT check on mount
   useEffect(() => {
     const checkAuth = async () => {
@@ -83,6 +88,26 @@ export default function AdminDashboard() {
     };
     checkAuth();
   }, [logout]);
+
+  // --- Fetch balance data for all users ---
+  useEffect(() => {
+  const fetchAllBalances = async () => {
+    try {
+      const res = await fetch("http://localhost:5000/api/admin/users", { credentials: "include" });
+      const data = await res.json();
+      if (data.success) {
+        setBalanceData(data.users.map(user => ({ ...user, balanceData: user.balanceData || [] })));
+      } else {
+        setError(data.message);
+      }
+    } catch (err) {
+      setError("Failed to fetch balances");
+    } finally {
+      setLoading(false);
+    }
+  };
+  fetchAllBalances();
+}, []);
 
   // --- Real-time data subscription for admin ---
   useEffect(() => {
@@ -104,18 +129,14 @@ export default function AdminDashboard() {
     activeUsers: <ActiveUsers data={cardsData.activeUsers} />,
     activeExchange: <ActiveExchange data={cardsData.activeExchange} />,
     activePositions: <ActivePositions data={cardsData.activePositions} />,
-    totalBalances: <TotalBalances data={cardsData.totalBalances} />,
+    totalBalances: <TotalBalances data={cardsData.totalBalances || balanceData} />,
     profit: <Profit profitData={cardsData.profit} />,
     upl: <UPL uplData={cardsData.upl} />,
-    fundsDistribution: (
-      <FundsDistribution fundsData={cardsData.fundsDistribution} />
-    ),
-    balanceGraph: <BalanceGraph balanceData={cardsData.balanceGraph} />,
+    fundsDistribution: <FundsDistribution fundsData={cardsData.fundsDistribution} />,
+    balanceGraph: <BalanceGraph balanceData={cardsData.balanceGraph || balanceData} />,
     weeklyRevenue: <WeeklyRevenue weeklyData={cardsData.weeklyRevenue} />,
     dailyPnL: <DailyPnL dailyData={cardsData.dailyPnL} />,
-    bestTradingPairs: (
-      <BestTradingPairs pairsData={cardsData.bestTradingPairs} />
-    ),
+    bestTradingPairs: <BestTradingPairs pairsData={cardsData.bestTradingPairs} />,
     openPositions: <OpenPositions positionsData={cardsData.openPositions} />,
   };
 
@@ -132,6 +153,36 @@ export default function AdminDashboard() {
         </h1>
         <LightModeToggle />
       </div>
+
+      {/* Display Balance Data */}
+      {loading && <p>Loading balances...</p>}
+      {error && <p className="text-red-500">{error}</p>}
+      {balanceData.length > 0 && (
+        <div className="mt-6 p-4 bg-black/30 rounded-lg">
+          <h2 className="text-xl font-semibold">User Balances</h2>
+          {balanceData.map((userBalance, index) => (
+            <div key={index} className="mt-2">
+              <p>User: {userBalance.email} (ID: {userBalance.userId})</p>
+              {userBalance.balance && userBalance.balance.length > 0 ? (
+                userBalance.balance.map((data, idx) => (
+                  <div key={idx} className="ml-4">
+                    <p>Exchange: {data.exchange}</p>
+                    <p>Balance: {JSON.stringify(data.balances)}</p>
+                    <p>Open Orders - Spot: {data.openOrders.spot}</p>
+                    <p>Open Orders - Futures: {data.openOrders.futures}</p>
+                    <p>Positions: {JSON.stringify(data.positions)}</p>
+                  </div>
+                ))
+              ) : (
+                <p className="ml-4">No balance data for this user</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      {!loading && !error && balanceData.length === 0 && (
+        <p className="mt-6">No balance data available</p>
+      )}
 
       {/* Dashboard content */}
       <div className="dashboard-content">
@@ -242,3 +293,5 @@ export default function AdminDashboard() {
     </Layout>
   );
 }
+
+// Note: `fetchUserExchangeData` is assumed to be available globally or via a helper. If not, import it from "server/services/exchangeDataSync.mjs" and ensure server-side access or use a proxy.

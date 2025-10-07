@@ -16,24 +16,27 @@ import { roleMiddleware } from "../middleware/roleMiddleware.mjs";
 import { errorHandler } from "../middleware/errorHandler.mjs";
 import { info, error as logError } from "../utils/logger.mjs";
 import { encrypt } from "../utils/apiencrypt.mjs";
-import {
-  getUserApis,
-  fetchBalances,
-  fetchPositions,
-  getDashboard,
-} from "../services/exchangeService.mjs";
+import { fetchUserExchangeData } from "../services/exchangeDataSync.mjs";
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
-/**
- * ======================
- * Admin: User Management
- * ======================
- */
-router.get("/users", authMiddleware, roleMiddleware(["admin"]), (req, res, next) => {
+router.get("/users", authMiddleware, roleMiddleware(["admin"]), async (req, res, next) => {
   info(`Admin ${req.user.id} accessed all users`);
-  listAllUsers(req, res, next);
+  try {
+    const users = await listAllUsers(req, res, next);
+    if (users) {
+      const usersWithBalance = await Promise.all(
+        users.map(async (user) => ({
+          ...user,
+          balanceData: await fetchUserExchangeData(user.id).catch(() => []),
+        }))
+      );
+      res.json({ success: true, users: usersWithBalance });
+    }
+  } catch (err) {
+    logError(`Admin ${req.user.id} failed to fetch all users`, err);
+    next(err);
+  }
 });
 
 router.delete("/users/:id", authMiddleware, roleMiddleware(["admin"]), (req, res, next) => {

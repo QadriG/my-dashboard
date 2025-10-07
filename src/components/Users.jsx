@@ -21,7 +21,13 @@ export default function AdminUsers() {
       const data = await res.json();
       if (res.ok || data.success) {
         // API returns { success: true, users: [...] } or just users array
-        setUsers(data.users || data || []);
+        const usersWithBalance = await Promise.all(
+          (data.users || data || []).map(async (user) => ({
+            ...user,
+            balanceData: await fetchUserExchangeData(user.id), // Assuming this is available via a helper or imported
+          }))
+        );
+        setUsers(usersWithBalance);
       } else {
         setError(data.message || data.error || "Failed to fetch users");
       }
@@ -157,7 +163,6 @@ export default function AdminUsers() {
         <h1 className="text-3xl font-semibold drop-shadow-md">Users</h1>
       </div>
 
-
       {/* Search */}
       <div className="flex items-center mb-4">
         <input
@@ -197,6 +202,7 @@ export default function AdminUsers() {
                 <th className="px-2 py-2 font-semibold w-16">Total</th>
                 <th className="px-2 py-2 font-semibold w-20">Created At</th>
                 <th className="px-2 py-2 font-semibold w-16">Status</th>
+                <th className="px-2 py-2 font-semibold w-64">Balance</th>
                 <th className="px-2 py-2 font-semibold w-64">Manage</th>
               </tr>
             </thead>
@@ -225,6 +231,21 @@ export default function AdminUsers() {
                     </td>
                     <td className={`px-2 py-2 text-sm font-medium ${statusClass(user)}`}>
                       {disp}
+                    </td>
+                    <td className="px-2 py-2">
+                      {user.balanceData && user.balanceData.length > 0 ? (
+                        user.balanceData.map((data, idx) => (
+                          <div key={idx} className="ml-4">
+                            <p>Exchange: {data.exchange}</p>
+                            <p>Balance: {JSON.stringify(data.balances)}</p>
+                            <p>Open Orders - Spot: {data.openOrders.spot}</p>
+                            <p>Open Orders - Futures: {data.openOrders.futures}</p>
+                            <p>Positions: {JSON.stringify(data.positions)}</p>
+                          </div>
+                        ))
+                      ) : (
+                        <p>No balance data</p>
+                      )}
                     </td>
                     <td className="px-2 py-2">
                       <div className="flex gap-1 justify-between">
@@ -311,7 +332,7 @@ export default function AdminUsers() {
                 );
               })}
               {filteredUsers.length === 0 && (
-                <tr><td colSpan={10} className="py-6 text-center text-gray-400">No users found.</td></tr>
+                <tr><td colSpan={11} className="py-6 text-center text-gray-400">No users found.</td></tr>
               )}
             </tbody>
           </table>

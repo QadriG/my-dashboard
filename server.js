@@ -23,11 +23,10 @@ import usersRouter from "./server/routes/users.mjs";
 import balancesRouter from "./server/routes/balances.mjs";
 import manualPushRouter from "./server/routes/manualPush.mjs";
 import { encrypt } from "./server/utils/apiencrypt.mjs"; // Import for manual encryption if needed
+import { fetchUserExchangeData, startPeriodicExchangeSync } from "./server/services/exchangeDataSync.mjs";
 
 // Load environment variables
 dotenv.config();
-
-import { startPeriodicExchangeSync } from "./server/services/exchangeDataSync.mjs";
 
 startPeriodicExchangeSync(60_000); // every 60s
 
@@ -239,9 +238,6 @@ app.post("/api/auth/forgot-password", async (req, res) => {
     const { email } = req.body;
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) return res.status(400).json({ message: "Email not found" });
-    
-    // ... (rest of your forgot password code)
-
 
     const resetToken = crypto.randomBytes(32).toString("hex");
     const resetExp = new Date(Date.now() + 15 * 60 * 1000);
@@ -308,7 +304,6 @@ app.post("/api/auth/logout", (req, res) => {
   return res.json({ message: "Logged out" });
 });
 
-
 app.post("/api/save-api-key", authMiddleware, async (req, res) => {
   try {
     const { exchange, apiKey, apiSecret, passphrase } = req.body;
@@ -325,8 +320,6 @@ app.post("/api/save-api-key", authMiddleware, async (req, res) => {
       update: { apiKey: encryptedKey, apiSecret: encryptedSecret, passphrase: encryptedPassphrase },
       create: { userId: req.user.id, exchange, apiKey: encryptedKey, apiSecret: encryptedSecret, passphrase: encryptedPassphrase },
     });
-
-    //await syncUserExchangesImmediately(req.user.id);
 
     res.json({ message: "API key saved successfully" });
   } catch (err) {
@@ -364,9 +357,25 @@ const startServers = async () => {
 app.get("/user/profile", authMiddleware, (req, res) => {
   res.json({ user: req.user });
 });
+
 app.get("/admin/dashboard", authMiddleware, adminMiddleware, (req, res) => {
   res.json({ message: "Welcome Admin", user: req.user });
 });
 
+// === New route to fetch and send balance data ===
+app.get("/api/user/balance", authMiddleware, async (req, res) => {
+  try {
+    const data = await fetchUserExchangeData(req.user.id);
+    res.json({ success: true, balanceData: data });
+  } catch (err) {
+    logError(`Error fetching balance for user ${req.user.id}`, err);
+    res.status(500).json({ success: false, message: "Error fetching balance" });
+  }
+});
+
 // === Start server ===
-app.listen(PORT, () => info(`🚀 Server running on port ${PORT}`));
+if (!process.argv.includes("--port")) {
+  startServers();
+} else {
+  app.listen(PORT, () => info(`🚀 Server running on port ${PORT}`));
+}

@@ -4,7 +4,7 @@ import { useTheme } from "../../context/ThemeContext";
 import { useUserAuth } from "../../hooks/useUserAuth";
 import { useSocket } from "../../hooks/useSocket";
 
-export default function PositionsTable({ userId }) {
+export default function PositionsTable({ userId, balanceData }) {
   const { isDarkMode } = useTheme();
   const { user, loading } = useUserAuth();
 
@@ -18,11 +18,20 @@ export default function PositionsTable({ userId }) {
 
   const socket = useSocket("http://localhost:5000");
 
+  // Initialize with balanceData if available
+  useEffect(() => {
+    if (balanceData && balanceData.length > 0) {
+      const latestData = balanceData[0];
+      setOpenPositions(latestData.positions.filter(p => p.status === "open") || []);
+      setClosedPositions(latestData.positions.filter(p => p.status === "closed") || []);
+    }
+  }, [balanceData]);
+
   // Subscribe to live updates
   useEffect(() => {
     if (!socket || !user) return;
 
-    const userChannel = `positions/${user.id}`;
+    const userChannel = `positions/${user.id || userId}`;
     socket.on(userChannel, (update) => {
       if (update.type === "open") {
         setOpenPositions(update.positions);
@@ -32,7 +41,7 @@ export default function PositionsTable({ userId }) {
     });
 
     return () => socket.off(userChannel);
-  }, [socket, user]);
+  }, [socket, user, userId]);
 
   // Filtered & paginated positions
   const positions =

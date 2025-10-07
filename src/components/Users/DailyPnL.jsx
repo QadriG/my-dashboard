@@ -1,9 +1,28 @@
+// src/components/DailyPnL.jsx
 import React, { useEffect, useRef, useState } from "react";
 
-export default function DailyPnL() {
+export default function DailyPnL({ balanceData }) {
   const tableRef = useRef(null);
   const [rows, setRows] = useState([]);
   const [range, setRange] = useState("30d"); // default = last 30 days
+
+  // 🔹 Use balanceData if available, otherwise fetch from API
+  useEffect(() => {
+    if (balanceData && balanceData.length > 0) {
+      const latestData = balanceData[0]; // Assuming the first entry is the latest
+      setRows([
+        {
+          coin: latestData.balances.data[0]?.coin || "USDT",
+          balance: latestData.balances.data[0]?.balance || 0,
+          pnl: latestData.openOrders.spot || 0, // Placeholder, adjust based on actual PNL data
+          pnlPercent: "0", // Placeholder, adjust based on actual data
+          date: new Date().toLocaleDateString(),
+        },
+      ]);
+    } else {
+      fetchDailyPnL(range);
+    }
+  }, [balanceData, range]);
 
   // 🔹 Fetch daily PnL data from backend
   async function fetchDailyPnL(selectedRange = "30d") {
@@ -18,9 +37,8 @@ export default function DailyPnL() {
     }
   }
 
-  // 🔹 Initial + polling fetch (refresh every 10s)
+  // 🔹 Polling fetch (refresh every 10s)
   useEffect(() => {
-    fetchDailyPnL(range);
     const interval = setInterval(() => fetchDailyPnL(range), 10000);
     return () => clearInterval(interval);
   }, [range]);
@@ -38,6 +56,8 @@ export default function DailyPnL() {
         trs[i].classList.add("bg-green-600", "text-white");
       } else if (current < next) {
         trs[i].classList.add("bg-red-600", "text-white");
+      } else {
+        trs[i].classList.remove("bg-green-600", "bg-red-600", "text-white");
       }
     }
   }, [rows]);
@@ -77,7 +97,7 @@ export default function DailyPnL() {
                 <td className="py-1 px-2">{row.coin}</td>
                 <td className="py-1 px-2">{row.balance}</td>
                 <td className="py-1 px-2">{row.pnl}</td>
-                <td className="py-1 px-2">{row.pnlPercent} %</td>
+                <td className="py-1 px-2">{row.pnlPercent}%</td>
                 <td className="py-1 px-2">{row.date}</td>
               </tr>
             ))

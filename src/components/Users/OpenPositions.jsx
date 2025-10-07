@@ -1,24 +1,30 @@
+// src/components/OpenPositions.jsx
 import React, { useEffect, useState } from "react";
 
-export default function OpenPositions() {
+export default function OpenPositions({ balanceData }) {
   const [positions, setPositions] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchPositions() {
-      try {
-        const response = await fetch("/api/positions/active"); // ✅ Adjust to your backend route
-        const data = await response.json();
-        setPositions(data || []);
-      } catch (error) {
-        console.error("Error fetching active positions:", error);
-      } finally {
-        setLoading(false);
+    if (balanceData && balanceData.length > 0) {
+      const latestData = balanceData[0];
+      setPositions(latestData.positions || []);
+      setLoading(false);
+    } else {
+      async function fetchPositions() {
+        try {
+          const response = await fetch("/api/positions/active", { credentials: "include" });
+          const data = await response.json();
+          setPositions(data || []);
+        } catch (error) {
+          console.error("Error fetching active positions:", error);
+        } finally {
+          setLoading(false);
+        }
       }
+      fetchPositions();
     }
-
-    fetchPositions();
-  }, []);
+  }, [balanceData]);
 
   return (
     <div className="dashboard-column open-positions p-4 text-center border-emerald-400">
