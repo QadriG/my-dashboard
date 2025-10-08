@@ -2,7 +2,8 @@ import React, { useRef, useState, useEffect } from "react";
 import { Chart, registerables } from "chart.js";
 Chart.register(...registerables);
 
-export default function BalanceGraph({ isDarkMode, balanceData }) {
+export default function BalanceGraph({ userId, balanceData }) {
+  console.log("BalanceGraph received props:", { userId, balanceData });
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
 

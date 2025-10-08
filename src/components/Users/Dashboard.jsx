@@ -63,14 +63,19 @@ export default function UserDashboard() {
         const data = await res.json();
         console.log("UserDashboard: Dashboard API Response:", data);
         const transformedBalance = {
-          exchange: "bitunix",
-          totalBalance: data.fundsDistribution.totalBalance || 0,
-          available: data.fundsDistribution.available || 0,
-          long: 0,
-          short: 0,
-          totalPositions: data.fundsDistribution.totalPositions || 0,
-        };
-        setBalance([transformedBalance]);
+  exchange: "bitunix",
+  totalBalance: data.fundsDistribution.totalBalance || 0,
+  available: data.fundsDistribution.available || 0,
+  long: 0,
+  short: 0,
+  totalPositions: data.fundsDistribution.totalPositions || 0,
+  // Add a daily array for graphs if needed
+  dailyData: Array(7).fill().map((_, i) => ({
+    date: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+    available: data.fundsDistribution.available || 0,
+  })).reverse(), // Last 7 days with same available value
+};
+setBalance([transformedBalance]);
         console.log("UserDashboard: Set balance to:", [transformedBalance]);
       } catch (err) {
         console.error("UserDashboard: Fetch Dashboard Error:", err);
