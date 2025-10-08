@@ -117,75 +117,119 @@ app.use("/api/manual-push", authMiddleware, manualPushRouter);
 app.get("/api/user/balance", authMiddleware, async (req, res) => {
   console.log(`Fetching balance for user ${req.user.id}`);
   try {
-    // Mock data instead of fetchUserExchangeData
-    const mockExchangeData = [
-      {
-        exchange: "Bitunix",
-        balances: { total: { USDT: 1500 }, free: { USDT: 1200 } },
-        positions: [{}, {}, {}], // 3 positions
-      },
-    ];
+    const userId = req.user.id;
+    const exchangeData = await fetchUserExchangeData(userId);
+    console.log(`Exchange Data returned for user ${req.user.id}:`, exchangeData);
 
-    const balanceData = mockExchangeData.map((ex) => ({
-      exchange: ex.exchange,
-      totalBalance: ex.balances.total?.USDT || 0,
-      available: ex.balances.free?.USDT || 0,
-      long: 0, // Mock value
-      short: 0, // Mock value
-      totalPositions: ex.positions.length || 0,
-    }));
+    const balanceData = exchangeData.map((ex) => {
+      const balanceEntry = ex.balances.data ? ex.balances.data.find(b => b.coin === 'USDT') : null;
+      return {
+        exchange: ex.exchange,
+        totalBalance: balanceEntry ? parseFloat(balanceEntry.balance) : 0,
+        available: balanceEntry ? parseFloat(balanceEntry.balance) - parseFloat(balanceEntry.balanceLocked || 0) : 0,
+        long: 0,
+        short: 0,
+        totalPositions: ex.positions.length || 0,
+      };
+    });
 
     res.json({ success: true, balanceData });
+    console.log(`Balance response sent for user ${req.user.id}:`, { success: true, balanceData });
   } catch (err) {
     logError(`Error fetching balance for user ${req.user.id}`, err);
     res.status(500).json({ success: false, message: "Error fetching balance" });
   }
 });
 
+app.get("/api/user/balance-history", authMiddleware, async (req, res) => {
+  console.log(`Fetching balance history for user ${req.user.id}`);
+  try {
+    const days = req.query.days || "30";
+    // Placeholder: Return current balance for now
+    const exchangeData = await fetchUserExchangeData(req.user.id);
+    const balanceEntry = exchangeData[0]?.balances.data?.find(b => b.coin === 'USDT');
+    const data = {
+      labels: [new Date().toLocaleDateString()],
+      balances: [balanceEntry ? parseFloat(balanceEntry.balance) : 0],
+    };
+    res.json(data);
+  } catch (err) {
+    logError(`Error fetching balance history for user ${req.user.id}`, err);
+    res.status(500).json({ success: false, message: "Error fetching balance history" });
+  }
+});
+
 app.get("/api/user/dashboard", authMiddleware, async (req, res) => {
   console.log(`Fetching dashboard for user ${req.user.id}`);
   try {
-    // Mock data instead of fetchUserExchangeData
-    const mockExchangeData = [
-      {
-        exchange: "Bitunix",
-        balances: { total: { USDT: 1500 }, free: { USDT: 1200 } },
-        positions: [
-          { symbol: "BTC/USDT", side: "long", size: 0.1, price: 60000 },
-          { symbol: "ETH/USDT", side: "short", size: 1.5, price: 3000 },
-        ],
-      },
-    ];
+    const userId = req.user.id;
+    const exchangeData = await fetchUserExchangeData(userId);
+    console.log(`Exchange Data returned for user ${req.user.id}:`, exchangeData);
 
     const dashboardData = {
-      profit: { total: 200, long: 150, short: 50 }, // Mock profit values
-      upl: { total: 180, totalPercent: 12, long: 120, longPercent: 8, short: 60, shortPercent: 4 }, // Mock unrealized P&L
+      profit: { total: 0, long: 0, short: 0 },
+      upl: { total: 0, totalPercent: 0, long: 0, longPercent: 0, short: 0, shortPercent: 0 },
       fundsDistribution: {
-        totalBalance: mockExchangeData.reduce((sum, ex) => sum + (ex.balances.total?.USDT || 0), 0),
-        available: mockExchangeData.reduce((sum, ex) => sum + (ex.balances.free?.USDT || 0), 0),
-        long: 100, // Mock value
-        short: 50, // Mock value
-        totalPositions: mockExchangeData.reduce((sum, ex) => sum + ex.positions.length, 0),
+        totalBalance: exchangeData.reduce((sum, ex) => {
+          const balanceEntry = ex.balances.data ? ex.balances.data.find(b => b.coin === 'USDT') : null;
+          return sum + (balanceEntry ? parseFloat(balanceEntry.balance) : 0);
+        }, 0),
+        available: exchangeData.reduce((sum, ex) => {
+          const balanceEntry = ex.balances.data ? ex.balances.data.find(b => b.coin === 'USDT') : null;
+          return sum + (balanceEntry ? parseFloat(balanceEntry.balance) - parseFloat(balanceEntry.balanceLocked || 0) : 0);
+        }, 0),
+        long: 0,
+        short: 0,
+        totalPositions: exchangeData.reduce((sum, ex) => sum + ex.positions.length, 0),
       },
       balanceGraph: {
         balances: {
-          data: mockExchangeData.map((ex) => ({
-            exchange: ex.exchange,
-            balance: ex.balances.total?.USDT || 0,
-            timestamp: new Date().toISOString(),
-          })),
+          data: exchangeData.map((ex) => {
+            const balanceEntry = ex.balances.data ? ex.balances.data.find(b => b.coin === 'USDT') : null;
+            return {
+              exchange: ex.exchange,
+              balance: balanceEntry ? parseFloat(balanceEntry.balance) : 0,
+              timestamp: new Date().toISOString(),
+            };
+          }),
         },
       },
-      weeklyRevenue: { labels: ["Week 1", "Week 2"], revenues: [100, 150] }, // Mock weekly revenue
-      dailyPnL: { "2025-10-07": 50 }, // Mock daily P&L
-      bestTradingPairs: { "BTC/USDT": 200, "ETH/USDT": 150 }, // Mock best pairs
-      openPositions: mockExchangeData.reduce((acc, ex) => ({ ...acc, [ex.exchange]: ex.positions }), {}),
+      weeklyRevenue: { labels: ["Week 1", "Week 2"], revenues: [0, 0] },
+      dailyPnL: {},
+      bestTradingPairs: {},
+      openPositions: exchangeData.reduce((acc, ex) => ({ ...acc, [ex.exchange]: ex.positions }), {}),
     };
 
     res.json(dashboardData);
+    console.log(`Dashboard response sent for user ${req.user.id}:`, dashboardData);
   } catch (err) {
     logError(`Error fetching dashboard for user ${req.user.id}`, err);
     res.status(500).json({ success: false, message: "Error fetching dashboard" });
+  }
+});
+
+app.get("/api/user/daily-pnl", authMiddleware, async (req, res) => {
+  console.log(`Fetching daily PnL for user ${req.user.id}`);
+  try {
+    const userId = req.user.id;
+    const exchangeData = await fetchUserExchangeData(userId);
+    const range = req.query.range || "30d";
+    // Simplified: Return latest balance for now; enhance with historical data later
+    const dailyData = exchangeData.map((ex) => {
+      const balanceEntry = ex.balances.data ? ex.balances.data.find(b => b.coin === 'USDT') : null;
+      return {
+        coin: balanceEntry?.coin || "USDT",
+        balance: balanceEntry ? parseFloat(balanceEntry.balance) : 0,
+        pnl: 0, // Placeholder
+        pnlPercent: "0",
+        date: new Date().toLocaleDateString(),
+      };
+    });
+
+    res.json(dailyData);
+  } catch (err) {
+    logError(`Error fetching daily PnL for user ${req.user.id}`, err);
+    res.status(500).json({ success: false, message: "Error fetching daily PnL" });
   }
 });
 

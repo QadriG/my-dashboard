@@ -5,11 +5,15 @@ import { sendToUser } from "./websocketService.mjs";
 import { decrypt, encrypt } from "../utils/apiencrypt.mjs";
 
 export const fetchUserExchangeData = async (userId) => {
+  console.log(`Starting fetchUserExchangeData for user ${userId}`);
   try {
     const userExchanges = await client.userExchange.findMany({ where: { userId } });
+    console.log(`Found exchanges for user ${userId}:`, userExchanges);
+
     const allData = [];
 
     for (const ux of userExchanges) {
+      console.log(`Processing exchange: ${ux.exchange} with ID ${ux.id}`);
       let apiKey, apiSecret, passphrase;
 
       try {
@@ -22,6 +26,7 @@ export const fetchUserExchangeData = async (userId) => {
         try {
           apiKey = decrypt(ux.apiKey);
           apiSecret = decrypt(ux.apiSecret);
+          console.log(`Decrypted credentials for ${ux.exchange}: apiKey length ${apiKey.length}, apiSecret length ${apiSecret.length}`);
         } catch (decErr) {
           if (decErr.message.includes("Invalid encrypted data format")) {
             info(`Detected plain text for user ${userId} on ${ux.exchange}, re-encrypting`);
@@ -33,6 +38,7 @@ export const fetchUserExchangeData = async (userId) => {
             });
             apiKey = decrypt(encrypt(apiKey));
             apiSecret = decrypt(encrypt(apiSecret));
+            console.log(`Re-encrypted and decrypted credentials for ${ux.exchange}`);
           } else {
             throw decErr;
           }
@@ -41,6 +47,7 @@ export const fetchUserExchangeData = async (userId) => {
         passphrase = ux.passphrase
           ? (() => { try { return decrypt(ux.passphrase); } catch { return ux.passphrase; } })()
           : undefined;
+        console.log(`Passphrase for ${ux.exchange}: ${passphrase ? "set" : "not set"}`);
 
         // Create client
         const exchangeClient = getExchangeClient(ux.exchange, apiKey, apiSecret, ux.type || "spot", passphrase);
@@ -48,9 +55,11 @@ export const fetchUserExchangeData = async (userId) => {
           logError(`${ux.exchange} client creation returned null`);
           continue;
         }
+        console.log(`BitunixClient created for ${ux.exchange}`);
 
         // Fetch balances
         const balances = await exchangeClient.fetchBalance();
+        console.log(`Balances from ${ux.exchange}:`, balances);
 
         // ==================== Fetch Open Orders per symbol ====================
         let spotOrdersCount = 0;
@@ -58,14 +67,17 @@ export const fetchUserExchangeData = async (userId) => {
 
         try {
           const symbols = Object.keys(balances.total || {});
+          console.log(`Symbols found in balances for ${ux.exchange}:`, symbols);
 
           for (const sym of symbols) {
             if (ux.type === "spot") {
               if (ux.exchange.toLowerCase() === "bitunix") {
                 const spotResp = await exchangeClient.request("/api/spot/v1/order/pending/list", "POST", { symbol: sym });
+                console.log(`Spot orders response for ${sym} on ${ux.exchange}:`, spotResp);
                 spotOrdersCount += spotResp?.data?.length || 0;
               } else if (exchangeClient.fetchOpenOrders) {
                 const spotRes = await exchangeClient.fetchOpenOrders(sym);
+                console.log(`Spot orders for ${sym} on ${ux.exchange}:`, spotRes);
                 spotOrdersCount += spotRes.length || 0;
               }
             }
@@ -73,9 +85,11 @@ export const fetchUserExchangeData = async (userId) => {
             if (ux.type === "futures" || ux.type === "mix") {
               if (ux.exchange.toLowerCase() === "bitunix") {
                 const futResp = await exchangeClient.request("/api/mix/v1/order/open", "POST", { symbol: sym });
+                console.log(`Futures orders response for ${sym} on ${ux.exchange}:`, futResp);
                 futuresOrdersCount += futResp?.data?.length || 0;
               } else if (exchangeClient.fetchOpenOrders) {
                 const futRes = await exchangeClient.fetchOpenOrders(sym);
+                console.log(`Futures orders for ${sym} on ${ux.exchange}:`, futRes);
                 futuresOrdersCount += futRes.length || 0;
               }
             }
@@ -85,14 +99,17 @@ export const fetchUserExchangeData = async (userId) => {
         }
 
         const openOrders = { spot: spotOrdersCount, futures: futuresOrdersCount };
+        console.log(`Open orders count for ${ux.exchange}:`, openOrders);
 
         // Fetch positions if available
         const positions = exchangeClient.has?.fetchPositions
           ? await exchangeClient.fetchPositions()
           : [];
+        console.log(`Positions from ${ux.exchange}:`, positions);
 
         const exchangeData = { exchange: ux.exchange, balances, openOrders, positions };
         allData.push(exchangeData);
+        console.log(`Added exchange data for ${ux.exchange}:`, exchangeData);
 
         // Send real-time update
         sendToUser(userId, { type: "exchangeData", data: exchangeData });
@@ -104,6 +121,7 @@ export const fetchUserExchangeData = async (userId) => {
       }
     }
 
+    console.log(`Returning exchange data for user ${userId}:`, allData);
     return allData;
   } catch (err) {
     logError(`fetchUserExchangeData error for user ${userId}`, err);

@@ -1,5 +1,4 @@
-// src/components/BalanceGraph.jsx
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { Chart, registerables } from "chart.js";
 Chart.register(...registerables);
 
@@ -14,31 +13,31 @@ export default function BalanceGraph({ isDarkMode, balanceData }) {
 
   // Use balanceData if available, otherwise fetch from API
   useEffect(() => {
+    console.log("BalanceGraph received balanceData:", balanceData);
     if (balanceData && balanceData.length > 0) {
-      const latestData = balanceData[0]; // Assuming the first entry is the latest
-      setLabels([new Date().toLocaleDateString()]); // Simplistic label for now
-      setBalances([parseFloat(latestData.balances.data[0]?.balance) || 0]);
+      const latestData = balanceData[0]; // First entry
+      setLabels([new Date().toLocaleDateString()]); // Single label for now
+      setBalances([parseFloat(latestData.totalBalance) || 0]); // Use totalBalance
     } else {
       fetchBalanceHistory(range);
     }
   }, [balanceData, range, customRange]);
 
-  async function fetchBalanceHistory(days, startDate, endDate) {
-    try {
-      let url = `/api/user/balance-history?days=${days}`;
-      if (startDate && endDate) {
-        url = `/api/user/balance-history?start=${startDate}&end=${endDate}`;
-      }
-
-      const res = await fetch(url, { credentials: "include" });
+  const fetchBalanceHistory = async () => {
+  try {
+    const res = await fetch("/api/balance-history", { credentials: "include" });
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    const contentType = res.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
       const data = await res.json();
-
-      setLabels(data.labels || []);
-      setBalances(data.balances || []);
-    } catch (err) {
-      console.error("Error fetching balance history:", err);
+      // Process data
+    } else {
+      console.error("Response is not JSON:", await res.text());
     }
+  } catch (err) {
+    console.error("Error fetching balance history:", err);
   }
+};
 
   useEffect(() => {
     if (!canvasRef.current || balances.length === 0) return;
@@ -127,44 +126,44 @@ export default function BalanceGraph({ isDarkMode, balanceData }) {
           Balance Graph
         </h2>
 
-        {/* 🔽 Dropdown */}
-        <select
-          className="bg-gray-800 text-white text-sm p-1 rounded"
-          value={range}
-          onChange={(e) => setRange(e.target.value)}
-        >
-          <option value="30">Last 30 Days</option>
-          <option value="60">Last 60 Days</option>
-          <option value="90">Last 90 Days</option>
-          <option value="custom">Custom Range</option>
-        </select>
-      </div>
-
-      {/* 🗓 Custom Range */}
-      {range === "custom" && (
-        <div className="flex space-x-2 mb-2">
-          <input
-            type="date"
-            className="bg-gray-700 text-white p-1 rounded"
-            value={customRange.start}
-            onChange={(e) =>
-              setCustomRange({ ...customRange, start: e.target.value })
-            }
-          />
-          <input
-            type="date"
-            className="bg-gray-700 text-white p-1 rounded"
-            value={customRange.end}
-            onChange={(e) =>
-              setCustomRange({ ...customRange, end: e.target.value })
-            }
-          />
-        </div>
-      )}
-
-      <div className="h-40">
-        <canvas ref={canvasRef} className="w-full h-full bg-transparent"></canvas>
-      </div>
+      {/* 🔽 Dropdown */}
+      <select
+        className="bg-gray-800 text-white text-sm p-1 rounded"
+        value={range}
+        onChange={(e) => setRange(e.target.value)}
+      >
+        <option value="30">Last 30 Days</option>
+        <option value="60">Last 60 Days</option>
+        <option value="90">Last 90 Days</option>
+        <option value="custom">Custom Range</option>
+      </select>
     </div>
+
+    {/* 🗓 Custom Range */}
+    {range === "custom" && (
+      <div className="flex space-x-2 mb-2">
+        <input
+          type="date"
+          className="bg-gray-700 text-white p-1 rounded"
+          value={customRange.start}
+          onChange={(e) =>
+            setCustomRange({ ...customRange, start: e.target.value })
+          }
+        />
+        <input
+          type="date"
+          className="bg-gray-700 text-white p-1 rounded"
+          value={customRange.end}
+          onChange={(e) =>
+            setCustomRange({ ...customRange, end: e.target.value })
+          }
+        />
+      </div>
+    )}
+
+    <div className="h-40">
+      <canvas ref={canvasRef} className="w-full h-full bg-transparent"></canvas>
+    </div>
+  </div>
   );
 }

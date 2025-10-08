@@ -1,4 +1,3 @@
-// src/components/DailyPnL.jsx
 import React, { useEffect, useRef, useState } from "react";
 
 export default function DailyPnL({ balanceData }) {
@@ -6,23 +5,23 @@ export default function DailyPnL({ balanceData }) {
   const [rows, setRows] = useState([]);
   const [range, setRange] = useState("30d"); // default = last 30 days
 
-  // 🔹 Use balanceData if available, otherwise fetch from API
   useEffect(() => {
-    if (balanceData && balanceData.length > 0) {
-      const latestData = balanceData[0]; // Assuming the first entry is the latest
-      setRows([
-        {
-          coin: latestData.balances.data[0]?.coin || "USDT",
-          balance: latestData.balances.data[0]?.balance || 0,
-          pnl: latestData.openOrders.spot || 0, // Placeholder, adjust based on actual PNL data
-          pnlPercent: "0", // Placeholder, adjust based on actual data
-          date: new Date().toLocaleDateString(),
-        },
-      ]);
-    } else {
-      fetchDailyPnL(range);
-    }
-  }, [balanceData, range]);
+  console.log("DailyPnL received balanceData:", balanceData);
+  if (balanceData && balanceData.length > 0) {
+    const latestData = balanceData[0];
+    setRows([
+      {
+        coin: "USDT",
+        balance: parseFloat(latestData.totalBalance) || 0,
+        pnl: 0,
+        pnlPercent: "0",
+        date: new Date().toLocaleDateString(),
+      },
+    ]);
+  } else {
+    fetchDailyPnL(range);
+  }
+}, [balanceData, range]);
 
   // 🔹 Fetch daily PnL data from backend
   async function fetchDailyPnL(selectedRange = "30d") {
@@ -31,6 +30,7 @@ export default function DailyPnL({ balanceData }) {
         credentials: "include",
       });
       const data = await res.json();
+      console.log("DailyPnL fetch response:", data);
       setRows(data || []);
     } catch (err) {
       console.error("Error fetching daily pnl:", err);
