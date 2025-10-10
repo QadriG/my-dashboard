@@ -141,24 +141,6 @@ app.get("/api/user/balance", authMiddleware, async (req, res) => {
   }
 });
 
-app.get("/api/user/balance-history", authMiddleware, async (req, res) => {
-  console.log(`Fetching balance history for user ${req.user.id}`);
-  try {
-    const days = req.query.days || "30";
-    // Placeholder: Return current balance for now
-    const exchangeData = await fetchUserExchangeData(req.user.id);
-    const balanceEntry = exchangeData[0]?.balances.data?.find(b => b.coin === 'USDT');
-    const data = {
-      labels: [new Date().toLocaleDateString()],
-      balances: [balanceEntry ? parseFloat(balanceEntry.balance) : 0],
-    };
-    res.json(data);
-  } catch (err) {
-    logError(`Error fetching balance history for user ${req.user.id}`, err);
-    res.status(500).json({ success: false, message: "Error fetching balance history" });
-  }
-});
-
 app.get("/api/user/dashboard", authMiddleware, async (req, res) => {
   console.log(`Fetching dashboard for user ${req.user.id}`);
   try {
@@ -205,31 +187,6 @@ app.get("/api/user/dashboard", authMiddleware, async (req, res) => {
   } catch (err) {
     logError(`Error fetching dashboard for user ${req.user.id}`, err);
     res.status(500).json({ success: false, message: "Error fetching dashboard" });
-  }
-});
-
-app.get("/api/user/daily-pnl", authMiddleware, async (req, res) => {
-  console.log(`Fetching daily PnL for user ${req.user.id}`);
-  try {
-    const userId = req.user.id;
-    const exchangeData = await fetchUserExchangeData(userId);
-    const range = req.query.range || "30d";
-    // Simplified: Return latest balance for now; enhance with historical data later
-    const dailyData = exchangeData.map((ex) => {
-      const balanceEntry = ex.balances.data ? ex.balances.data.find(b => b.coin === 'USDT') : null;
-      return {
-        coin: balanceEntry?.coin || "USDT",
-        balance: balanceEntry ? parseFloat(balanceEntry.balance) : 0,
-        pnl: 0, // Placeholder
-        pnlPercent: "0",
-        date: new Date().toLocaleDateString(),
-      };
-    });
-
-    res.json(dailyData);
-  } catch (err) {
-    logError(`Error fetching daily PnL for user ${req.user.id}`, err);
-    res.status(500).json({ success: false, message: "Error fetching daily PnL" });
   }
 });
 
