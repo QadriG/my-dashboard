@@ -1,3 +1,7 @@
+// ==========================================
+// Prisma Schema for Multi-Exchange Integration
+// ==========================================
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,6 +11,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// =====================
+// User & Authentication
+// =====================
 model User {
   id                Int       @id @default(autoincrement())
   email             String    @unique
@@ -19,73 +26,135 @@ model User {
   resetTokenExp     DateTime?
   isVerified        Boolean   @default(false)
   verificationToken String?
-
-  status            String    @default("active")  // active, paused, disabled
+  status            String    @default("active") // active, paused, disabled
   tokenVersion      Int       @default(0)
   free              Float     @default(0)
   used              Float     @default(0)
   total             Float     @default(0)
   lastActivity      DateTime?
 
-  trades            Trade[]
-  alerts            AlertLog[]
-  exchanges         UserExchange[]
-  apis              UserAPI[]
-  logs              Log[]
-  positions         Position[]
+  // Relations
+  trades    Trade[]
+  alerts    AlertLog[]
+  exchanges UserExchangeAccount[]
+  logs      Log[]
+  positions Position[]
+  balances  Balance[]
+  syncLogs  SyncLog[]
 }
 
+// ==============
+// Core Data
+// ==============
 model Trade {
   id        Int      @id @default(autoincrement())
   user      User     @relation(fields: [userId], references: [id])
   userId    Int
+  exchange  String
   symbol    String
+  side      String
   amount    Float
   price     Float
+  fee       Float? // optional for future fee tracking
+  pnl       Float? // profit/loss
   tradeTime DateTime @default(now())
+  status    String   @default("completed") // completed, pending, failed
 }
 
+// ====================
+// Alerts (TradingView)
+// ====================
 model AlertLog {
-  id          Int       @id @default(autoincrement())
-  user        User?     @relation(fields: [userId], references: [id])
-  userId      Int?
-  exchange    String
-  symbol      String
-  action      String
-  tp          Float?
-  sl          Float?
-  rawPayload  Json
-  status      String    @default("pending")
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id         Int      @id @default(autoincrement())
+  user       User?    @relation(fields: [userId], references: [id])
+  userId     Int?
+  exchange   String
+  symbol     String
+  action     String
+  tp         Float?
+  sl         Float?
+  rawPayload Json
+  status     String   @default("pending")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
-model UserExchange {
-  id        Int      @id @default(autoincrement())
-  user      User     @relation(fields: [userId], references: [id])
-  userId    Int
-  exchange  String
-  apiKey    String
-  apiSecret String
-  passphrase String?      // ✅ add this
-  createdAt DateTime @default(now())
+// =====================
+// Unified Exchange Account
+// =====================
+model UserExchangeAccount {
+  id         Int      @id @default(autoincrement())
+  user       User     @relation(fields: [userId], references: [id])
+  userId     Int
+  provider   String // Binance, OKX, Bybit, Coinbase, Blofin, Bitunix
+  ccxtId     String? // e.g., binance, okx, bybit
+  type       String? // spot, futures
+  apiKey     String
+  apiSecret  String
+  passphrase String?
+  label      String? // optional user label
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  @@unique([userId, exchange])
+  @@unique([userId, provider, type])
 }
 
-model UserAPI {
+// =====================
+// Balances Table
+// =====================
+model Balance {
   id             Int      @id @default(autoincrement())
   user           User     @relation(fields: [userId], references: [id])
   userId         Int
-  exchangeName   String
-  apiKey         String
-  apiSecret      String
-  spotEnabled    Boolean  @default(false)
-  futuresEnabled Boolean  @default(false)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  exchange       String
+  asset          String
+  free           Float    @default(0)
+  used           Float    @default(0)
+  total          Float    @default(0)
+  totalPositions Int      @default(0) // Added for UserDashboard
+  fetchedAt      DateTime @default(now())
+
+  @@unique([userId, exchange, asset])
 }
 
+// =====================
+// Positions / Orders
+// =====================
+model Position {
+  id           Int       @id @default(autoincrement())
+  user         User      @relation(fields: [userId], references: [id])
+  userId       Int
+  exchange     String
+  symbol       String
+  side         String // buy/sell
+  amount       Float
+  entryPrice   Float
+  currentPrice Float?
+  pnl          Float?
+  status       String    @default("open")
+  openedAt     DateTime  @default(now())
+  closedAt     DateTime?
+  leverage     Float? // optional, for futures positions
+}
+
+// =====================
+// Exchange Metadata
+// =====================
+model ExchangeMeta {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  ccxtId    String
+  type      String? // spot/futures
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([ccxtId, type]) // ✅ allows same ccxtId for different types
+}
+
+// =====================
+// Logging & Sync Tracking
+// =====================
 model Log {
   id        Int      @id @default(autoincrement())
   user      User?    @relation(fields: [userId], references: [id])
@@ -99,14 +168,13 @@ model Log {
   createdAt DateTime @default(now())
 }
 
-model Position {
+model SyncLog {
   id        Int      @id @default(autoincrement())
-  user      User     @relation(fields: [userId], references: [id])
-  userId    Int
-  symbol    String
-  amount    Float
-  price     Float
-  action    String   // buy/sell
-  openedAt  DateTime @default(now())
-  status    String   @default("open")
+  user      User?    @relation(fields: [userId], references: [id])
+  userId    Int?
+  exchange  String
+  type      String // balances, orders, positions, trades
+  status    String   @default("success")
+  message   String?
+  createdAt DateTime @default(now())
 }

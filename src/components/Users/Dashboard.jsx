@@ -8,7 +8,6 @@ import { useUserAuth } from "../../hooks/useUserAuth";
 import { useNavigate, useLocation } from "react-router-dom";
 import DashboardCards from "../DashboardCards";
 
-// ✅ Light/Dark mode toggle component
 function LightModeToggle({ className, style }) {
   const { isDarkMode, toggleTheme } = useTheme();
   return (
@@ -32,7 +31,6 @@ function LightModeToggle({ className, style }) {
   );
 }
 
-// ✅ Main UserDashboard component
 export default function UserDashboard() {
   const audioRef = useRef(null);
   const { isDarkMode } = useTheme();
@@ -53,30 +51,40 @@ export default function UserDashboard() {
       return;
     }
 
-    console.log("UserDashboard: Starting fetch for userId:", userId || user?.id);
     const fetchDashboardData = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/user/dashboard", {
-          credentials: "include",
-        });
+        console.log("UserDashboard: Starting fetch for userId:", userId || user?.id);
+        const res = await fetch(
+          `http://localhost:5000/api/exchange/user/${userId || user?.id}/balance`,
+          { credentials: "include" }
+        );
+
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+
         const data = await res.json();
         console.log("UserDashboard: Dashboard API Response:", data);
-        const transformedBalance = {
-  exchange: "bitunix",
-  totalBalance: data.fundsDistribution.totalBalance || 0,
-  available: data.fundsDistribution.available || 0,
-  long: 0,
-  short: 0,
-  totalPositions: data.fundsDistribution.totalPositions || 0,
-  // Add a daily array for graphs if needed
-  dailyData: Array(7).fill().map((_, i) => ({
-    date: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    available: data.fundsDistribution.available || 0,
-  })).reverse(), // Last 7 days with same available value
-};
-setBalance([transformedBalance]);
-        console.log("UserDashboard: Set balance to:", [transformedBalance]);
+
+        const transformedBalance =
+          data.dashboard?.balances?.map((b) => ({
+            exchange: b.exchange || "bitunix",
+            type: b.type || "spot",
+            totalBalance: b.balance?.total || 0,
+            available: b.balance?.free || 0,
+            used: b.balance?.used || 0,
+            totalPositions: b.totalPositions || 0, // Fallback to 0 if not provided
+            dailyData: Array(7)
+              .fill()
+              .map((_, i) => ({
+                date: new Date(Date.now() - i * 86400000)
+                  .toISOString()
+                  .split("T")[0],
+                available: b.balance?.free || 0,
+              }))
+              .reverse(),
+          })) || [];
+
+        setBalance(transformedBalance);
+        console.log("UserDashboard: Set balance to:", transformedBalance);
       } catch (err) {
         console.error("UserDashboard: Fetch Dashboard Error:", err);
         setError("Failed to fetch dashboard data");
@@ -86,7 +94,7 @@ setBalance([transformedBalance]);
     };
 
     fetchDashboardData();
-  }, [userId || user?.id]); // Matches the working dependency
+  }, [userId || user?.id]);
 
   const playHoverSound = () => {
     if (audioRef.current) {
@@ -97,6 +105,7 @@ setBalance([transformedBalance]);
 
   if (authLoading) return <div>Loading dashboard...</div>;
   if (error) return <div>{error}</div>;
+  if (loading) return <div>Loading data...</div>;
 
   return (
     <div className="zoom-out-container relative h-screen w-screen overflow-x-hidden overflow-y-auto">
@@ -104,13 +113,19 @@ setBalance([transformedBalance]);
         <source src={hoverSound} type="audio/mpeg" />
       </audio>
 
-      {!adminView && (
-        <UserSidebar isOpen={true} playHoverSound={playHoverSound} onLogout={logout} />
-      )}
+      <UserSidebar
+        isOpen={true}
+        playHoverSound={playHoverSound}
+        onLogout={logout}
+      />
 
       <main
-        className={`relative z-20 p-6 overflow-y-auto ${adminView ? "md:ml-64" : "md:ml-64"}`}
-        style={{ height: "100vh", width: "100%", maxWidth: "calc(100vw - 16rem)" }}
+        className="relative z-20 p-6 overflow-y-auto md:ml-64"
+        style={{
+          height: "100vh",
+          width: "100%",
+          maxWidth: "calc(100vw - 16rem)",
+        }}
       >
         <div className="shimmer-wrapper w-full py-4 px-6 mb-6 relative flex justify-between items-center">
           <h1 className="text-4xl font-semibold drop-shadow-md inline-block title-bar-text">

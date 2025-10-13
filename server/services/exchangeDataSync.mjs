@@ -1,159 +1,140 @@
-import client from "../../prisma/client.mjs";
+// /server/services/exchangeDataSync.mjs
+import { PrismaClient } from "@prisma/client";
 import { getExchangeClient } from "./exchangeClients.mjs";
 import { info, error as logError } from "../utils/logger.mjs";
-import { sendToUser } from "./websocketService.mjs";
-import { decrypt, encrypt } from "../utils/apiencrypt.mjs";
 
+const prisma = new PrismaClient();
+
+/**
+ * Fetch user's exchange data (balances + positions)
+ */
 export const fetchUserExchangeData = async (userId) => {
-  console.log(`Starting fetchUserExchangeData for user ${userId}`);
   try {
-    const userExchanges = await client.userExchange.findMany({ where: { userId } });
-    console.log(`Found exchanges for user ${userId}:`, userExchanges);
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        exchanges: {
+          select: {
+            exchange: true,
+            apiKey: true,
+            apiSecret: true,
+            passphrase: true,
+            type: true, // ✅ changed from accountType → type
+          },
+        },
+      },
+    });
 
-    const allData = [];
-
-    for (const ux of userExchanges) {
-      console.log(`Processing exchange: ${ux.exchange} with ID ${ux.id}`);
-      let apiKey, apiSecret, passphrase;
-
-      try {
-        if (!ux.apiKey || !ux.apiSecret) {
-          logError(`Skipping ${ux.exchange} for user ${userId}: API key/secret missing`);
-          continue;
-        }
-
-        // Decrypt or re-encrypt if plain text
-        try {
-          apiKey = decrypt(ux.apiKey);
-          apiSecret = decrypt(ux.apiSecret);
-          console.log(`Decrypted credentials for ${ux.exchange}: apiKey length ${apiKey.length}, apiSecret length ${apiSecret.length}`);
-        } catch (decErr) {
-          if (decErr.message.includes("Invalid encrypted data format")) {
-            info(`Detected plain text for user ${userId} on ${ux.exchange}, re-encrypting`);
-            apiKey = ux.apiKey;
-            apiSecret = ux.apiSecret;
-            await client.userExchange.update({
-              where: { id: ux.id },
-              data: { apiKey: encrypt(apiKey), apiSecret: encrypt(apiSecret) },
-            });
-            apiKey = decrypt(encrypt(apiKey));
-            apiSecret = decrypt(encrypt(apiSecret));
-            console.log(`Re-encrypted and decrypted credentials for ${ux.exchange}`);
-          } else {
-            throw decErr;
-          }
-        }
-
-        passphrase = ux.passphrase
-          ? (() => { try { return decrypt(ux.passphrase); } catch { return ux.passphrase; } })()
-          : undefined;
-        console.log(`Passphrase for ${ux.exchange}: ${passphrase ? "set" : "not set"}`);
-
-        // Create client
-        const exchangeClient = getExchangeClient(ux.exchange, apiKey, apiSecret, ux.type || "spot", passphrase);
-        if (!exchangeClient) {
-          logError(`${ux.exchange} client creation returned null`);
-          continue;
-        }
-        console.log(`BitunixClient created for ${ux.exchange}`);
-
-        // Fetch balances
-        const balances = await exchangeClient.fetchBalance();
-        console.log(`Balances from ${ux.exchange}:`, balances);
-
-        // ==================== Fetch Open Orders per symbol ====================
-        let spotOrdersCount = 0;
-        let futuresOrdersCount = 0;
-
-        try {
-          const symbols = Object.keys(balances.total || {});
-          console.log(`Symbols found in balances for ${ux.exchange}:`, symbols);
-
-          for (const sym of symbols) {
-            if (ux.type === "spot") {
-              if (ux.exchange.toLowerCase() === "bitunix") {
-                const spotResp = await exchangeClient.request("/api/spot/v1/order/pending/list", "POST", { symbol: sym });
-                console.log(`Spot orders response for ${sym} on ${ux.exchange}:`, spotResp);
-                spotOrdersCount += spotResp?.data?.length || 0;
-              } else if (exchangeClient.fetchOpenOrders) {
-                const spotRes = await exchangeClient.fetchOpenOrders(sym);
-                console.log(`Spot orders for ${sym} on ${ux.exchange}:`, spotRes);
-                spotOrdersCount += spotRes.length || 0;
-              }
-            }
-
-            if (ux.type === "futures" || ux.type === "mix") {
-              if (ux.exchange.toLowerCase() === "bitunix") {
-                const futResp = await exchangeClient.request("/api/mix/v1/order/open", "POST", { symbol: sym });
-                console.log(`Futures orders response for ${sym} on ${ux.exchange}:`, futResp);
-                futuresOrdersCount += futResp?.data?.length || 0;
-              } else if (exchangeClient.fetchOpenOrders) {
-                const futRes = await exchangeClient.fetchOpenOrders(sym);
-                console.log(`Futures orders for ${sym} on ${ux.exchange}:`, futRes);
-                futuresOrdersCount += futRes.length || 0;
-              }
-            }
-          }
-        } catch (err) {
-          logError(`Error fetching open orders for user ${userId} on ${ux.exchange}`, err);
-        }
-
-        const openOrders = { spot: spotOrdersCount, futures: futuresOrdersCount };
-        console.log(`Open orders count for ${ux.exchange}:`, openOrders);
-
-        // Fetch positions if available
-        const positions = exchangeClient.has?.fetchPositions
-          ? await exchangeClient.fetchPositions()
-          : [];
-        console.log(`Positions from ${ux.exchange}:`, positions);
-
-        const exchangeData = { exchange: ux.exchange, balances, openOrders, positions };
-        allData.push(exchangeData);
-        console.log(`Added exchange data for ${ux.exchange}:`, exchangeData);
-
-        // Send real-time update
-        sendToUser(userId, { type: "exchangeData", data: exchangeData });
-
-      } catch (err) {
-        logError(`Failed fetching data for user ${userId} on ${ux.exchange}`, err);
-      } finally {
-        apiKey = apiSecret = passphrase = null;
-      }
+    if (!user) {
+      console.warn(`[WARN] No user found with id ${userId}`);
+      return [];
     }
 
-    console.log(`Returning exchange data for user ${userId}:`, allData);
-    return allData;
+    if (!user.exchanges?.length) {
+      console.warn(`[WARN] User ${user.id} has no exchanges linked`);
+      return [];
+    }
+
+    const results = [];
+
+    for (const ex of user.exchanges) {
+      const exchangeName = ex.exchange?.toLowerCase();
+      if (!ex.apiKey || !ex.apiSecret) {
+        console.warn(`[WARN] Skipping ${exchangeName} for user ${user.id} — Missing API credentials`);
+        continue;
+      }
+
+      // ✅ Skip Bitunix (handled separately)
+      if (exchangeName === "bitunix") continue;
+
+      try {
+        const accountType = ex.type || "spot"; // ✅ use detected type (spot/futures)
+
+        const client = getExchangeClient(
+          exchangeName,
+          ex.apiKey,
+          ex.apiSecret,
+          accountType,
+          ex.passphrase || undefined
+        );
+
+        console.log(`[DEBUG] Fetching ${accountType.toUpperCase()} data for ${user.email} on ${exchangeName}`);
+
+        // ✅ Fetch account-specific data (some exchanges may not support positions on spot)
+        const [balanceRes, ordersRes, positionsRes] = await Promise.allSettled([
+          client.fetchBalance(),
+          client.fetchOpenOrders(),
+          accountType === "futures" && client.fetchPositions
+            ? client.fetchPositions()
+            : Promise.resolve([]),
+        ]);
+
+        const balance = balanceRes.status === "fulfilled" ? balanceRes.value : null;
+        const openOrders = ordersRes.status === "fulfilled" ? ordersRes.value : [];
+        const openPositions = positionsRes.status === "fulfilled" ? positionsRes.value : [];
+
+        results.push({
+          exchange: exchangeName,
+          type: accountType,
+          balance,
+          openOrders,
+          openPositions,
+          error: null,
+        });
+
+        info(`✅ ${exchangeName} (${accountType}) data fetched for user ${user.id}`);
+      } catch (innerErr) {
+        logError(`❌ Failed ${ex.exchange} (${ex.type}) for user ${user.id}`, innerErr?.message || innerErr);
+        results.push({
+          exchange: ex.exchange,
+          type: ex.type || "spot",
+          balance: null,
+          openOrders: [],
+          openPositions: [],
+          error: innerErr?.message || "Unknown error",
+        });
+      }
+
+      // Delay to prevent API rate-limit bans
+      await new Promise((r) => setTimeout(r, 300));
+    }
+
+    return results;
   } catch (err) {
-    logError(`fetchUserExchangeData error for user ${userId}`, err);
+    logError(`User ${userId} — fetchUserExchangeData failed`, err?.message || err);
     return [];
   }
 };
 
-// ================= Sync helpers =================
-export const syncUserExchangesImmediately = async (userId) => {
+/**
+ * Manual one-time sync for a specific user
+ */
+export async function syncUserExchangesImmediately(userId) {
   try {
-    await new Promise(resolve => setTimeout(resolve, 1000));
     const data = await fetchUserExchangeData(userId);
-    const admins = await client.user.findMany({ where: { role: "admin" } });
-    const payload = { type: "userExchangeData", userId, exchanges: data };
-    for (const admin of admins) sendToUser(admin.id, payload);
+    info(`✅ Synced exchange data for user ${userId}`);
+    return data;
   } catch (err) {
-    logError(`syncUserExchangesImmediately error for user ${userId}`, err);
+    logError(`syncUserExchangesImmediately failed for user ${userId}`, err);
   }
-};
+}
 
-export const syncAllUsersImmediately = async () => {
+/**
+ * Periodic background sync for all users
+ */
+export async function startPeriodicExchangeSync() {
   try {
-    const users = await client.user.findMany({ where: { status: "active" } });
-    for (const user of users) {
-      await syncUserExchangesImmediately(user.id);
-    }
-  } catch (err) {
-    logError("syncAllUsersImmediately error", err);
-  }
-};
+    const users = await prisma.user.findMany({ select: { id: true, email: true } });
+    console.log(`[DEBUG] Loaded ${users.length} users for periodic sync`);
 
-export const startPeriodicExchangeSync = (intervalMs = 60_000) => {
-  setInterval(syncAllUsersImmediately, intervalMs);
-  info(`✅ Started periodic exchange data sync every ${intervalMs / 1000}s`);
-};
+    for (const u of users) {
+      await syncUserExchangesImmediately(u.id);
+    }
+
+    console.log("✅ Periodic exchange sync completed successfully");
+  } catch (err) {
+    console.error("[ERROR] startPeriodicExchangeSync failed:", err);
+  }
+}

@@ -21,7 +21,13 @@ export const listAllUsers = async (req, res, next) => {
         createdAt: true,
         updatedAt: true,
         lastActivity: true,
-        apis: { select: { exchangeName: true } },
+        exchanges: {
+          select: {
+            provider: true, // Changed from exchangeName
+            type: true,
+            isActive: true,
+          },
+        },
       },
       orderBy: { id: "asc" },
     });
@@ -60,13 +66,12 @@ export const pauseUser = async (req, res, next) => {
     if (isNaN(Number(id))) return res.status(400).json({ success: false, message: "Invalid user ID" });
 
     const user = await prisma.user.update({
-  where: { id: Number(id) },
-  data: {
-    status: "disabled", // or "paused" for pauseUser function
-    tokenVersion: { increment: 1 }, // <<<<< invalidate old tokens
-  },
-});
-
+      where: { id: Number(id) },
+      data: {
+        status: "disabled", // or "paused" for pauseUser function
+        tokenVersion: { increment: 1 },
+      },
+    });
 
     await pauseUserTradesAndPositions(Number(id));
 
@@ -166,7 +171,7 @@ export const deleteUser = async (req, res, next) => {
 // ======================
 // Get user stats
 // ======================
-export const getUserStats = async (req, res) => {
+export const getUserStats = async (req, res, next) => {
   try {
     const userId = Number(req.params.id);
     if (isNaN(userId)) return res.status(400).json({ success: false, message: "Invalid user ID" });
@@ -184,9 +189,32 @@ export const getUserStats = async (req, res) => {
         total: true,
         lastActivity: true,
         createdAt: true,
-        apis: { select: { exchangeName: true } },
-        trades: { select: { id: true, symbol: true, amount: true, price: true, tradeTime: true, status: true } },
-        positions: { select: { id: true, symbol: true, amount: true, price: true, action: true, status: true } },
+        exchanges: {
+          select: {
+            provider: true, // Changed from exchangeName
+            type: true,
+            isActive: true,
+          },
+        },
+        trades: {
+          select: {
+            id: true,
+            symbol: true,
+            amount: true,
+            price: true,
+            tradeTime: true,
+            status: true,
+          },
+        },
+        positions: {
+          select: {
+            id: true,
+            symbol: true,
+            amount: true,
+            entryPrice: true, // Changed from price
+            status: true,
+          },
+        },
       },
     });
 

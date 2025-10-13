@@ -4,6 +4,9 @@ import { authMiddleware } from "../middleware/authMiddleware.mjs";
 import { errorHandler } from "../middleware/errorHandler.mjs";
 import { info, error as logError } from "../utils/logger.mjs";
 import { encrypt } from "../utils/apiencrypt.mjs";
+import { fetchUserExchangeData } from "../services/exchangeDataSync.mjs";
+import ccxt from "ccxt";
+
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -72,17 +75,56 @@ router.delete("/apis/:id", authMiddleware, async (req, res, next) => {
  * User Data
  * ======================
  */
-router.get("/balances", authMiddleware, async (req, res) => {
-  res.json({ success: true, balances: await fetchBalances(req.user.id) });
-});
-
-router.get("/positions", authMiddleware, async (req, res) => {
-  res.json({ success: true, positions: await fetchPositions(req.user.id) });
-});
-
+// ✅ Unified data fetch using the working exchangeDataSync
 router.get("/dashboard", authMiddleware, async (req, res) => {
-  res.json({ success: true, dashboard: await getDashboard(req.user.id) });
+  try {
+    const data = await fetchUserExchangeData(req.user.id);
+
+    const balances = data.map(d => ({
+      exchange: d.exchange,
+      type: d.type,
+      balance: d.balance,
+      error: d.error
+    }));
+
+    const positions = data.flatMap(d =>
+      (d.openPositions || []).map(p => ({
+        exchange: d.exchange,
+        type: d.type,
+        symbol: p.symbol,
+        side: p.side,
+        size: p.contracts || p.amount || 0,
+        entryPrice: p.entryPrice || 0,
+        unrealizedPnl: p.unrealizedPnl || 0,
+      }))
+    );
+
+    const openOrders = data.flatMap(d =>
+      (d.openOrders || []).map(o => ({
+        exchange: d.exchange,
+        type: d.type,
+        symbol: o.symbol,
+        side: o.side,
+        price: o.price,
+        amount: o.amount,
+        status: o.status,
+      }))
+    );
+
+    res.json({
+      success: true,
+      dashboard: {
+        balances,
+        positions,
+        openOrders,
+      },
+    });
+  } catch (err) {
+    logError(`Error fetching dashboard data for user ${req.user?.id}`, err);
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
+
 
 router.get("/me/balance", authMiddleware, async (req, res) => {
   try {

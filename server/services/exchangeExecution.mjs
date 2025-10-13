@@ -28,7 +28,9 @@ export const placeOrderOnExchange = async ({
       return null; // skip placing the order
     }
 
-    const client = getExchangeClient(exchange, apiKey, apiSecret, type);
+    const detectedType = type || "spot";
+    const client = getExchangeClient(exchange, apiKey, apiSecret, detectedType);
+
 
     let response;
 

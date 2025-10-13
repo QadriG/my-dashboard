@@ -24,7 +24,8 @@ import balancesRouter from "./server/routes/balances.mjs";
 import manualPushRouter from "./server/routes/manualPush.mjs";
 import { encrypt } from "./server/utils/apiencrypt.mjs"; // Import for manual encryption if needed
 import { fetchUserExchangeData, startPeriodicExchangeSync } from "./server/services/exchangeDataSync.mjs";
-
+import exchangeRoutes from "./server/routes/exchanges.mjs"; // Adjust path as needed
+app.use("/api/exchange", exchangeRoutes);
 // Load environment variables
 dotenv.config();
 

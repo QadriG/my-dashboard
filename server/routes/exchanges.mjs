@@ -3,23 +3,19 @@ import { PrismaClient } from "@prisma/client";
 import { authMiddleware } from "../middleware/authMiddleware.mjs";
 import { encrypt } from "../utils/apiencrypt.mjs";
 import ccxt from "ccxt";
+import { syncUserExchangesImmediately } from "../services/exchangeDataSync.mjs";
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
-import { syncUserExchangesImmediately } from "../services/exchangeDataSync.mjs";
-
-// ✅ Supported exchanges
 const supportedExchanges = [
   { id: "okx", name: "OKX" },
-  { id: "bitunix", name: "Bitunix" },
   { id: "blofin", name: "Blofin" },
   { id: "coinbase", name: "Coinbase" },
   { id: "bybit", name: "Bybit" },
   { id: "binance", name: "Binance" },
 ];
 
-// --- GET /api/exchanges/list ---
 router.get("/list", (req, res) => {
   try {
     res.json({ success: true, exchanges: supportedExchanges });
@@ -29,14 +25,13 @@ router.get("/list", (req, res) => {
   }
 });
 
-// --- POST /api/exchanges/save ---
 router.post("/save", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { exchange, apiKey, apiSecret } = req.body;
+    const { exchange, apiKey, apiSecret, passphrase, accountType } = req.body;
 
     if (!exchange || !apiKey || !apiSecret) {
-      return res.status(400).json({ success: false, error: "All fields required" });
+      return res.status(400).json({ success: false, error: "All fields are required" });
     }
 
     const isSupported = supportedExchanges.some((ex) => ex.id === exchange);
@@ -44,26 +39,36 @@ router.post("/save", authMiddleware, async (req, res) => {
       return res.status(400).json({ success: false, error: "Unsupported exchange" });
     }
 
-    // Manually encrypt before saving
     const encryptedKey = encrypt(apiKey);
     const encryptedSecret = encrypt(apiSecret);
+    const encryptedPassphrase = passphrase ? encrypt(passphrase) : null;
 
     await prisma.userExchange.upsert({
       where: { userId_exchange: { userId, exchange } },
-      update: { apiKey: encryptedKey, apiSecret: encryptedSecret },
-      create: { userId, exchange, apiKey: encryptedKey, apiSecret: encryptedSecret },
+      update: {
+        apiKey: encryptedKey,
+        apiSecret: encryptedSecret,
+        passphrase: encryptedPassphrase,
+        accountType: accountType || "spot",
+      },
+      create: {
+        userId,
+        exchange,
+        apiKey: encryptedKey,
+        apiSecret: encryptedSecret,
+        passphrase: encryptedPassphrase,
+        accountType: accountType || "spot",
+      },
     });
 
     syncUserExchangesImmediately(userId);
-
-    res.json({ success: true, message: "API credentials saved" });
+    res.json({ success: true, message: "API credentials saved successfully" });
   } catch (err) {
     console.error("Error saving exchange API keys:", err);
     res.status(500).json({ success: false, error: "Failed to save API keys" });
   }
 });
 
-// --- GET /api/exchanges/test/:exchange ---
 router.get("/test/:exchange", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -77,30 +82,74 @@ router.get("/test/:exchange", authMiddleware, async (req, res) => {
       return res.status(404).json({ success: false, error: "No API keys found for this exchange" });
     }
 
-    // Decrypt keys for use
     const realKey = encrypt.decrypt(userExchange.apiKey);
     const realSecret = encrypt.decrypt(userExchange.apiSecret);
+    const realPassphrase = userExchange.passphrase ? encrypt.decrypt(userExchange.passphrase) : undefined;
 
-    const ccxtExchangeClass = ccxt[exchange.toLowerCase()];
-    if (!ccxtExchangeClass) {
-      return res.status(400).json({
-        success: false,
-        error: `Exchange ${exchange} is not supported by CCXT`,
-      });
+    const ExchangeClass = ccxt[exchange.toLowerCase()];
+    if (!ExchangeClass) {
+      return res.status(400).json({ success: false, error: `Exchange ${exchange} is not supported by CCXT` });
     }
 
-    const client = new ccxtExchangeClass({
+    const client = new ExchangeClass({
       apiKey: realKey,
       secret: realSecret,
+      password: realPassphrase,
       enableRateLimit: true,
     });
 
     const balances = await client.fetchBalance();
-
     res.json({ success: true, balances });
   } catch (err) {
     console.error("Error testing exchange API:", err);
-    res.status(500).json({ success: false, error: "Server error" });
+    res.status(500).json({ success: false, error: "Server error while testing API keys" });
+  }
+});
+
+router.get("/user/:id/balance", authMiddleware, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+    if (req.user.role !== "admin" && req.user.id !== userId) {
+      return res.status(403).json({ success: false, error: "Unauthorized" });
+    }
+
+    const balances = await prisma.balance.findMany({
+      where: { userId },
+      select: {
+        exchange: true,
+        type: true,
+        free: true,
+        used: true,
+        total: true,
+        totalPositions: true,
+      },
+    });
+
+    const positions = await prisma.position.findMany({
+      where: { userId, status: "open" },
+      select: { exchange: true },
+    });
+
+    const positionCounts = positions.reduce((acc, pos) => {
+      acc[pos.exchange] = (acc[pos.exchange] || 0) + 1;
+      return acc;
+    }, {});
+
+    const dashboardBalances = balances.map((b) => ({
+      exchange: b.exchange,
+      type: b.type || "spot",
+      balance: {
+        free: b.free,
+        used: b.used,
+        total: b.total,
+      },
+      totalPositions: positionCounts[b.exchange] || b.totalPositions || 0,
+    }));
+
+    res.json({ success: true, dashboard: { balances: dashboardBalances } });
+  } catch (err) {
+    console.error("Error fetching user balance:", err);
+    res.status(500).json({ success: false, error: "Failed to fetch balance data" });
   }
 });
 

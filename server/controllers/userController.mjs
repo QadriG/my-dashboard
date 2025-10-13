@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { info, warn, error } from "../utils/logger.mjs";
 import { encrypt } from "../utils/apiencrypt.mjs"; // Import encrypt function
-
+import { detectExchangeType } from "../services/exchangeClient.mjs"; // ✅ ADD THIS
 const prisma = new PrismaClient();
 
 // ======================
@@ -9,27 +9,44 @@ const prisma = new PrismaClient();
 // ======================
 export const addUserExchange = async (req, res, next) => {
   try {
-    const { exchange, apiKey, apiSecret } = req.body;
+    const { exchange, apiKey, apiSecret, passphrase } = req.body;
 
-    // Block paused/disabled users
     if (req.user.status === "paused" || req.user.status === "disabled") {
-      warn(`User ${req.user.id} attempted to add exchange while ${req.user.status}`);
       return res.status(403).json({ success: false, message: `Cannot add exchange while ${req.user.status}` });
     }
 
     if (!exchange || !apiKey || !apiSecret) {
-      warn(`User ${req.user.id} failed to provide all exchange details`);
       return res.status(400).json({ success: false, message: "Exchange, API key, and secret are required" });
     }
 
     const existing = await prisma.userExchange.findFirst({
       where: { userId: req.user.id, exchange },
     });
-
     if (existing) {
-      warn(`User ${req.user.id} already connected to exchange ${exchange}`);
       return res.status(400).json({ success: false, message: "Exchange already connected" });
     }
+
+    // ✅ Detect whether Spot or Futures before saving
+    let detectedType = "spot";
+    try {
+      detectedType = await detectExchangeType(exchange, apiKey, apiSecret, passphrase);
+      info(`Detected ${detectedType.toUpperCase()} account for ${exchange}`);
+    } catch (detectErr) {
+      warn(`Could not detect account type for ${exchange}, defaulting to spot:`, detectErr.message);
+    }
+
+    // ✅ Save exchange with detected type
+    const newExchange = await prisma.userExchange.create({
+      data: {
+        userId: req.user.id,
+        exchange,
+        apiKey: encrypt(apiKey),
+        apiSecret: encrypt(apiSecret),
+        passphrase: passphrase ? encrypt(passphrase) : null,
+        type: detectedType, // 👈 saved here
+      },
+    });
+
 
     // ============ VALIDATE API KEY WITH EXCHANGE ============
     try {
@@ -61,15 +78,7 @@ export const addUserExchange = async (req, res, next) => {
       return res.status(400).json({ success: false, message: msg });
     }
 
-    // ============ SAVE ONLY IF VALID ============
-    const newExchange = await prisma.userExchange.create({
-      data: { userId: req.user.id, exchange, apiKey: encrypt(apiKey), apiSecret: encrypt(apiSecret) },
-    });
-
-    info(`User ${req.user.id} added exchange ${exchange}`);
-    return res.status(201).json({ success: true, message: "Exchange added", exchange: newExchange });
-
-  } catch (err) {
+     } catch (err) {
     error("addUserExchange error:", err);
     next(err);
   }
