@@ -17,7 +17,7 @@ export const fetchUserExchangeData = async (userId) => {
         email: true,
         exchanges: {
           select: {
-            exchange: true,
+            provider: true,
             apiKey: true,
             apiSecret: true,
             passphrase: true,

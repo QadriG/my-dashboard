@@ -44,7 +44,7 @@ router.post("/save", authMiddleware, async (req, res) => {
     const encryptedPassphrase = passphrase ? encrypt(passphrase) : null;
 
     await prisma.userExchange.upsert({
-      where: { userId_exchange: { userId, exchange } },
+      where: { userId_provider: { userId, provider: exchange } },
       update: {
         apiKey: encryptedKey,
         apiSecret: encryptedSecret,
@@ -53,7 +53,7 @@ router.post("/save", authMiddleware, async (req, res) => {
       },
       create: {
         userId,
-        exchange,
+        provider: exchange,
         apiKey: encryptedKey,
         apiSecret: encryptedSecret,
         passphrase: encryptedPassphrase,
@@ -75,7 +75,7 @@ router.get("/test/:exchange", authMiddleware, async (req, res) => {
     const { exchange } = req.params;
 
     const userExchange = await prisma.userExchange.findUnique({
-      where: { userId_exchange: { userId, exchange } },
+      where: { userId_provider: { userId, provider: exchange } },
     });
 
     if (!userExchange || !userExchange.apiKey || !userExchange.apiSecret) {
@@ -116,7 +116,7 @@ router.get("/user/:id/balance", authMiddleware, async (req, res) => {
     const balances = await prisma.balance.findMany({
       where: { userId },
       select: {
-        exchange: true,
+        provider: true,
         type: true,
         free: true,
         used: true,
@@ -127,23 +127,23 @@ router.get("/user/:id/balance", authMiddleware, async (req, res) => {
 
     const positions = await prisma.position.findMany({
       where: { userId, status: "open" },
-      select: { exchange: true },
+      select: { provider: true },
     });
 
     const positionCounts = positions.reduce((acc, pos) => {
-      acc[pos.exchange] = (acc[pos.exchange] || 0) + 1;
+      acc[pos.provider] = (acc[pos.provider] || 0) + 1;
       return acc;
     }, {});
 
     const dashboardBalances = balances.map((b) => ({
-      exchange: b.exchange,
+      provider: b.provider,
       type: b.type || "spot",
       balance: {
         free: b.free,
         used: b.used,
         total: b.total,
       },
-      totalPositions: positionCounts[b.exchange] || b.totalPositions || 0,
+      totalPositions: positionCounts[b.provider] || b.totalPositions || 0,
     }));
 
     res.json({ success: true, dashboard: { balances: dashboardBalances } });

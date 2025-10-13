@@ -25,8 +25,8 @@ export async function getUserApis(userId) {
 /**
  * Fetch balances for a user across all saved APIs.
  * Returns:
- * { totalByExchange: [{ exchange, raw }], aggregated: { /* sum by currency */ } }
- */
+ * { totalByExchange: [{ exchange, raw }], aggregated: { /* sum by currency */ 
+ 
 export async function fetchBalances(userId) {
   const apis = await getUserApis(userId);
   const totalByExchange = [];
