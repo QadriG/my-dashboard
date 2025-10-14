@@ -57,14 +57,7 @@ export default function UserDashboard() {
     const fetchDashboardData = async () => {
       try {
         console.log("UserDashboard: Starting fetch for userId:", userId);
-        const res = await fetch(
-          `http://localhost:5001/api/exchange/user/${userId}/balance`, // Changed to port 5001
-          { 
-            method: "GET",
-            credentials: "include",
-            headers: { "Cache-Control": "no-store" }
-          }
-        );
+        
 
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         const data = await res.json();
