@@ -9,22 +9,20 @@ import { syncUserExchangesImmediately } from "./server/services/exchangeDataSync
 const app = express();
 const prisma = new PrismaClient();
 
-// ✅ Enable CORS before everything else
-app.use(cors({
-  origin: "http://localhost:3000", // your React app
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
+app.use(
+  cors({
+    origin: "http://localhost:3000",
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 app.use(express.json());
 
-// ✅ Require auth AFTER CORS and json parser
-app.use(authMiddleware);
-
-app.post("/api/save-api-key", async (req, res) => {
+app.post("/api/save-api-key", authMiddleware, async (req, res) => {
   try {
-    const { exchange, apiKey, apiSecret, passphrase } = req.body;
+    const { exchange, apiKey, apiSecret, passphrase, accountType } = req.body;
     if (!exchange || !apiKey || !apiSecret) {
       return res.status(400).json({ message: "Missing fields" });
     }
@@ -38,24 +36,72 @@ app.post("/api/save-api-key", async (req, res) => {
       update: {
         apiKey: encryptedKey,
         apiSecret: encryptedSecret,
-        passphrase: encryptedPassphrase
+        passphrase: encryptedPassphrase,
+        accountType: accountType || "spot",
       },
       create: {
         userId: req.user.id,
         exchange,
         apiKey: encryptedKey,
         apiSecret: encryptedSecret,
-        passphrase: encryptedPassphrase
+        passphrase: encryptedPassphrase,
+        accountType: accountType || "spot",
       },
     });
 
     await syncUserExchangesImmediately(req.user.id);
-
     info(`User ${req.user.id} saved API key for ${exchange}`);
     res.json({ message: "API key saved successfully" });
   } catch (err) {
     logError(`Error saving API key for user ${req.user?.id}`, err);
     res.status(500).json({ message: "Server error" });
+  }
+});
+
+app.get("/api/exchange/user/:id/balance", authMiddleware, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+    if (req.user.role !== "admin" && req.user.id !== userId) {
+      return res.status(403).json({ success: false, error: "Unauthorized" });
+    }
+
+    const balances = await prisma.balance.findMany({
+      where: { userId },
+      select: {
+        exchange: true,
+        type: true,
+        free: true,
+        used: true,
+        total: true,
+        totalPositions: true,
+      },
+    });
+
+    const positions = await prisma.position.findMany({
+      where: { userId, status: "open" },
+      select: { exchange: true },
+    });
+
+    const positionCounts = positions.reduce((acc, pos) => {
+      acc[pos.exchange] = (acc[pos.exchange] || 0) + 1;
+      return acc;
+    }, {});
+
+    const dashboardBalances = balances.map((b) => ({
+      exchange: b.exchange,
+      type: b.type || "spot",
+      balance: {
+        free: b.free,
+        used: b.used,
+        total: b.total,
+      },
+      totalPositions: positionCounts[b.exchange] || b.totalPositions || 0,
+    }));
+
+    res.json({ success: true, dashboard: { balances: dashboardBalances } });
+  } catch (err) {
+    logError(`Error fetching balance for user ${req.params.id}`, err);
+    res.status(500).json({ success: false, error: "Failed to fetch balance data" });
   }
 });
 

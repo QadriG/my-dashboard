@@ -7,11 +7,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import bodyParser from "body-parser";
 import crypto from "crypto";
-
-// ✅ Import wrapped Prisma client
 import prisma from "./prisma/client.mjs";
-
-// Utils & services
 import { sendEmail } from "./src/utils/mailer.js";
 import webhookRoutes from "./server/routes/webhookRoutes.mjs";
 import adminRoutes from "./server/routes/adminRoutes.mjs";
@@ -22,11 +18,8 @@ import positionsRouter from "./server/routes/positions.mjs";
 import usersRouter from "./server/routes/users.mjs";
 import balancesRouter from "./server/routes/balances.mjs";
 import manualPushRouter from "./server/routes/manualPush.mjs";
-import { encrypt } from "./server/utils/apiencrypt.mjs"; // Import for manual encryption if needed
-import { fetchUserExchangeData, startPeriodicExchangeSync } from "./server/services/exchangeDataSync.mjs";
-import exchangeRoutes from "./server/routes/exchanges.mjs"; // Adjust path as needed
+import { startPeriodicExchangeSync } from "./server/services/exchangeDataSync.mjs";
 
-// Load environment variables
 dotenv.config();
 
 startPeriodicExchangeSync(60_000); // every 60s
@@ -37,40 +30,17 @@ const { encryptPassword, comparePassword } = encryptUtils;
 
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
-const SERVER_URL = process.env.SERVER_URL || `http://localhost:${PORT}`;
 const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:3000";
-function setAuthCookie(res, token) {
-  res.cookie("auth_token", token, {
+
+const setAuthCookie = (res, token) => {
+  res.cookie("token", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    sameSite: "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
   });
-}
+};
 
-// === Middleware ===
-app.use(bodyParser.json());
-app.use(cookieParser());
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      const allowedOrigins = process.env.CORS_WHITELIST
-        ? process.env.CORS_WHITELIST.split(",")
-        : ["http://localhost:3000", "http://localhost:5173"];
-      if (!origin || allowedOrigins.includes(origin)) callback(null, true);
-      else callback(new Error("Not allowed by CORS"));
-    },
-    credentials: true,
-  })
-);
-app.use(helmet());
-app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
-
-// ✅ NOW it’s safe to use app
-app.use("/api/exchange", exchangeRoutes);
-
-
-// === Auth middleware ===
 const authMiddleware = async (req, res, next) => {
   try {
     let token = req.cookies?.token;
@@ -99,7 +69,6 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
-// === Admin middleware ===
 const adminMiddleware = (req, res, next) => {
   if (!req.user || req.user.role !== "admin") {
     return res.status(403).json({ error: "Forbidden: Admins only" });
@@ -107,93 +76,31 @@ const adminMiddleware = (req, res, next) => {
   next();
 };
 
-// === Routes ===
+app.use(bodyParser.json());
+app.use(cookieParser());
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      const allowedOrigins = process.env.CORS_WHITELIST
+        ? process.env.CORS_WHITELIST.split(",")
+        : ["http://localhost:3000", "http://localhost:5173"];
+      if (!origin || allowedOrigins.includes(origin)) callback(null, true);
+      else callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+  })
+);
+app.use(helmet());
+app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
+
 app.use("/api/positions", positionsRouter);
-app.use("/api/exchanges", authMiddleware, exchangesRoutes); // ✅ secure with auth
+app.use("/api/exchanges", authMiddleware, exchangesRoutes);
 app.use("/api/webhook", webhookRoutes);
 app.use("/api/admin", authMiddleware, adminMiddleware, adminRoutes);
 app.use("/api/users", usersRouter);
 app.use("/api/balances", balancesRouter);
 app.use("/api/manual-push", authMiddleware, manualPushRouter);
 
-// === Dashboard Routes ===
-app.get("/api/user/balance", authMiddleware, async (req, res) => {
-  console.log(`Fetching balance for user ${req.user.id}`);
-  try {
-    const userId = req.user.id;
-    const exchangeData = await fetchUserExchangeData(userId);
-    console.log(`Exchange Data returned for user ${req.user.id}:`, exchangeData);
-
-    const balanceData = exchangeData.map((ex) => {
-      const balanceEntry = ex.balances.data ? ex.balances.data.find(b => b.coin === 'USDT') : null;
-      return {
-        exchange: ex.exchange,
-        totalBalance: balanceEntry ? parseFloat(balanceEntry.balance) : 0,
-        available: balanceEntry ? parseFloat(balanceEntry.balance) - parseFloat(balanceEntry.balanceLocked || 0) : 0,
-        long: 0,
-        short: 0,
-        totalPositions: ex.positions.length || 0,
-      };
-    });
-
-    res.json({ success: true, balanceData });
-    console.log(`Balance response sent for user ${req.user.id}:`, { success: true, balanceData });
-  } catch (err) {
-    logError(`Error fetching balance for user ${req.user.id}`, err);
-    res.status(500).json({ success: false, message: "Error fetching balance" });
-  }
-});
-
-app.get("/api/user/dashboard", authMiddleware, async (req, res) => {
-  console.log(`Fetching dashboard for user ${req.user.id}`);
-  try {
-    const userId = req.user.id;
-    const exchangeData = await fetchUserExchangeData(userId);
-    console.log(`Exchange Data returned for user ${req.user.id}:`, exchangeData);
-
-    const dashboardData = {
-      profit: { total: 0, long: 0, short: 0 },
-      upl: { total: 0, totalPercent: 0, long: 0, longPercent: 0, short: 0, shortPercent: 0 },
-      fundsDistribution: {
-        totalBalance: exchangeData.reduce((sum, ex) => {
-          const balanceEntry = ex.balances.data ? ex.balances.data.find(b => b.coin === 'USDT') : null;
-          return sum + (balanceEntry ? parseFloat(balanceEntry.balance) : 0);
-        }, 0),
-        available: exchangeData.reduce((sum, ex) => {
-          const balanceEntry = ex.balances.data ? ex.balances.data.find(b => b.coin === 'USDT') : null;
-          return sum + (balanceEntry ? parseFloat(balanceEntry.balance) - parseFloat(balanceEntry.balanceLocked || 0) : 0);
-        }, 0),
-        long: 0,
-        short: 0,
-        totalPositions: exchangeData.reduce((sum, ex) => sum + ex.positions.length, 0),
-      },
-      balanceGraph: {
-        balances: {
-          data: exchangeData.map((ex) => {
-            const balanceEntry = ex.balances.data ? ex.balances.data.find(b => b.coin === 'USDT') : null;
-            return {
-              exchange: ex.exchange,
-              balance: balanceEntry ? parseFloat(balanceEntry.balance) : 0,
-              timestamp: new Date().toISOString(),
-            };
-          }),
-        },
-      },
-      weeklyRevenue: { labels: ["Week 1", "Week 2"], revenues: [0, 0] },
-      dailyPnL: {},
-      bestTradingPairs: {},
-      openPositions: exchangeData.reduce((acc, ex) => ({ ...acc, [ex.exchange]: ex.positions }), {}),
-    };
-
-    res.json(dashboardData);
-    console.log(`Dashboard response sent for user ${req.user.id}:`, dashboardData);
-  } catch (err) {
-    logError(`Error fetching dashboard for user ${req.user.id}`, err);
-    res.status(500).json({ success: false, message: "Error fetching dashboard" });
-  }
-});
-
-// === Auth Routes ===
 app.post("/api/auth/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -213,7 +120,7 @@ app.post("/api/auth/signup", async (req, res) => {
     const verifyToken = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "1d" });
     await prisma.user.update({ where: { id: user.id }, data: { verificationToken: verifyToken } });
 
-    const verifyLink = `${SERVER_URL}/api/auth/verify-email?token=${encodeURIComponent(verifyToken)}`;
+    const verifyLink = `${CLIENT_URL}/verify-email?token=${encodeURIComponent(verifyToken)}`;
 
     try {
       await sendEmail(
@@ -258,7 +165,7 @@ app.post("/api/auth/login", async (req, res) => {
 
     res.json({
       message: "Login successful",
-      user: { id: user.id, email: user.email, role: user.role, status: user.status },
+      user: { id: user.id, email: user.email, role: user.role, status: user.status, isVerified: user.isVerified },
     });
   } catch (err) {
     logError("Login error:", err);
@@ -376,31 +283,6 @@ app.post("/api/auth/logout", (req, res) => {
   return res.json({ message: "Logged out" });
 });
 
-app.post("/api/save-api-key", authMiddleware, async (req, res) => {
-  try {
-    const { exchange, apiKey, apiSecret, passphrase } = req.body;
-    if (!exchange || !apiKey || !apiSecret) {
-      return res.status(400).json({ message: "Missing fields" });
-    }
-
-    const encryptedKey = encrypt(apiKey);
-    const encryptedSecret = encrypt(apiSecret);
-    const encryptedPassphrase = passphrase ? encrypt(passphrase) : null;
-
-    await prisma.userExchange.upsert({
-      where: { userId_exchange: { userId: req.user.id, exchange } },
-      update: { apiKey: encryptedKey, apiSecret: encryptedSecret, passphrase: encryptedPassphrase },
-      create: { userId: req.user.id, exchange, apiKey: encryptedKey, apiSecret: encryptedSecret, passphrase: encryptedPassphrase },
-    });
-
-    res.json({ message: "API key saved successfully" });
-  } catch (err) {
-    logError("Error saving API key", err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
-// === Extra secured routes ===
 app.get("/user/profile", authMiddleware, (req, res) => {
   res.json({ user: req.user });
 });
@@ -409,10 +291,8 @@ app.get("/admin/dashboard", authMiddleware, adminMiddleware, (req, res) => {
   res.json({ message: "Welcome Admin", user: req.user });
 });
 
-// === Run both Servers ===
 const startServers = async () => {
-  const { concurrently } = await import("concurrently"); // ✅ ESM safe
-
+  const { concurrently } = await import("concurrently");
   const processes = concurrently(
     [
       { command: "node server.js --port 5000", name: "MainServer", prefixColor: "blue" },
@@ -434,7 +314,6 @@ const startServers = async () => {
   });
 };
 
-// === Start server ===
 if (!process.argv.includes("--port")) {
   startServers();
 } else {

@@ -2,7 +2,9 @@
 import express from "express";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
-import { PrismaClient } from "@prisma/client";
+import pkg from "@prisma/client";
+const { PrismaClient } = pkg;
+
 import crypto from "crypto";
 import { hashPassword, comparePassword } from "../utils/encrypt.mjs";
 import { info, error as logError } from "../utils/logger.mjs";

@@ -38,29 +38,35 @@ export default function UserDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const adminView = location.state?.adminView || false;
-  const userId = location.state?.userId || null;
+  const userIdFromState = location.state?.userId || null;
 
   const [balance, setBalance] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Derive userId from user object after authentication
+  const userId = user?.id || userIdFromState;
+
   useEffect(() => {
     console.log("UserDashboard: useEffect triggered - user:", user, "userId:", userId, "authLoading:", authLoading);
-    if (authLoading) {
-      console.log("UserDashboard: Waiting for auth loading to complete");
+    if (authLoading || !userId) {
+      console.log("UserDashboard: Waiting for auth or userId to be available");
       return;
     }
 
     const fetchDashboardData = async () => {
       try {
-        console.log("UserDashboard: Starting fetch for userId:", userId || user?.id);
+        console.log("UserDashboard: Starting fetch for userId:", userId);
         const res = await fetch(
-          `http://localhost:5000/api/exchange/user/${userId || user?.id}/balance`,
-          { credentials: "include" }
+          `http://localhost:5001/api/exchange/user/${userId}/balance`, // Changed to port 5001
+          { 
+            method: "GET",
+            credentials: "include",
+            headers: { "Cache-Control": "no-store" }
+          }
         );
 
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-
         const data = await res.json();
         console.log("UserDashboard: Dashboard API Response:", data);
 
@@ -71,7 +77,7 @@ export default function UserDashboard() {
             totalBalance: b.balance?.total || 0,
             available: b.balance?.free || 0,
             used: b.balance?.used || 0,
-            totalPositions: b.totalPositions || 0, // Fallback to 0 if not provided
+            totalPositions: b.totalPositions || 0,
             dailyData: Array(7)
               .fill()
               .map((_, i) => ({
@@ -87,14 +93,14 @@ export default function UserDashboard() {
         console.log("UserDashboard: Set balance to:", transformedBalance);
       } catch (err) {
         console.error("UserDashboard: Fetch Dashboard Error:", err);
-        setError("Failed to fetch dashboard data");
+        setError(`Failed to fetch dashboard data: ${err.message}`);
       } finally {
         setLoading(false);
       }
     };
 
     fetchDashboardData();
-  }, [userId || user?.id]);
+  }, [userId, authLoading]);
 
   const playHoverSound = () => {
     if (audioRef.current) {
@@ -104,7 +110,7 @@ export default function UserDashboard() {
   };
 
   if (authLoading) return <div>Loading dashboard...</div>;
-  if (error) return <div>{error}</div>;
+  if (error) return <div className="text-red-500">{error}</div>;
   if (loading) return <div>Loading data...</div>;
 
   return (
@@ -135,7 +141,7 @@ export default function UserDashboard() {
         </div>
 
         <DashboardCards
-          userId={userId || user?.id}
+          userId={userId}
           isAdmin={adminView}
           balanceData={balance}
         />

@@ -1,4 +1,6 @@
-import { PrismaClient } from "@prisma/client";
+import pkg from "@prisma/client";
+const { PrismaClient } = pkg;
+
 import { info, warn, error } from "../utils/logger.mjs";
 import { encrypt } from "../utils/apiencrypt.mjs"; // Import encrypt function
 import { detectExchangeType } from "../services/exchangeClient.mjs"; // ✅ ADD THIS

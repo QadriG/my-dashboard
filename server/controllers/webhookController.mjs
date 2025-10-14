@@ -1,5 +1,7 @@
 // alertController.mjs
-import { PrismaClient } from "@prisma/client";
+import pkg from "@prisma/client";
+const { PrismaClient } = pkg;
+
 import { sendToUser } from "../services/websocketService.mjs"; // 👈 updated to per-user broadcast
 import { info, warn, error } from "../utils/logger.mjs";
 

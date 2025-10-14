@@ -1,5 +1,7 @@
 import express from "express";
-import { PrismaClient } from "@prisma/client";
+import pkg from "@prisma/client";
+const { PrismaClient } = pkg;
+
 import { BitunixClient } from "../services/bitunixClient.mjs"; 
 import { encrypt } from "../utils/apiencrypt.mjs"; 
 import { info, error as logError } from "../utils/logger.mjs";

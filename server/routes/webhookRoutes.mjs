@@ -1,6 +1,8 @@
 // webhookRoutes.mjs
 import express from "express";
-import { PrismaClient } from "@prisma/client";
+import pkg from "@prisma/client";
+const { PrismaClient } = pkg;
+
 import { executeTrade } from "../services/tradeExecutor.mjs";
 import { info, error as logError } from "../utils/logger.mjs";
 

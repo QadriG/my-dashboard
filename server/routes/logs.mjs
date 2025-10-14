@@ -1,6 +1,8 @@
 // routes/logs.mjs
 import express from "express";
-import { PrismaClient } from "@prisma/client";
+import pkg from "@prisma/client";
+const { PrismaClient } = pkg;
+
 import { isAdmin } from "../middleware/auth.mjs"; // ✅ Admin-only check
 
 const prisma = new PrismaClient();

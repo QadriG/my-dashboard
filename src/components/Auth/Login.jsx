@@ -2,12 +2,14 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useUserAuth } from "../../hooks/useUserAuth";
 import "../../styles/globals.css";
 import "../../styles/sidebar.css";
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { login } = useUserAuth();
 
   const [currentForm, setCurrentForm] = useState("login");
   const [email, setEmail] = useState("");
@@ -21,7 +23,6 @@ export default function Login() {
 
   const API_BASE = "http://localhost:5000/api/auth";
 
-  // Full-page black background
   useEffect(() => {
     const prevBg = document.body.style.backgroundColor;
     const prevColor = document.body.style.color;
@@ -33,7 +34,6 @@ export default function Login() {
     };
   }, []);
 
-  // Prevent browser back
   useEffect(() => {
     window.history.pushState(null, "", window.location.href);
     window.onpopstate = () => {
@@ -41,7 +41,6 @@ export default function Login() {
     };
   }, []);
 
-  // Show success after email verification
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get("verified") === "success") {
@@ -50,7 +49,6 @@ export default function Login() {
     }
   }, [location]);
 
-  // Background animation
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -118,7 +116,6 @@ export default function Login() {
     setSuccess("");
   };
 
-  // LOGIN
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
@@ -134,6 +131,7 @@ export default function Login() {
         localStorage.clear();
         sessionStorage.clear();
         localStorage.setItem("role", data.user.role);
+        login(data.user); // Use context login
         navigate(data.user.role === "admin" ? "/admin" : "/user", { replace: true });
       } else {
         setError(data.message || "Invalid credentials");
@@ -143,7 +141,6 @@ export default function Login() {
     }
   };
 
-  // SIGNUP
   const handleSignup = async (e) => {
     e.preventDefault();
     setError("");
@@ -166,7 +163,6 @@ export default function Login() {
     }
   };
 
-  // FORGOT PASSWORD
   const handleForgot = async (e) => {
     e.preventDefault();
     setError("");
@@ -185,19 +181,6 @@ export default function Login() {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await fetch(`${API_BASE}/logout`, { method: "POST", credentials: "include" });
-      setEmail("");
-      setPassword("");
-      localStorage.clear();
-      sessionStorage.clear();
-      navigate("/login", { replace: true });
-    } catch {
-      setError("Logout failed");
-    }
-  };
-
   const formClass = (form) => `form-transition ${currentForm === form ? "active" : "inactive"}`;
 
   return (
@@ -212,31 +195,40 @@ export default function Login() {
         style={{ minHeight: "480px", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)" }}
       >
         <div className="form-container flex flex-col justify-between h-full">
-
-          {/* LOGIN FORM */}
           <div className={formClass("login")}>
             <h2 className="text-2xl font-bold mb-6">
-  Sign In to<br />
-  <span className="block whitespace-nowrap">QuantumCopyTrading.com</span>
-</h2>
-
-
+              Sign In to<br />
+              <span className="block whitespace-nowrap">QuantumCopyTrading.com</span>
+            </h2>
             <form onSubmit={handleLogin} className="flex flex-col gap-4">
-              <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="input-field w-full px-4 py-3 rounded-lg bg-transparent text-white placeholder-white border border-white focus:outline-none" required />
-              <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="input-field w-full px-4 py-3 rounded-lg bg-transparent text-white placeholder-white border border-white focus:outline-none" required />
+              <input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 rounded-lg bg-black bg-opacity-20 border border-white border-opacity-30 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 rounded-lg bg-black bg-opacity-20 border border-white border-opacity-30 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
               <button type="submit" className="neon-button w-full py-3 text-white font-semibold rounded-lg">Sign In</button>
             </form>
             {error && (
-  <p className="text-red-500 mt-2">
-    {error}
-    {error === "Your account is disabled" && (
-      <span className="block mt-1 text-sm text-yellow-400">
-        Contact <a href="mailto:support@quantumcopytrading.com" className="underline">support@quantumcopytrading.com</a>
-      </span>
-    )}
-  </p>
-)}
-
+              <p className="text-red-500 mt-2">
+                {error}
+                {error === "Your account is disabled" && (
+                  <span className="block mt-1 text-sm text-yellow-400">
+                    Contact <a href="mailto:support@quantumcopytrading.com" className="underline">support@quantumcopytrading.com</a>
+                  </span>
+                )}
+              </p>
+            )}
             {success && <p className="text-green-500 mt-2">{success}</p>}
             <div className="mt-4 text-sm">
               <button type="button" onClick={() => switchForm("forgot")} className="text-white hover:underline">Forgot Password?</button>
@@ -245,21 +237,42 @@ export default function Login() {
               Don't have an account?{" "}
               <button onClick={() => switchForm("signup")} className="text-white underline">Sign Up</button>
             </div>
-            {localStorage.getItem("role") && (
-              <div className="mt-4 text-sm">
-                <button type="button" onClick={handleLogout} className="text-white hover:underline">Logout</button>
-              </div>
-            )}
           </div>
-
-          {/* SIGNUP FORM */}
           <div className={formClass("signup")}>
             <h2 className="text-2xl font-bold mb-6">Create an Account</h2>
             <form onSubmit={handleSignup} className="flex flex-col gap-4">
-              <input type="text" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} className="input-field w-full px-4 py-3 rounded-lg bg-transparent text-white placeholder-white focus:outline-none" required />
-              <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="input-field w-full px-4 py-3 rounded-lg bg-transparent text-white placeholder-white focus:outline-none" required />
-              <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="input-field w-full px-4 py-3 rounded-lg bg-transparent text-white placeholder-white focus:outline-none" required />
-              <input type="password" placeholder="Confirm Password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="input-field w-full px-4 py-3 rounded-lg bg-transparent text-white placeholder-white focus:outline-none" required />
+              <input
+                type="text"
+                placeholder="Username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full px-4 py-3 rounded-lg bg-black bg-opacity-20 border border-white border-opacity-30 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+              <input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 rounded-lg bg-black bg-opacity-20 border border-white border-opacity-30 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 rounded-lg bg-black bg-opacity-20 border border-white border-opacity-30 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+              <input
+                type="password"
+                placeholder="Confirm Password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full px-4 py-3 rounded-lg bg-black bg-opacity-20 border border-white border-opacity-30 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
               <button type="submit" className="neon-button w-full py-3 text-white font-semibold rounded-lg mt-2">Sign Up</button>
             </form>
             {error && <p className="text-red-500 mt-2">{error}</p>}
@@ -269,12 +282,17 @@ export default function Login() {
               <button onClick={() => switchForm("login")} className="text-white underline ml-1">Back to Login</button>
             </div>
           </div>
-
-          {/* FORGOT PASSWORD FORM */}
           <div className={formClass("forgot")}>
             <h2 className="text-2xl font-bold mb-6">Reset Password</h2>
             <form onSubmit={handleForgot} className="flex flex-col gap-4">
-              <input type="email" placeholder="Enter your email" value={email} onChange={(e) => setEmail(e.target.value)} className="input-field w-full px-4 py-3 rounded-lg bg-transparent text-white placeholder-white border border-white focus:outline-none" required />
+              <input
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 rounded-lg bg-black bg-opacity-20 border border-white border-opacity-30 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
               <button type="submit" className="neon-button w-full py-3 text-white font-semibold rounded-lg">Send Reset Link</button>
             </form>
             {error && <p className="text-red-500 mt-2">{error}</p>}
@@ -283,13 +301,7 @@ export default function Login() {
               Remember your password?{" "}
               <button onClick={() => switchForm("login")} className="text-white underline ml-1">Back to Login</button>
             </div>
-            {localStorage.getItem("role") && (
-              <div className="mt-4 text-sm">
-                <button type="button" onClick={handleLogout} className="text-white hover:underline">Logout</button>
-              </div>
-            )}
           </div>
-
         </div>
       </div>
     </div>

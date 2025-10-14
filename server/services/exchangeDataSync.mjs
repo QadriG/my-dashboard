@@ -1,5 +1,7 @@
 // /server/services/exchangeDataSync.mjs
-import { PrismaClient } from "@prisma/client";
+import pkg from "@prisma/client";
+const { PrismaClient } = pkg;
+
 import { getExchangeClient } from "./exchangeClients.mjs";
 import { info, error as logError } from "../utils/logger.mjs";
 

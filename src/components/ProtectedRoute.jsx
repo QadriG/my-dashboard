@@ -1,19 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { useAdminAuth } from "../hooks/useAdminAuth";
 import { useUserAuth } from "../hooks/useUserAuth";
 
 export default function ProtectedRoute({ children, allowedRoles }) {
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState(false);
   const navigate = useNavigate();
+  const { user, logout } = useUserAuth();
 
-  // Always call both hooks
-  const adminAuth = useAdminAuth();
-  const userAuth = useUserAuth();
-
-  // Unified logout function mimicking admin style
-  const logout = async () => {
+  const handleLogout = async () => {
     try {
       await fetch("http://localhost:5000/api/auth/logout", {
         method: "POST",
@@ -22,15 +17,8 @@ export default function ProtectedRoute({ children, allowedRoles }) {
     } catch (err) {
       console.error("Logout failed:", err);
     } finally {
-      if (allowedRoles.includes("admin")) {
-        localStorage.removeItem("adminToken");
-        setAuthorized(false);
-        adminAuth.logout && adminAuth.logout();
-      } else {
-        localStorage.removeItem("userToken");
-        setAuthorized(false);
-        userAuth.logout && userAuth.logout();
-      }
+      logout();
+      localStorage.removeItem("role");
       sessionStorage.clear();
       navigate("/login", { replace: true });
     }
@@ -49,10 +37,10 @@ export default function ProtectedRoute({ children, allowedRoles }) {
         if (res.ok && allowedRoles.includes(data.role)) {
           setAuthorized(true);
         } else {
-          await logout();
+          await handleLogout();
         }
       } catch {
-        await logout();
+        await handleLogout();
       } finally {
         setLoading(false);
       }
@@ -61,7 +49,7 @@ export default function ProtectedRoute({ children, allowedRoles }) {
     checkAuth();
 
     const handlePopState = () => {
-      if (!authorized) logout();
+      if (!authorized) handleLogout();
     };
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);

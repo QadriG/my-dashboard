@@ -5,37 +5,30 @@ const UserAuthContext = createContext();
 
 export function UserAuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true); // track loading state
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // ✅ Fetch user from backend DB
   useEffect(() => {
     const fetchUser = async () => {
-      const token = localStorage.getItem("userToken");
-      if (!token) {
-        setLoading(false);
-        return;
-      }
-
       try {
         const res = await fetch("http://localhost:5000/api/auth/check-auth", {
           method: "GET",
           credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
-          },
+          headers: { "Cache-Control": "no-store" },
         });
 
         if (res.ok) {
           const data = await res.json();
-          setUser(data); // { id, email, role, status, isVerified }
+          setUser({ id: data.id, email: data.email, role: data.role, status: data.status, isVerified: data.isVerified });
+          localStorage.setItem("role", data.role);
         } else {
           setUser(null);
+          localStorage.removeItem("role");
         }
       } catch (err) {
         console.error("Failed to fetch user:", err);
         setUser(null);
+        localStorage.removeItem("role");
       } finally {
         setLoading(false);
       }
@@ -44,13 +37,11 @@ export function UserAuthProvider({ children }) {
     fetchUser();
   }, []);
 
-  // ✅ Login: just store user info & token
   const login = (userData) => {
     setUser(userData);
-    localStorage.setItem("userToken", userData?.token || "");
+    localStorage.setItem("role", userData.role);
   };
 
-  // ✅ Logout: clear session & redirect
   const logout = async () => {
     try {
       await fetch("http://localhost:5000/api/auth/logout", {
@@ -60,9 +51,9 @@ export function UserAuthProvider({ children }) {
     } catch (err) {
       console.error("User logout failed:", err);
     } finally {
-      localStorage.removeItem("userToken");
-      sessionStorage.clear();
       setUser(null);
+      localStorage.removeItem("role");
+      sessionStorage.clear();
       navigate("/login", { replace: true });
     }
   };

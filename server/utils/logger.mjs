@@ -1,5 +1,7 @@
 // utils/logger.mjs
-import { PrismaClient } from "@prisma/client";
+import pkg from "@prisma/client";
+const { PrismaClient } = pkg;
+
 const prisma = new PrismaClient();
 
 const timestamp = () => new Date().toISOString();
