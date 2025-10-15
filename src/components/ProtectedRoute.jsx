@@ -26,6 +26,11 @@ export default function ProtectedRoute({ children, allowedRoles }) {
 
   useEffect(() => {
     const checkAuth = async () => {
+      if (!user && loading) {
+        // Delay check-auth until user context is ready
+        setTimeout(checkAuth, 100);
+        return;
+      }
       try {
         const res = await fetch("http://localhost:5000/api/auth/check-auth", {
           method: "GET",
@@ -53,7 +58,7 @@ export default function ProtectedRoute({ children, allowedRoles }) {
     };
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [allowedRoles, authorized]);
+  }, [allowedRoles, authorized, user, loading]);
 
   if (loading) return <div className="text-white text-center mt-20">Checking authentication...</div>;
   if (!authorized) return <Navigate to="/login" replace />;

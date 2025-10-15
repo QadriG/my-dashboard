@@ -1,13 +1,18 @@
+/* eslint no-undef: "off" */
 import React, { useRef, useState, useEffect } from "react";
+// import { isMobile } from "react-device-detect"; // Commented out if unused
 import { useTheme } from "../../context/ThemeContext";
-import "../../styles/sidebar.css";
+import { useUserAuth } from "../../hooks/useUserAuth";
+import { useNavigate, useLocation } from "react-router-dom";
+// import { useSocket } from "../hooks/useSocket"; // Commented out if unused
 import "../../styles/globals.css";
 import UserSidebar from "./Sidebar.jsx";
 import hoverSound from "../../assets/click.mp3";
-import { useUserAuth } from "../../hooks/useUserAuth";
-import { useNavigate, useLocation } from "react-router-dom";
 import DashboardCards from "../DashboardCards";
 
+// ---------------------
+// LightModeToggle
+// ---------------------
 function LightModeToggle({ className, style }) {
   const { isDarkMode, toggleTheme } = useTheme();
   return (
@@ -22,7 +27,7 @@ function LightModeToggle({ className, style }) {
       }
       onMouseLeave={(e) =>
         (e.target.style.boxShadow = isDarkMode
-          ? "0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff"
+          ? "0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #0000ff"
           : "0 0 10px #0000ff, 0 0 20px #0000ff, 0 0 30px #0000ff")
       }
     >
@@ -31,16 +36,21 @@ function LightModeToggle({ className, style }) {
   );
 }
 
-export default function UserDashboard() {
+// ---------------------
+// Dashboard
+// ---------------------
+export default function Dashboard() {
   const audioRef = useRef(null);
-  const { isDarkMode } = useTheme();
+  const { isDarkMode } = useTheme(); // Keep for now, use if needed
   const { user, logout, loading: authLoading } = useUserAuth();
-  const navigate = useNavigate();
+  const navigate = useNavigate(); // Keep for now, use if needed
   const location = useLocation();
   const adminView = location.state?.adminView || false;
   const userIdFromState = location.state?.userId || null;
 
-  const [balance, setBalance] = useState([]);
+  const [balance, setBalance] = useState([
+    { exchange: "bitunix", type: "spot", totalBalance: 0, available: 0, used: 0, totalPositions: 0, dailyData: [] },
+  ]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -48,52 +58,63 @@ export default function UserDashboard() {
   const userId = user?.id || userIdFromState;
 
   useEffect(() => {
-    console.log("UserDashboard: useEffect triggered - user:", user, "userId:", userId, "authLoading:", authLoading);
+    console.log("Dashboard: useEffect triggered - user:", user, "userId:", userId, "authLoading:", authLoading, "user.token:", user?.token);
     if (authLoading || !userId) {
-      console.log("UserDashboard: Waiting for auth or userId to be available");
+      console.log("Dashboard: Waiting for auth or userId to be available");
+      setLoading(false); // Allow rendering even if auth is loading
       return;
     }
 
-    const fetchDashboardData = async () => {
+    const fetchExchangeData = async () => {
       try {
-        console.log("UserDashboard: Starting fetch for userId:", userId);
-        
+        const response = await fetch(`http://localhost:5001/api/exchange/sync/${userId}`, {
+          method: "GET",
+          credentials: "include",
+          headers: { "Cache-Control": "no-store" },
+        });
 
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        const data = await res.json();
-        console.log("UserDashboard: Dashboard API Response:", data);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const exchangeData = await response.json();
+        console.log("Dashboard: Exchange Data Response:", exchangeData);
 
-        const transformedBalance =
-          data.dashboard?.balances?.map((b) => ({
-            exchange: b.exchange || "bitunix",
-            type: b.type || "spot",
-            totalBalance: b.balance?.total || 0,
-            available: b.balance?.free || 0,
-            used: b.balance?.used || 0,
-            totalPositions: b.totalPositions || 0,
-            dailyData: Array(7)
-              .fill()
-              .map((_, i) => ({
-                date: new Date(Date.now() - i * 86400000)
-                  .toISOString()
-                  .split("T")[0],
-                available: b.balance?.free || 0,
-              }))
-              .reverse(),
-          })) || [];
+        if (!exchangeData || exchangeData.length === 0) {
+          throw new Error("No exchange data available for user");
+        }
+
+        // Transform the first exchange's data to match balanceData format
+        const firstExchange = exchangeData[0];
+        const { balance, exchange, type } = firstExchange;
+
+        if (!balance) throw new Error(`No balance data for ${exchange}`);
+
+        const totalBalance = Object.values(balance.total).reduce((sum, val) => sum + (val || 0), 0);
+        const available = Object.values(balance.free).reduce((sum, val) => sum + (val || 0), 0);
+        const used = Object.values(balance.used).reduce((sum, val) => sum + (val || 0), 0);
+
+        const transformedBalance = [
+          {
+            exchange,
+            type,
+            totalBalance,
+            available,
+            used,
+            totalPositions: firstExchange.openPositions?.length || 0, // Use openPositions length
+            dailyData: [], // Placeholder; requires historical data
+          },
+        ];
 
         setBalance(transformedBalance);
-        console.log("UserDashboard: Set balance to:", transformedBalance);
+        console.log("Dashboard: Set balance to:", transformedBalance);
       } catch (err) {
-        console.error("UserDashboard: Fetch Dashboard Error:", err);
-        setError(`Failed to fetch dashboard data: ${err.message}`);
+        console.error("Dashboard: Fetch Exchange Error:", err);
+        setError(`Failed to fetch exchange data: ${err.message}`);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchDashboardData();
-  }, [userId, authLoading]);
+    fetchExchangeData();
+  }, [user, userId, authLoading]);
 
   const playHoverSound = () => {
     if (audioRef.current) {
@@ -103,9 +124,7 @@ export default function UserDashboard() {
   };
 
   if (authLoading) return <div>Loading dashboard...</div>;
-  if (error) return <div className="text-red-500">{error}</div>;
-  if (loading) return <div>Loading data...</div>;
-
+  // Render dashboard with error or placeholder if fetch fails
   return (
     <div className="zoom-out-container relative h-screen w-screen overflow-x-hidden overflow-y-auto">
       <audio ref={audioRef} preload="auto">
@@ -133,11 +152,20 @@ export default function UserDashboard() {
           <LightModeToggle />
         </div>
 
-        <DashboardCards
-          userId={userId}
-          isAdmin={adminView}
-          balanceData={balance}
-        />
+        {error && (
+          <div className="text-yellow-500">
+            {error} - Dashboard is still accessible. Exchange data will update when available.
+          </div>
+        )}
+        {loading ? (
+          <div>Loading data...</div>
+        ) : (
+          <DashboardCards
+            userId={userId}
+            isAdmin={adminView}
+            balanceData={balance}
+          />
+        )}
       </main>
     </div>
   );

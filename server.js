@@ -35,8 +35,8 @@ const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:3000";
 const setAuthCookie = (res, token) => {
   res.cookie("token", token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: false, // Kept false for local development
+    sameSite: "none", // Changed to none for cross-origin in development
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 };
@@ -275,8 +275,8 @@ app.post("/api/auth/reset-password/:token", async (req, res) => {
 app.post("/api/auth/logout", (req, res) => {
   res.clearCookie("token", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: false,
+    sameSite: "none",
     path: "/",
     expires: new Date(0),
   });
@@ -291,31 +291,4 @@ app.get("/admin/dashboard", authMiddleware, adminMiddleware, (req, res) => {
   res.json({ message: "Welcome Admin", user: req.user });
 });
 
-const startServers = async () => {
-  const { concurrently } = await import("concurrently");
-  const processes = concurrently(
-    [
-      { command: "node server.js --port 5000", name: "MainServer", prefixColor: "blue" },
-      { command: "node secureServer.js --port 5001", name: "SecureServer", prefixColor: "green" },
-    ],
-    {
-      killOthersOnFail: true,
-      killOthersOnSuccess: true,
-      restartTries: 3,
-    }
-  );
-
-  processes.result.catch((err) => {
-    logError("Error starting servers:", err);
-  });
-
-  processes.result.then(() => {
-    info("All servers stopped");
-  });
-};
-
-if (!process.argv.includes("--port")) {
-  startServers();
-} else {
-  app.listen(PORT, () => info(`🚀 Server running on port ${PORT}`));
-}
+app.listen(5000, () => info(`🚀 Server running on port 5000`));

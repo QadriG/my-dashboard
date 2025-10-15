@@ -19,7 +19,12 @@ export function UserAuthProvider({ children }) {
 
         if (res.ok) {
           const data = await res.json();
-          setUser({ id: data.id, email: data.email, role: data.role, status: data.status, isVerified: data.isVerified });
+          // Extract token from cookie
+          const token = document.cookie
+            .split("; ")
+            .find(row => row.startsWith("token="))
+            ?.split("=")[1];
+          setUser({ id: data.id, email: data.email, role: data.role, status: data.status, isVerified: data.isVerified, token });
           localStorage.setItem("role", data.role);
         } else {
           setUser(null);
@@ -38,7 +43,12 @@ export function UserAuthProvider({ children }) {
   }, []);
 
   const login = (userData) => {
-    setUser(userData);
+    // Extract token from cookie after login
+    const token = document.cookie
+      .split("; ")
+      .find(row => row.startsWith("token="))
+      ?.split("=")[1];
+    setUser({ ...userData, token });
     localStorage.setItem("role", userData.role);
   };
 

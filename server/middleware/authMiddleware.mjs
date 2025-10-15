@@ -10,7 +10,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
 export const authMiddleware = async (req, res, next) => {
   try {
     let token = req.cookies?.token || (req.headers.authorization?.split(" ")[1] || null);
-
+    console.log("Auth middleware received token:", token); // Enhanced debug
     if (!token) {
       warn("Unauthorized access attempt: no token provided");
       return res.status(401).json({ error: "Unauthorized: No token provided" });
@@ -26,7 +26,6 @@ export const authMiddleware = async (req, res, next) => {
 
     // Fetch user from DB
     const user = await prisma.user.findUnique({ where: { id: decoded.id } });
-
     if (!user) {
       warn(`Unauthorized: User with ID ${decoded.id} not found`);
       return res.status(401).json({ error: "Unauthorized: User not found" });
