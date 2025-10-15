@@ -1,18 +1,16 @@
-import client from "./prisma/client.mjs";
-async function clearAllKeys() {
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+async function deleteAllApiKeys() {
   try {
-    const result = await client.userExchange.updateMany({
-      data: {
-        apiKey: "",
-        apiSecret: "",
-        
-      },
-    });
-    console.log(` Cleared API keys for ${result.count} entries.`);
+    await prisma.userExchangeAccount.deleteMany({});
+    console.log("All API keys deleted successfully.");
   } catch (err) {
-    console.error(" Failed to clear keys:", err);
+    console.error("Error deleting API keys:", err);
   } finally {
-    await client.$disconnect();
+    await prisma.$disconnect();
   }
 }
-clearAllKeys();
+
+deleteAllApiKeys();

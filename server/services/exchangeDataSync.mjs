@@ -1,4 +1,3 @@
-// /server/services/exchangeDataSync.mjs
 import pkg from "@prisma/client";
 const { PrismaClient } = pkg;
 
@@ -12,8 +11,13 @@ const prisma = new PrismaClient();
  */
 export const fetchUserExchangeData = async (userId) => {
   try {
+    const numericUserId = parseInt(userId, 10); // Convert to integer
+    if (isNaN(numericUserId)) {
+      throw new Error(`Invalid userId: ${userId} is not a valid number`);
+    }
+
     const user = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { id: numericUserId },
       select: {
         id: true,
         email: true,
@@ -23,28 +27,28 @@ export const fetchUserExchangeData = async (userId) => {
             apiKey: true,
             apiSecret: true,
             passphrase: true,
-            type: true, // ✅ changed from accountType → type
+            type: true,
           },
         },
       },
     });
 
     if (!user) {
-      console.warn(`[WARN] No user found with id ${userId}`);
+      console.warn(`[WARN] No user found with id ${numericUserId}`);
       return [];
     }
 
     if (!user.exchanges?.length) {
-      console.warn(`[WARN] User ${user.id} has no exchanges linked`);
+      console.warn(`[WARN] User ${numericUserId} has no exchanges linked`);
       return [];
     }
 
     const results = [];
 
     for (const ex of user.exchanges) {
-      const exchangeName = ex.exchange?.toLowerCase();
+      const exchangeName = ex.provider?.toLowerCase();
       if (!ex.apiKey || !ex.apiSecret) {
-        console.warn(`[WARN] Skipping ${exchangeName} for user ${user.id} — Missing API credentials`);
+        console.warn(`[WARN] Skipping ${exchangeName} for user ${numericUserId} — Missing API credentials`);
         continue;
       }
 
@@ -52,7 +56,7 @@ export const fetchUserExchangeData = async (userId) => {
       if (exchangeName === "bitunix") continue;
 
       try {
-        const accountType = ex.type || "spot"; // ✅ use detected type (spot/futures)
+        const accountType = ex.type || "spot";
 
         const client = getExchangeClient(
           exchangeName,
@@ -64,7 +68,6 @@ export const fetchUserExchangeData = async (userId) => {
 
         console.log(`[DEBUG] Fetching ${accountType.toUpperCase()} data for ${user.email} on ${exchangeName}`);
 
-        // ✅ Fetch account-specific data (some exchanges may not support positions on spot)
         const [balanceRes, ordersRes, positionsRes] = await Promise.allSettled([
           client.fetchBalance(),
           client.fetchOpenOrders(),
@@ -86,11 +89,11 @@ export const fetchUserExchangeData = async (userId) => {
           error: null,
         });
 
-        info(`✅ ${exchangeName} (${accountType}) data fetched for user ${user.id}`);
+        info(`✅ ${exchangeName} (${accountType}) data fetched for user ${numericUserId}`);
       } catch (innerErr) {
-        logError(`❌ Failed ${ex.exchange} (${ex.type}) for user ${user.id}`, innerErr?.message || innerErr);
+        logError(`❌ Failed ${ex.provider} (${ex.type}) for user ${numericUserId}`, innerErr?.message || innerErr);
         results.push({
-          exchange: ex.exchange,
+          exchange: ex.provider,
           type: ex.type || "spot",
           balance: null,
           openOrders: [],
@@ -99,7 +102,6 @@ export const fetchUserExchangeData = async (userId) => {
         });
       }
 
-      // Delay to prevent API rate-limit bans
       await new Promise((r) => setTimeout(r, 300));
     }
 

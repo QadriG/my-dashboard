@@ -35,8 +35,8 @@ const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:3000";
 const setAuthCookie = (res, token) => {
   res.cookie("token", token, {
     httpOnly: true,
-    secure: false, // Kept false for local development
-    sameSite: "none", // Changed to none for cross-origin in development
+    secure: false, // Changed to false for local development
+    sameSite: "lax", // Changed to lax for local development
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 };
@@ -275,8 +275,8 @@ app.post("/api/auth/reset-password/:token", async (req, res) => {
 app.post("/api/auth/logout", (req, res) => {
   res.clearCookie("token", {
     httpOnly: true,
-    secure: false,
-    sameSite: "none",
+    secure: false, // Changed to false for local development
+    sameSite: "lax",
     path: "/",
     expires: new Date(0),
   });
