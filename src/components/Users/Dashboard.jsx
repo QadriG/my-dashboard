@@ -1,10 +1,8 @@
 /* eslint no-undef: "off" */
 import React, { useRef, useState, useEffect } from "react";
-// import { isMobile } from "react-device-detect"; // Commented out if unused
 import { useTheme } from "../../context/ThemeContext";
 import { useUserAuth } from "../../hooks/useUserAuth";
-import { useNavigate, useLocation } from "react-router-dom";
-// import { useSocket } from "../hooks/useSocket"; // Commented out if unused
+import { useLocation } from "react-router-dom";
 import "../../styles/globals.css";
 import UserSidebar from "./Sidebar.jsx";
 import hoverSound from "../../assets/click.mp3";
@@ -41,9 +39,7 @@ function LightModeToggle({ className, style }) {
 // ---------------------
 export default function Dashboard() {
   const audioRef = useRef(null);
-  const { isDarkMode } = useTheme(); // Keep for now, use if needed
   const { user, logout, loading: authLoading } = useUserAuth();
-  const navigate = useNavigate(); // Keep for now, use if needed
   const location = useLocation();
   const adminView = location.state?.adminView || false;
   const userIdFromState = location.state?.userId || null;
@@ -54,23 +50,34 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Derive userId from user object after authentication
   const userId = user?.id || userIdFromState;
 
+  // ✅ Detect environment and choose backend base URL
+  const API_BASE_URL =
+    process.env.NODE_ENV === "development"
+      ? import.meta.env.VITE_LOCAL_API_URL || "http://localhost:5001"
+      : import.meta.env.VITE_API_URL || window.location.origin;
+
   useEffect(() => {
-    console.log("Dashboard: useEffect triggered - user:", user, "userId:", userId, "authLoading:", authLoading, "user.token:", user?.token);
+    console.log("Dashboard: useEffect triggered - user:", user, "userId:", userId, "authLoading:", authLoading);
+
     if (authLoading || !userId) {
       console.log("Dashboard: Waiting for auth or userId to be available");
-      setLoading(false); // Allow rendering even if auth is loading
+      setLoading(false);
       return;
     }
 
     const fetchExchangeData = async () => {
       try {
-        const response = await fetch(`http://localhost:5001/api/exchange/sync/${userId}`, {
+        const url = `${API_BASE_URL}/api/exchange/sync/${userId}`;
+        console.log(`Fetching exchange data from: ${url}`);
+
+        const response = await fetch(url, {
           method: "GET",
           credentials: "include",
-          headers: { "Cache-Control": "no-store" },
+          headers: {
+            "Cache-Control": "no-store",
+          },
         });
 
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -81,33 +88,30 @@ export default function Dashboard() {
           throw new Error("No exchange data available for user");
         }
 
-        // Transform the first exchange's data to match balanceData format
         const firstExchange = exchangeData[0];
         const { balance, exchange, type } = firstExchange;
 
         if (!balance) throw new Error(`No balance data for ${exchange}`);
 
-        const totalBalance = Object.values(balance.total).reduce((sum, val) => sum + (val || 0), 0);
-        const available = Object.values(balance.free).reduce((sum, val) => sum + (val || 0), 0);
-        const used = Object.values(balance.used).reduce((sum, val) => sum + (val || 0), 0);
-
         const transformedBalance = [
           {
             exchange,
             type,
-            totalBalance,
-            available,
-            used,
-            totalPositions: firstExchange.openPositions?.length || 0, // Use openPositions length
-            dailyData: [], // Placeholder; requires historical data
+            totalBalance: balance.totalBalance || 0,
+            available: balance.available || 0,
+            used: balance.used || 0,
+            totalPositions: firstExchange.openPositions?.length || 0,
+            dailyData: balance.dailyData || [],
           },
         ];
 
-        setBalance(transformedBalance);
         console.log("Dashboard: Set balance to:", transformedBalance);
+        setBalance(transformedBalance);
       } catch (err) {
         console.error("Dashboard: Fetch Exchange Error:", err);
-        setError(`Failed to fetch exchange data: ${err.message}`);
+        setError(
+          `Failed to fetch exchange data: ${err.message} - Dashboard is still accessible. Exchange data will update when available.`
+        );
       } finally {
         setLoading(false);
       }
@@ -124,18 +128,14 @@ export default function Dashboard() {
   };
 
   if (authLoading) return <div>Loading dashboard...</div>;
-  // Render dashboard with error or placeholder if fetch fails
+
   return (
     <div className="zoom-out-container relative h-screen w-screen overflow-x-hidden overflow-y-auto">
       <audio ref={audioRef} preload="auto">
         <source src={hoverSound} type="audio/mpeg" />
       </audio>
 
-      <UserSidebar
-        isOpen={true}
-        playHoverSound={playHoverSound}
-        onLogout={logout}
-      />
+      <UserSidebar isOpen={true} playHoverSound={playHoverSound} onLogout={logout} />
 
       <main
         className="relative z-20 p-6 overflow-y-auto md:ml-64"
@@ -146,25 +146,15 @@ export default function Dashboard() {
         }}
       >
         <div className="shimmer-wrapper w-full py-4 px-6 mb-6 relative flex justify-between items-center">
-          <h1 className="text-4xl font-semibold drop-shadow-md inline-block title-bar-text">
-            Dashboard
-          </h1>
+          <h1 className="text-4xl font-semibold drop-shadow-md inline-block title-bar-text">Dashboard</h1>
           <LightModeToggle />
         </div>
 
-        {error && (
-          <div className="text-yellow-500">
-            {error} - Dashboard is still accessible. Exchange data will update when available.
-          </div>
-        )}
+        {error && <div className="text-yellow-500">{error}</div>}
         {loading ? (
           <div>Loading data...</div>
         ) : (
-          <DashboardCards
-            userId={userId}
-            isAdmin={adminView}
-            balanceData={balance}
-          />
+          <DashboardCards userId={userId} isAdmin={adminView} balanceData={balance} />
         )}
       </main>
     </div>

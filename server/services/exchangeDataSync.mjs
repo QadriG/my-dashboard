@@ -1,6 +1,4 @@
-import pkg from "@prisma/client";
-const { PrismaClient } = pkg;
-
+import { PrismaClient } from "@prisma/client";
 import { getExchangeClient } from "./exchangeClients.mjs";
 import { info, error as logError } from "../utils/logger.mjs";
 
@@ -11,7 +9,7 @@ const prisma = new PrismaClient();
  */
 export const fetchUserExchangeData = async (userId) => {
   try {
-    const numericUserId = parseInt(userId, 10); // Convert to integer
+    const numericUserId = parseInt(userId, 10);
     if (isNaN(numericUserId)) {
       throw new Error(`Invalid userId: ${userId} is not a valid number`);
     }
@@ -52,13 +50,11 @@ export const fetchUserExchangeData = async (userId) => {
         continue;
       }
 
-      // ✅ Skip Bitunix (handled separately)
-      if (exchangeName === "bitunix") continue;
+      if (exchangeName === "bitunix") continue; // Handled separately
 
       try {
         const accountType = ex.type || "spot";
-
-        const client = getExchangeClient(
+        const client = await getExchangeClient(
           exchangeName,
           ex.apiKey,
           ex.apiSecret,
@@ -68,26 +64,79 @@ export const fetchUserExchangeData = async (userId) => {
 
         console.log(`[DEBUG] Fetching ${accountType.toUpperCase()} data for ${user.email} on ${exchangeName}`);
 
-        const [balanceRes, ordersRes, positionsRes] = await Promise.allSettled([
+        let balanceRes, ordersRes, positionsRes;
+        [balanceRes, ordersRes, positionsRes] = await Promise.allSettled([
           client.fetchBalance(),
           client.fetchOpenOrders(),
-          accountType === "futures" && client.fetchPositions
-            ? client.fetchPositions()
-            : Promise.resolve([]),
+          accountType === "futures" && client.fetchPositions ? client.fetchPositions() : Promise.resolve([]),
         ]);
+
+        if (balanceRes.status === "rejected") {
+          logError(`[DEBUG] ${exchangeName} Balance Fetch Failed: ${balanceRes.reason}`);
+        } else {
+          console.log(`[DEBUG] ${exchangeName} Raw Balance Data:`, balanceRes.value);
+        }
 
         const balance = balanceRes.status === "fulfilled" ? balanceRes.value : null;
         const openOrders = ordersRes.status === "fulfilled" ? ordersRes.value : [];
         const openPositions = positionsRes.status === "fulfilled" ? positionsRes.value : [];
 
-        results.push({
-          exchange: exchangeName,
-          type: accountType,
-          balance,
-          openOrders,
-          openPositions,
-          error: null,
-        });
+        // Transform balance to card format
+        let transformedBalance = null;
+        if (balance && typeof balance === "object") {
+          if (exchangeName === "binance" || exchangeName === "binanceusdm") {
+            const total = balance.total?.USDT || 0;
+            const available = balance.free?.USDT || 0;
+            const used = balance.used?.USDT || (total - available);
+            transformedBalance = { totalBalance: total, available, used };
+          } else if (exchangeName === "okx") {
+            const details = balance.info?.result?.details?.find(d => d.ccy === "USDT") || {};
+            const total = parseFloat(details.cashBalance) || 0;
+            const available = parseFloat(details.availBalance) || 0;
+            const used = parseFloat(details.frozenBalance) || (total - available);
+            transformedBalance = { totalBalance: total, available, used };
+          } else if (exchangeName === "bybit") {
+            const usdtBalance = balance.total?.USDT || balance.info?.result?.list?.find(l => l.coin === "USDT") || {};
+            const total = usdtBalance.walletBalance || usdtBalance.total || 0;
+            const available = usdtBalance.availableBalance || usdtBalance.free || 0;
+            const used = total - available;
+            transformedBalance = { totalBalance: total, available, used };
+          } else if (exchangeName === "coinbase") {
+            const usdtAccount = balance.info?.find(a => a.currency === "USDT") || {};
+            const total = parseFloat(usdtAccount.balance) || 0;
+            const available = parseFloat(usdtAccount.available) || 0;
+            const used = parseFloat(usdtAccount.hold) || (total - available);
+            transformedBalance = { totalBalance: total, available, used };
+          } else if (exchangeName === "blofin") {
+            const total = balance.total?.USDT || 0;
+            const available = balance.free?.USDT || 0;
+            const used = balance.used?.USDT || (total - available);
+            transformedBalance = { totalBalance: total, available, used };
+          } else if (exchangeName === "bitunix") {
+            const total = balance.total?.USDT || 0;
+            const available = balance.free?.USDT || 0;
+            const used = balance.used?.USDT || (total - available);
+            transformedBalance = { totalBalance: total, available, used };
+          }
+
+          results.push({
+            exchange: exchangeName,
+            type: accountType,
+            balance: transformedBalance,
+            openOrders,
+            openPositions,
+            error: null,
+          });
+        } else {
+          results.push({
+            exchange: exchangeName,
+            type: accountType,
+            balance: null,
+            openOrders,
+            openPositions,
+            error: "No valid balance data",
+          });
+        }
 
         info(`✅ ${exchangeName} (${accountType}) data fetched for user ${numericUserId}`);
       } catch (innerErr) {

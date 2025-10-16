@@ -15,8 +15,6 @@ dotenv.config();
 // Initialize Prisma client globally
 const prisma = new PrismaClient();
 
-console.log("Available Prisma models:", Object.keys(prisma)); // Debug log
-
 const app = express();
 const PORT = process.env.SECURE_PORT || 5001;
 const JWT_SECRET = process.env.JWT_SECRET || "supersecret";

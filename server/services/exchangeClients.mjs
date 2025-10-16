@@ -1,112 +1,59 @@
-import ccxt from "ccxt";
-import { info, error as logError } from "../utils/logger.mjs";
+import ccxt from 'ccxt';
 
-/**
- * ✅ Create and return a CCXT client for supported exchanges
- * Supports: OKX, Binance, Bybit, Coinbase, Blofin
- */
-export const getCCXTClient = (exchange, apiKey, apiSecret, type = "spot", passphrase = null) => {
-  try {
-    const exchangeId = exchange.toLowerCase();
-    let client = null;
+// Cache for exchange clients
+const exchangeClients = new Map();
 
-    // 🚫 Bitunix disabled for now (requires separate custom client)
-    if (exchangeId === "bitunix") {
-      logError("Bitunix temporarily disabled – use CCXT-supported exchanges only");
-      return null;
-    }
-
-    // ✅ Supported exchanges through CCXT
-    if (!(exchangeId in ccxt)) {
-      throw new Error(`Unsupported exchange: ${exchange}`);
-    }
-
-    // --- Configure CCXT client options ---
-    const options = {};
-    if (type === "futures" || type === "future") options.defaultType = "future";
-
-    const creds = {
-      apiKey,
-      secret: apiSecret,
-      password: passphrase || undefined, // OKX, Coinbase, Bybit
-      enableRateLimit: true,
-      options,
-    };
-
-    // ✅ Create CCXT exchange client
-    client = new ccxt[exchangeId](creds);
-
-    info(`${exchange} ${type} client created successfully`);
-
-    // 🧹 Clear sensitive variables
-    apiKey = null;
-    apiSecret = null;
-    passphrase = null;
-
-    return client;
-  } catch (err) {
-    logError(`❌ Exchange client creation failed for ${exchange}`, err.message || err);
-    return null;
-  }
-};
-
-/**
- * ✅ Wrapper for consistency (future expansion)
- */
-export const getExchangeClient = (exchange, apiKey, apiSecret, type = "spot", passphrase = null) => {
-  return getCCXTClient(exchange, apiKey, apiSecret, type, passphrase);
-};
-/**
- * 🔍 Auto-detect whether the provided API keys are for Spot or Futures
- */
-export const detectExchangeType = async (exchange, apiKey, apiSecret, passphrase = null) => {
-  const exchangeId = exchange.toLowerCase();
-
-  if (!(exchangeId in ccxt)) {
-    throw new Error(`Unsupported exchange: ${exchange}`);
+export async function getExchangeClient(exchangeName, apiKey, apiSecret, accountType, passphrase) {
+  const cacheKey = `${exchangeName}:${apiKey}:${accountType}`;
+  if (exchangeClients.has(cacheKey)) {
+    return exchangeClients.get(cacheKey);
   }
 
-  // Try futures first
+  let exchangeClass;
   try {
-    const futuresClient = new ccxt[exchangeId]({
-      apiKey,
-      secret: apiSecret,
-      password: passphrase || undefined,
-      enableRateLimit: true,
-      options: { defaultType: "future" },
-    });
-
-    await futuresClient.loadMarkets();
-    if (futuresClient.has["fetchBalance"]) {
-      const balance = await futuresClient.fetchBalance();
-      if (balance?.info) {
-        return "futures";
-      }
-    }
-  } catch (_) {
-    // ignore futures failure
-  }
-
-  // Fallback to spot
-  try {
-    const spotClient = new ccxt[exchangeId]({
-      apiKey,
-      secret: apiSecret,
-      password: passphrase || undefined,
-      enableRateLimit: true,
-      options: { defaultType: "spot" },
-    });
-
-    await spotClient.loadMarkets();
-    if (spotClient.has["fetchBalance"]) {
-      const balance = await spotClient.fetchBalance();
-      if (balance?.info) {
-        return "spot";
-      }
+    exchangeClass = ccxt[exchangeName];
+    if (!exchangeClass) {
+      throw new Error(`Exchange ${exchangeName} not supported`);
     }
   } catch (err) {
-    throw new Error(`Unable to detect exchange type for ${exchange}: ${err.message}`);
+    throw new Error(`Failed to load exchange ${exchangeName}: ${err.message}`);
   }
 
-  return "spot"; // default fallback
-};
+  const exchangeConfig = {
+    apiKey,
+    secret: apiSecret,
+    enableRateLimit: true,
+  };
+
+  if (passphrase) {
+    exchangeConfig.password = passphrase;
+  }
+
+  // Exchange-specific configurations
+  if (exchangeName === 'binance') {
+    exchangeConfig.options = { defaultType: accountType };
+  } else if (exchangeName === 'binanceusdm') {
+    exchangeConfig.options = { defaultType: 'future' };
+  } else if (exchangeName === 'okx') {
+    exchangeConfig.options = { defaultType: accountType };
+  } else if (exchangeName === 'bybit') {
+    const bybitExchange = new exchangeClass(exchangeConfig);
+    const serverTime = await bybitExchange.fetchTime();
+    const localTime = Date.now();
+    bybitExchange.options.adjustForTimeDifference = true;
+    bybitExchange.options.timeDifference = serverTime - localTime;
+    bybitExchange.options.recvWindow = 30000; // 30 seconds tolerance
+    bybitExchange.options.defaultType = accountType;
+    return bybitExchange;
+  } else if (exchangeName === 'coinbase') {
+    exchangeConfig.options = { defaultType: 'spot' };
+  } else if (exchangeName === 'blofin') {
+    exchangeConfig.options = { defaultType: 'future' };
+  } else if (exchangeName === 'bitunix') {
+    exchangeConfig.options = { defaultType: accountType };
+  }
+
+  const exchange = new exchangeClass(exchangeConfig);
+  exchangeClients.set(cacheKey, exchange);
+  return exchange;
+}

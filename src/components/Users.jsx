@@ -6,8 +6,25 @@ export default function AdminUsers() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [actionLoading, setActionLoading] = useState({}); // e.g. { "3_pause": true }
+  const [actionLoading, setActionLoading] = useState({});
   const navigate = useNavigate();
+
+  // ✅ Define missing helper function
+  const fetchUserExchangeData = async (userId) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/admin/users/${userId}/exchange-data`, {
+        method: "GET",
+        credentials: "include",
+      });
+      if (!res.ok) return [];
+      const data = await res.json();
+      // Ensure we always return a valid array
+      return Array.isArray(data) ? data : data.data || [];
+    } catch (err) {
+      console.error("fetchUserExchangeData error:", err);
+      return [];
+    }
+  };
 
   // Fetch users from backend
   const fetchUsers = async () => {
@@ -20,11 +37,10 @@ export default function AdminUsers() {
       });
       const data = await res.json();
       if (res.ok || data.success) {
-        // API returns { success: true, users: [...] } or just users array
         const usersWithBalance = await Promise.all(
           (data.users || data || []).map(async (user) => ({
             ...user,
-            balanceData: await fetchUserExchangeData(user.id), // Assuming this is available via a helper or imported
+            balanceData: await fetchUserExchangeData(user.id),
           }))
         );
         setUsers(usersWithBalance);
@@ -43,13 +59,10 @@ export default function AdminUsers() {
     fetchUsers();
   }, []);
 
-  // derive friendly status display & color
   const statusDisplay = (user) => {
-    // prefer explicit user.status if present, else fallback to recent activity
     const s = (user.status || "").toLowerCase();
     if (s === "paused") return "Paused";
     if (s === "disabled") return "Disabled";
-    // fallback based on lastActivity recency
     if (user.lastActivity) {
       const diffHours = (new Date() - new Date(user.lastActivity)) / 36e5;
       return diffHours <= 24 ? "Active" : "Inactive";
@@ -61,7 +74,6 @@ export default function AdminUsers() {
     const s = (user.status || "").toLowerCase();
     if (s === "paused") return "text-amber-400";
     if (s === "disabled") return "text-red-400";
-    // fallback to activity
     if (user.lastActivity) {
       const diffHours = (new Date() - new Date(user.lastActivity)) / 36e5;
       return diffHours <= 24 ? "text-green-400" : "text-red-400";
@@ -69,7 +81,6 @@ export default function AdminUsers() {
     return "text-red-400";
   };
 
-  // Filter users by search term (email, name, apis, status, free)
   const filteredUsers = users.filter((user) => {
     const term = (searchTerm || "").trim().toLowerCase();
     if (!term) return true;
@@ -90,11 +101,9 @@ export default function AdminUsers() {
     );
   });
 
-  // helper to set action loading flag
   const setActionFlag = (key, value) =>
     setActionLoading((prev) => ({ ...prev, [key]: value }));
 
-  // Generic action handler (pause / disable / delete)
   const handleAction = async (userId, action) => {
     const key = `${userId}_${action}`;
     if (action === "delete" && !window.confirm("Are you sure you want to DELETE this user? This is permanent.")) return;
@@ -102,12 +111,11 @@ export default function AdminUsers() {
 
     try {
       setActionFlag(key, true);
-
       let url = `http://localhost:5000/api/admin/users/${userId}`;
       let method = "PATCH";
       if (action === "delete") method = "DELETE";
-      else if (action === "pause" || action === "unpause" || action === "disable" || action === "enable") {
-        url += `/${action === "unpause" ? "unpause" : action === "enable" ? "enable" : action}`;
+      else if (["pause", "unpause", "disable", "enable"].includes(action)) {
+        url += `/${action}`;
       } else {
         return window.alert("Invalid action");
       }
@@ -126,16 +134,16 @@ export default function AdminUsers() {
       setUsers((prev) =>
         prev.map((u) => {
           if (u.id !== userId) return u;
-          if (action === "delete") return u; // will remove below
-          if (action === "pause" || action === "unpause") return { ...u, status: action === "pause" ? "paused" : "active", updatedAt: new Date().toISOString() };
-          if (action === "disable" || action === "enable") return { ...u, status: action === "disable" ? "disabled" : "active", updatedAt: new Date().toISOString() };
+          if (action === "delete") return u;
+          if (action === "pause" || action === "unpause")
+            return { ...u, status: action === "pause" ? "paused" : "active", updatedAt: new Date().toISOString() };
+          if (action === "disable" || action === "enable")
+            return { ...u, status: action === "disable" ? "disabled" : "active", updatedAt: new Date().toISOString() };
           return u;
         })
       );
 
-      if (action === "delete") {
-        setUsers((prev) => prev.filter((u) => u.id !== userId));
-      }
+      if (action === "delete") setUsers((prev) => prev.filter((u) => u.id !== userId));
     } catch (err) {
       console.error("handleAction error:", err);
       window.alert("Action failed (network error)");
@@ -144,7 +152,6 @@ export default function AdminUsers() {
     }
   };
 
-  // Navigate admin to user's dashboard (for stats) and positions pages
   const handleStats = (userId) => {
     navigate(`/admin/users/${userId}/dashboard`, { state: { adminView: true } });
   };
@@ -158,12 +165,10 @@ export default function AdminUsers() {
 
   return (
     <main className="ml-64 p-8 overflow-y-auto space-y-10">
-      {/* Title */}
       <div className="shimmer-wrapper w-full py-4 px-6 mb-6">
         <h1 className="text-3xl font-semibold drop-shadow-md">Users</h1>
       </div>
 
-      {/* Search */}
       <div className="flex items-center mb-4">
         <input
           type="text"
@@ -187,7 +192,6 @@ export default function AdminUsers() {
         </button>
       </div>
 
-      {/* Users Table */}
       <div className="p-[2px] rounded-xl bg-gradient-to-r from-green-400 to-red-500 shadow-[0_0_12px_4px_rgba(34,197,94,0.6)]">
         <div className="rounded-xl bg-black/30 backdrop-blur-md p-6">
           <table className="w-full text-white table-fixed border-collapse">
@@ -215,10 +219,7 @@ export default function AdminUsers() {
                 const deleteKey = `${user.id}_delete`;
 
                 return (
-                  <tr
-                    key={user.id}
-                    className="relative overflow-hidden rounded-xl border border-cyan-400 mb-6 text-center"
-                  >
+                  <tr key={user.id} className="relative overflow-hidden rounded-xl border border-cyan-400 mb-6 text-center">
                     <td className="px-2 py-2 font-semibold">{user.id}</td>
                     <td className="px-2 py-2 truncate">{user.email}</td>
                     <td className="px-2 py-2 truncate">{user.name || "-"}</td>
@@ -226,21 +227,17 @@ export default function AdminUsers() {
                     <td className="px-2 py-2">{(user.free ?? 0).toFixed(2)}</td>
                     <td className="px-2 py-2">{(user.used ?? 0).toFixed(2)}</td>
                     <td className="px-2 py-2">{(user.total ?? 0).toFixed(2)}</td>
-                    <td className="px-2 py-2">
-                      {new Date(user.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className={`px-2 py-2 text-sm font-medium ${statusClass(user)}`}>
-                      {disp}
-                    </td>
+                    <td className="px-2 py-2">{new Date(user.createdAt).toLocaleDateString()}</td>
+                    <td className={`px-2 py-2 text-sm font-medium ${statusClass(user)}`}>{disp}</td>
                     <td className="px-2 py-2">
                       {user.balanceData && user.balanceData.length > 0 ? (
                         user.balanceData.map((data, idx) => (
                           <div key={idx} className="ml-4">
                             <p>Exchange: {data.exchange}</p>
                             <p>Balance: {JSON.stringify(data.balances)}</p>
-                            <p>Open Orders - Spot: {data.openOrders.spot}</p>
-                            <p>Open Orders - Futures: {data.openOrders.futures}</p>
-                            <p>Positions: {JSON.stringify(data.positions)}</p>
+                            <p>Open Orders - Spot: {data.openOrders?.spot ?? 0}</p>
+                            <p>Open Orders - Futures: {data.openOrders?.futures ?? 0}</p>
+                            <p>Positions: {JSON.stringify(data.positions || [])}</p>
                           </div>
                         ))
                       ) : (
@@ -249,7 +246,6 @@ export default function AdminUsers() {
                     </td>
                     <td className="px-2 py-2">
                       <div className="flex gap-1 justify-between">
-                        {/* Pause / Unpause */}
                         <button
                           onClick={() =>
                             handleAction(user.id, user.status === "paused" ? "unpause" : "pause")
@@ -272,13 +268,9 @@ export default function AdminUsers() {
                             : "Pause"}
                         </button>
 
-                        {/* Disable / Enable */}
                         <button
                           onClick={() =>
-                            handleAction(
-                              user.id,
-                              user.status === "disabled" ? "enable" : "disable"
-                            )
+                            handleAction(user.id, user.status === "disabled" ? "enable" : "disable")
                           }
                           disabled={!!actionLoading[disableKey]}
                           className={`px-3 py-2 rounded text-sm flex-1 ${
@@ -298,7 +290,6 @@ export default function AdminUsers() {
                             : "Disable"}
                         </button>
 
-                        {/* Stats */}
                         <button
                           onClick={() => handleStats(user.id)}
                           className="bg-blue-500 text-white px-3 py-2 rounded text-sm flex-1"
@@ -306,7 +297,6 @@ export default function AdminUsers() {
                           Stats
                         </button>
 
-                        {/* Positions */}
                         <button
                           onClick={() => handlePositions(user.id)}
                           className="bg-yellow-500 text-black px-3 py-2 rounded text-sm flex-1"
@@ -314,14 +304,11 @@ export default function AdminUsers() {
                           Positions
                         </button>
 
-                        {/* Delete */}
                         <button
                           onClick={() => handleAction(user.id, "delete")}
                           disabled={!!actionLoading[deleteKey]}
                           className={`px-3 py-2 rounded text-sm flex-1 ${
-                            actionLoading[deleteKey]
-                              ? "opacity-60"
-                              : "bg-red-500 text-white"
+                            actionLoading[deleteKey] ? "opacity-60" : "bg-red-500 text-white"
                           }`}
                         >
                           {actionLoading[deleteKey] ? "Deleting..." : "Delete"}
@@ -332,7 +319,11 @@ export default function AdminUsers() {
                 );
               })}
               {filteredUsers.length === 0 && (
-                <tr><td colSpan={11} className="py-6 text-center text-gray-400">No users found.</td></tr>
+                <tr>
+                  <td colSpan={11} className="py-6 text-center text-gray-400">
+                    No users found.
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>

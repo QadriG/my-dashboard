@@ -9,9 +9,21 @@ export default function OpenPositions() {
       try {
         const response = await fetch("/api/positions/active"); // ✅ Adjust to your backend route
         const data = await response.json();
-        setPositions(data || []);
+
+        console.log("Fetched positions:", data); // 🔍 Debug log
+
+        // ✅ Ensure we always store an array
+        if (Array.isArray(data)) {
+          setPositions(data);
+        } else if (data && Array.isArray(data.positions)) {
+          setPositions(data.positions);
+        } else {
+          console.warn("Unexpected data format:", data);
+          setPositions([]);
+        }
       } catch (error) {
         console.error("Error fetching active positions:", error);
+        setPositions([]);
       } finally {
         setLoading(false);
       }
@@ -22,12 +34,10 @@ export default function OpenPositions() {
 
   return (
     <div className="dashboard-column open-positions p-4 text-center border-emerald-400">
-      {/* Section title */}
       <h2 className="text-lg font-semibold mb-4 text-white drop-shadow">
         Active Positions
       </h2>
 
-      {/* Responsive wrapper */}
       <div className="overflow-x-auto">
         {loading ? (
           <p className="text-gray-400">Loading positions...</p>
@@ -35,7 +45,6 @@ export default function OpenPositions() {
           <p className="text-gray-400">No active positions found.</p>
         ) : (
           <table className="min-w-full table-auto text-sm text-left text-white">
-            {/* Table Header */}
             <thead className="bg-gray-800 text-white font-semibold">
               <tr>
                 <th className="p-2">ID</th>
@@ -49,7 +58,6 @@ export default function OpenPositions() {
               </tr>
             </thead>
 
-            {/* Table Body */}
             <tbody className="divide-y divide-gray-700">
               {positions.map((pos, index) => (
                 <tr key={index}>

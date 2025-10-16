@@ -291,4 +291,39 @@ app.get("/admin/dashboard", authMiddleware, adminMiddleware, (req, res) => {
   res.json({ message: "Welcome Admin", user: req.user });
 });
 
+// Mock or real route for active positions
+app.get("/api/positions/active", async (req, res) => {
+  try {
+    // You can replace this mock with your actual DB query later.
+    const mockPositions = [
+      {
+        id: 1,
+        symbol: "BTCUSDT",
+        side: "Long",
+        amount: 0.01,
+        orderValue: 500,
+        openPrice: 50000,
+        status: "open",
+        openDate: new Date().toISOString(),
+      },
+      {
+        id: 2,
+        symbol: "ETHUSDT",
+        side: "Short",
+        amount: 0.1,
+        orderValue: 300,
+        openPrice: 3000,
+        status: "open",
+        openDate: new Date().toISOString(),
+      },
+    ];
+
+    res.json(mockPositions); // ✅ always return an array
+  } catch (error) {
+    console.error("Error in /api/positions/active:", error);
+    res.status(500).json({ error: "Failed to load positions" });
+  }
+});
+
+
 app.listen(5000, () => info(`🚀 Server running on port 5000`));
