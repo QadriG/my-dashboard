@@ -1,6 +1,6 @@
 // server/routes/manualPush.mjs
 import express from "express";
-import { ExchangeManager } from "../services/exchangeManager.mjs";
+import { fetchExchangeData } from "../services/exchangeManager.mjs";
 
 const router = express.Router();
 

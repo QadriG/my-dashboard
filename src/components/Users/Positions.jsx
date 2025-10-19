@@ -1,14 +1,9 @@
-// src/components/PositionsTable.jsx
 import React, { useState, useEffect } from "react";
 import { useTheme } from "../../context/ThemeContext";
-import { useUserAuth } from "../../hooks/useUserAuth";
 import { useSocket } from "../../hooks/useSocket";
 
-export default function PositionsTable({ userId, balanceData }) {
+export default function OpenPositions({ userId }) {
   const { isDarkMode } = useTheme();
-  const { user, loading } = useUserAuth();
-
-  // State
   const [openPositions, setOpenPositions] = useState([]);
   const [closedPositions, setClosedPositions] = useState([]);
   const [tableType, setTableType] = useState("open");
@@ -16,41 +11,26 @@ export default function PositionsTable({ userId, balanceData }) {
   const [page, setPage] = useState(1);
   const [filterSymbol, setFilterSymbol] = useState("All");
 
-  const socket = useSocket("http://localhost:5000");
+  const socket = useSocket("http://<server>:5000");
 
-  // Initialize with balanceData if available
   useEffect(() => {
-    if (balanceData && balanceData.length > 0) {
-      const latestData = balanceData[0];
-      setOpenPositions(latestData.positions.filter(p => p.status === "open") || []);
-      setClosedPositions(latestData.positions.filter(p => p.status === "closed") || []);
-    }
-  }, [balanceData]);
+    if (!socket || !userId) return;
 
-  // Subscribe to live updates
-  useEffect(() => {
-    if (!socket || !user) return;
-
-    const userChannel = `positions/${user.id || userId}`;
+    const userChannel = `positions/${userId}`;
     socket.on(userChannel, (update) => {
       if (update.type === "open") {
-        setOpenPositions(update.positions);
+        setOpenPositions(update.positions || []);
       } else {
-        setClosedPositions(update.positions);
+        setClosedPositions(update.positions || []);
       }
     });
 
     return () => socket.off(userChannel);
-  }, [socket, user, userId]);
+  }, [socket, userId]);
 
-  // Filtered & paginated positions
-  const positions =
-    tableType === "open" ? openPositions : closedPositions;
+  const positions = tableType === "open" ? openPositions : closedPositions;
   const filteredPositions =
-    filterSymbol === "All"
-      ? positions
-      : positions.filter((p) => p.symbol === filterSymbol);
-
+    filterSymbol === "All" ? positions : positions.filter((p) => p.symbol === filterSymbol);
   const totalPages = Math.max(1, Math.ceil(filteredPositions.length / pageSize));
   const paginated = filteredPositions.slice((page - 1) * pageSize, page * pageSize);
 
@@ -58,24 +38,16 @@ export default function PositionsTable({ userId, balanceData }) {
     if (newPage >= 1 && newPage <= totalPages) setPage(newPage);
   };
 
-  // Conditional classes
   const selectClass = `px-3 py-2 rounded border w-48 ${
-    isDarkMode
-      ? "border-gray-700 bg-black text-white"
-      : "border-gray-300 bg-white text-black"
+    isDarkMode ? "border-gray-700 bg-black text-white" : "border-gray-300 bg-white text-black"
   }`;
 
   const smallSelectClass = `px-2 py-1 rounded border ${
-    isDarkMode
-      ? "bg-black text-white border-gray-700"
-      : "bg-white text-black border-gray-300"
+    isDarkMode ? "bg-black text-white border-gray-700" : "bg-white text-black border-gray-300"
   }`;
-
-  if (loading) return <div>Loading positions...</div>;
 
   return (
     <div>
-      {/* Filter & Table Type */}
       <div className="flex justify-between mb-4 flex-wrap gap-4">
         <div>
           <label className="block text-sm font-medium mb-1">Filter by Pair:</label>
@@ -89,13 +61,10 @@ export default function PositionsTable({ userId, balanceData }) {
           >
             <option>All</option>
             {[...new Set([...openPositions, ...closedPositions].map((p) => p.symbol))].map(
-              (sym, i) => (
-                <option key={i}>{sym}</option>
-              )
+              (sym, i) => <option key={i}>{sym}</option>
             )}
           </select>
         </div>
-
         <div className="space-x-2">
           <button
             onClick={() => {
@@ -103,9 +72,7 @@ export default function PositionsTable({ userId, balanceData }) {
               setPage(1);
             }}
             className={`px-4 py-2 rounded-full text-sm ${
-              tableType === "open"
-                ? "bg-green-500"
-                : "bg-green-700 hover:bg-green-600"
+              tableType === "open" ? "bg-green-500" : "bg-green-700 hover:bg-green-600"
             }`}
           >
             Open Positions
@@ -116,25 +83,17 @@ export default function PositionsTable({ userId, balanceData }) {
               setPage(1);
             }}
             className={`px-4 py-2 rounded-full text-sm ${
-              tableType === "closed"
-                ? "bg-red-500"
-                : "bg-red-700 hover:bg-red-600"
+              tableType === "closed" ? "bg-red-500" : "bg-red-700 hover:bg-red-600"
             }`}
           >
             Closed Positions
           </button>
         </div>
       </div>
-
-      {/* Positions Table */}
       <div className="p-[2px] rounded-xl bg-gradient-to-r from-green-400 to-red-500 shadow-[0_0_12px_4px_rgba(34,197,94,0.6)]">
         <div className="rounded-xl bg-black/30 backdrop-blur-md p-6 transition-transform duration-300 hover:scale-[1.01]">
           <table className="w-full">
-            <thead
-              className={`rounded-xl ${
-                isDarkMode ? "bg-gray-800 text-white" : "bg-gray-200 text-black"
-              }`}
-            >
+            <thead className={`rounded-xl ${isDarkMode ? "bg-gray-800 text-white" : "bg-gray-200 text-black"}`}>
               <tr>
                 {tableType === "open" ? (
                   <>
@@ -201,8 +160,6 @@ export default function PositionsTable({ userId, balanceData }) {
           </table>
         </div>
       </div>
-
-      {/* Pagination */}
       <div className="flex justify-between items-center px-4 py-2 mt-2">
         <select
           value={pageSize}
@@ -216,7 +173,6 @@ export default function PositionsTable({ userId, balanceData }) {
             <option key={n} value={n}>{n}</option>
           ))}
         </select>
-
         <div className={`flex gap-1 ${isDarkMode ? "text-white" : "text-black"}`}>
           <button
             disabled={page === 1}

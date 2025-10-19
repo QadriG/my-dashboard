@@ -1,43 +1,31 @@
+// src/components/DailyPnL.jsx
 import React, { useEffect, useRef, useState } from "react";
 
-export default function DailyPnL({ userId, balanceData }) {
-  console.log("DailyPnL received props:", { userId, balanceData });
+export default function DailyPnL({ balanceData }) {
   const tableRef = useRef(null);
   const [rows, setRows] = useState([]);
   const [range, setRange] = useState("30d");
 
   useEffect(() => {
-    console.log("DailyPnL received balanceData:", balanceData);
-    if (balanceData && typeof balanceData === "object" && "availableFunds" in balanceData) {
-      const availableFunds = balanceData.availableFunds || 0;
-      setRows([
-        {
-          coin: "USDT",
-          balance: parseFloat(availableFunds),
-          pnl: 0,
-          pnlPercent: "0",
-          date: new Date().toLocaleDateString(),
-        },
-      ]);
-    } else {
-      fetchDailyPnL(range);
-    }
-  }, [balanceData, range]);
+    // Fetch from mock endpoint
+    fetchDailyPnL(range);
+  }, [range]);
 
   async function fetchDailyPnL(selectedRange = "30d") {
     try {
       const res = await fetch(`/api/user/daily-pnl?range=${selectedRange}`, {
-        credentials: "include",
+        credentials: "include"
       });
       const data = await res.json();
       console.log("DailyPnL fetch response:", data);
+
       setRows(
         Array.isArray(data)
           ? data.map((item) => ({
-              coin: item.coin || "USDT",
-              balance: parseFloat(item.balance) || 0,
+              coin: "USDT",
+              balance: 0, // not available
               pnl: parseFloat(item.pnl) || 0,
-              pnlPercent: item.pnlPercent || "0",
+              pnlPercent: "0",
               date: item.date || new Date().toLocaleDateString(),
             }))
           : []
@@ -49,16 +37,11 @@ export default function DailyPnL({ userId, balanceData }) {
   }
 
   useEffect(() => {
-    const interval = setInterval(() => fetchDailyPnL(range), 10000);
-    return () => clearInterval(interval);
-  }, [range]);
-
-  useEffect(() => {
     if (!tableRef.current) return;
     const trs = tableRef.current.querySelectorAll("tbody tr");
     for (let i = 0; i < trs.length - 1; i++) {
-      const current = parseFloat(trs[i].children[1].textContent);
-      const next = parseFloat(trs[i + 1].children[1].textContent);
+      const current = parseFloat(trs[i].children[2].textContent);
+      const next = parseFloat(trs[i + 1].children[2].textContent);
       if (current > next) trs[i].classList.add("bg-green-600", "text-white");
       else if (current < next) trs[i].classList.add("bg-red-600", "text-white");
       else trs[i].classList.remove("bg-green-600", "bg-red-600", "text-white");

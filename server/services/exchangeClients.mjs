@@ -1,5 +1,3 @@
-import ccxt from 'ccxt';
-
 // Cache for exchange clients
 const exchangeClients = new Map();
 

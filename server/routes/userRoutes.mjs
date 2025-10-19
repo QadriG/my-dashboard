@@ -7,7 +7,7 @@ import { errorHandler } from "../middleware/errorHandler.mjs";
 import { info, error as logError } from "../utils/logger.mjs";
 import { encrypt } from "../utils/apiencrypt.mjs";
 import { fetchUserExchangeData } from "../services/exchangeDataSync.mjs";
-import ccxt from "ccxt";
+
 
 
 const router = express.Router();

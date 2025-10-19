@@ -1,11 +1,12 @@
+// File: services/exchangeDataSync.mjs
 import { PrismaClient } from "@prisma/client";
-import { getExchangeClient } from "./exchangeClients.mjs";
+import { fetchExchangeData } from "./exchangeManager.mjs"; // ← NEW: your unified service router
 import { info, error as logError } from "../utils/logger.mjs";
 
 const prisma = new PrismaClient();
 
 /**
- * Fetch user's exchange data (balances + positions)
+ * Fetch user's exchange data using direct API calls (no CCXT)
  */
 export const fetchUserExchangeData = async (userId) => {
   try {
@@ -50,93 +51,33 @@ export const fetchUserExchangeData = async (userId) => {
         continue;
       }
 
-      if (exchangeName === "bitunix") continue; // Handled separately
-
       try {
+        // Decrypt credentials here if needed
+        // const apiKey = decrypt(ex.apiKey);
+        // const apiSecret = decrypt(ex.apiSecret);
+        // const passphrase = ex.passphrase ? decrypt(ex.passphrase) : null;
+
         const accountType = ex.type || "spot";
-        const client = await getExchangeClient(
-          exchangeName,
-          ex.apiKey,
-          ex.apiSecret,
-          accountType,
-          ex.passphrase || undefined
-        );
 
         console.log(`[DEBUG] Fetching ${accountType.toUpperCase()} data for ${user.email} on ${exchangeName}`);
 
-        let balanceRes, ordersRes, positionsRes;
-        [balanceRes, ordersRes, positionsRes] = await Promise.allSettled([
-          client.fetchBalance(),
-          client.fetchOpenOrders(),
-          accountType === "futures" && client.fetchPositions ? client.fetchPositions() : Promise.resolve([]),
-        ]);
+        // ✅ NEW: Call your unified service (no CCXT)
+        const exchangeResult = await fetchExchangeData(
+          ex.provider,
+          ex.apiKey,      // pass raw or decrypted
+          ex.apiSecret,   // depending on your encryption strategy
+          ex.passphrase,
+          accountType
+        );
 
-        if (balanceRes.status === "rejected") {
-          logError(`[DEBUG] ${exchangeName} Balance Fetch Failed: ${balanceRes.reason}`);
-        } else {
-          console.log(`[DEBUG] ${exchangeName} Raw Balance Data:`, balanceRes.value);
-        }
-
-        const balance = balanceRes.status === "fulfilled" ? balanceRes.value : null;
-        const openOrders = ordersRes.status === "fulfilled" ? ordersRes.value : [];
-        const openPositions = positionsRes.status === "fulfilled" ? positionsRes.value : [];
-
-        // Transform balance to card format
-        let transformedBalance = null;
-        if (balance && typeof balance === "object") {
-          if (exchangeName === "binance" || exchangeName === "binanceusdm") {
-            const total = balance.total?.USDT || 0;
-            const available = balance.free?.USDT || 0;
-            const used = balance.used?.USDT || (total - available);
-            transformedBalance = { totalBalance: total, available, used };
-          } else if (exchangeName === "okx") {
-            const details = balance.info?.result?.details?.find(d => d.ccy === "USDT") || {};
-            const total = parseFloat(details.cashBalance) || 0;
-            const available = parseFloat(details.availBalance) || 0;
-            const used = parseFloat(details.frozenBalance) || (total - available);
-            transformedBalance = { totalBalance: total, available, used };
-          } else if (exchangeName === "bybit") {
-            const usdtBalance = balance.total?.USDT || balance.info?.result?.list?.find(l => l.coin === "USDT") || {};
-            const total = usdtBalance.walletBalance || usdtBalance.total || 0;
-            const available = usdtBalance.availableBalance || usdtBalance.free || 0;
-            const used = total - available;
-            transformedBalance = { totalBalance: total, available, used };
-          } else if (exchangeName === "coinbase") {
-            const usdtAccount = balance.info?.find(a => a.currency === "USDT") || {};
-            const total = parseFloat(usdtAccount.balance) || 0;
-            const available = parseFloat(usdtAccount.available) || 0;
-            const used = parseFloat(usdtAccount.hold) || (total - available);
-            transformedBalance = { totalBalance: total, available, used };
-          } else if (exchangeName === "blofin") {
-            const total = balance.total?.USDT || 0;
-            const available = balance.free?.USDT || 0;
-            const used = balance.used?.USDT || (total - available);
-            transformedBalance = { totalBalance: total, available, used };
-          } else if (exchangeName === "bitunix") {
-            const total = balance.total?.USDT || 0;
-            const available = balance.free?.USDT || 0;
-            const used = balance.used?.USDT || (total - available);
-            transformedBalance = { totalBalance: total, available, used };
-          }
-
-          results.push({
-            exchange: exchangeName,
-            type: accountType,
-            balance: transformedBalance,
-            openOrders,
-            openPositions,
-            error: null,
-          });
-        } else {
-          results.push({
-            exchange: exchangeName,
-            type: accountType,
-            balance: null,
-            openOrders,
-            openPositions,
-            error: "No valid balance data",
-          });
-        }
+        results.push({
+          exchange: exchangeName,
+          type: accountType,
+          balance: exchangeResult.balance,
+          openOrders: exchangeResult.openOrders || [],
+          openPositions: exchangeResult.openPositions || [],
+          error: null,
+        });
 
         info(`✅ ${exchangeName} (${accountType}) data fetched for user ${numericUserId}`);
       } catch (innerErr) {
@@ -161,9 +102,7 @@ export const fetchUserExchangeData = async (userId) => {
   }
 };
 
-/**
- * Manual one-time sync for a specific user
- */
+// ... rest of your functions (syncUserExchangesImmediately, startPeriodicExchangeSync) remain unchanged
 export async function syncUserExchangesImmediately(userId) {
   try {
     const data = await fetchUserExchangeData(userId);
@@ -174,9 +113,6 @@ export async function syncUserExchangesImmediately(userId) {
   }
 }
 
-/**
- * Periodic background sync for all users
- */
 export async function startPeriodicExchangeSync() {
   try {
     const users = await prisma.user.findMany({ select: { id: true, email: true } });

@@ -93,11 +93,11 @@ app.use(
 app.use(helmet());
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
 
-app.use("/api/positions", positionsRouter);
+app.use("/api/positions", authMiddleware, positionsRouter);
 app.use("/api/exchanges", authMiddleware, exchangesRoutes);
 app.use("/api/webhook", webhookRoutes);
 app.use("/api/admin", authMiddleware, adminMiddleware, adminRoutes);
-app.use("/api/users", usersRouter);
+app.use("/api/users", authMiddleware, usersRouter);
 app.use("/api/balances", balancesRouter);
 app.use("/api/manual-push", authMiddleware, manualPushRouter);
 
@@ -183,7 +183,43 @@ app.get("/api/auth/check-auth", authMiddleware, async (req, res) => {
     isVerified: user.isVerified,
   });
 });
+// Mock endpoints (add to server.js)
+app.get('/api/user/balance-history', authMiddleware, (req, res) => {
+  res.json([
+    { date: "2025-10-13", balance: 290 },
+    { date: "2025-10-14", balance: 295 },
+    { date: "2025-10-15", balance: 300 },
+    { date: "2025-10-16", balance: 305 },
+    { date: "2025-10-17", balance: 310 },
+    { date: "2025-10-18", balance: 310.14 }
+  ]);
+});
 
+app.get('/api/user/daily-pnl', authMiddleware, (req, res) => {
+  res.json([
+    { date: "2025-10-13", pnl: 5.2 },
+    { date: "2025-10-14", pnl: -2.1 },
+    { date: "2025-10-15", pnl: 8.7 },
+    { date: "2025-10-16", pnl: 3.4 },
+    { date: "2025-10-17", pnl: -1.2 },
+    { date: "2025-10-18", pnl: 4.5 }
+  ]);
+});
+
+app.get('/api/user/weekly-revenue', authMiddleware, (req, res) => {
+  res.json({
+    labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    revenues: [10, 12, 8, 15, 9, 14, 11]
+  });
+});
+
+app.get('/api/user/best-trading-pairs', authMiddleware, (req, res) => {
+  res.json([
+    { pair: "BTC/USDT", profit: 220 },
+    { pair: "ETH/USDT", profit: 180 },
+    { pair: "SOL/USDT", profit: 95 }
+  ]);
+});
 app.get("/api/auth/verify-email", async (req, res) => {
   try {
     const { token } = req.query;
@@ -291,39 +327,6 @@ app.get("/admin/dashboard", authMiddleware, adminMiddleware, (req, res) => {
   res.json({ message: "Welcome Admin", user: req.user });
 });
 
-// Mock or real route for active positions
-app.get("/api/positions/active", async (req, res) => {
-  try {
-    // You can replace this mock with your actual DB query later.
-    const mockPositions = [
-      {
-        id: 1,
-        symbol: "BTCUSDT",
-        side: "Long",
-        amount: 0.01,
-        orderValue: 500,
-        openPrice: 50000,
-        status: "open",
-        openDate: new Date().toISOString(),
-      },
-      {
-        id: 2,
-        symbol: "ETHUSDT",
-        side: "Short",
-        amount: 0.1,
-        orderValue: 300,
-        openPrice: 3000,
-        status: "open",
-        openDate: new Date().toISOString(),
-      },
-    ];
-
-    res.json(mockPositions); // ✅ always return an array
-  } catch (error) {
-    console.error("Error in /api/positions/active:", error);
-    res.status(500).json({ error: "Failed to load positions" });
-  }
-});
 
 
 app.listen(5000, () => info(`🚀 Server running on port 5000`));
