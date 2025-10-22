@@ -1,5 +1,6 @@
 import express from "express";
-import { PrismaClient } from "@prisma/client";
+import PrismaClientPkg from "@prisma/client";
+const { PrismaClient } = PrismaClientPkg;
 import { authMiddleware } from "../middleware/authMiddleware.mjs";
 import { encrypt } from "../utils/apiencrypt.mjs";
 import { syncUserExchangesImmediately } from "../services/exchangeDataSync.mjs";

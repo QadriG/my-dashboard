@@ -23,6 +23,7 @@ import AdminApiDetails from "./components/ApiDetails";
 // Positions
 import AdminPositions from "./components/Positions";
 import UserPositions from "./components/Users/Positions";
+import PositionsPage from "./pages/PositionsPage";
 
 // Sidebars
 import Sidebar from "./components/Sidebar";
@@ -119,7 +120,7 @@ function App() {
               <Route index element={<UserDashboard />} />
               <Route path="settings" element={<UserSettings />} />
               <Route path="api-details" element={<ApiDetails />} />
-              <Route path="positions" element={<UserPositions />} />
+              <Route path="positions" element={<PositionsPage />} />
             </Route>
 
             {/* Catch-all */}

@@ -2,8 +2,7 @@
 import axios from 'axios';
 import crypto from 'crypto';
 
-// 🔥 Fixed: removed trailing space in BASE_URL
-const BASE_URL = 'https://api.bybit.com';
+const BASE_URL = 'https://api.bybit.com'; // ✅ Fixed trailing space
 
 async function getServerTime() {
   const res = await axios.get(`${BASE_URL}/v5/market/time`);
@@ -25,8 +24,6 @@ export async function fetchBalance(apiKey, apiSecret, accountType = 'UNIFIED') {
       accountType: accountType.toUpperCase()
     });
     const queryString = params.toString();
-
-    console.log('[DEBUG] Sign payload:', `${timestamp}${apiKey}${recvWindow}${queryString}`);
 
     const signature = sign(timestamp, apiKey, recvWindow, queryString, apiSecret);
 
@@ -81,12 +78,11 @@ export async function fetchPositions(apiKey, apiSecret, accountType = 'UNIFIED')
     const timestamp = serverTime;
     const recvWindow = 60000;
 
-    // For USDT futures, use settleCoin=USDT to get all positions
     const params = new URLSearchParams({
       category: 'linear',
       settleCoin: 'USDT'
     });
-    const queryString = params.toString(); // "category=linear&settleCoin=USDT"
+    const queryString = params.toString();
 
     const signature = sign(timestamp, apiKey, recvWindow, queryString, apiSecret);
 
@@ -106,22 +102,21 @@ export async function fetchPositions(apiKey, apiSecret, accountType = 'UNIFIED')
       throw new Error(`Bybit API Error ${response.data.retCode}: ${response.data.retMsg}`);
     }
 
-    // 🔍 Add debug log HERE
-   // console.log('[DEBUG] Bybit positions:', response.data.result.list);
-
     return response.data.result.list.map(p => ({
       symbol: p.symbol,
       side: p.side.toLowerCase(),
-      size: parseFloat(p.size),
-      entryPrice: parseFloat(p.avgPrice),
-      markPrice: parseFloat(p.markPrice),
-      unrealizedPnl: parseFloat(p.unrealisedPnl),
-      leverage: p.leverage ? parseFloat(p.leverage) : null,
-      status: 'open'
+      amount: parseFloat(p.size), // ✅ renamed to match dashboard
+      orderValue: (parseFloat(p.size) * parseFloat(p.avgPrice)).toFixed(2), // ✅ calculated
+      openPrice: parseFloat(p.avgPrice),
+      status: 'open',
+      openDate: new Date(parseInt(p.openTime)).toLocaleDateString(), // ✅ correct open date
+      entryPrice: parseFloat(p.avgPrice), // for dashboard card
+      size: parseFloat(p.size), // for dashboard card
+      unrealizedPnl: parseFloat(p.unrealisedPnl) // for dashboard card
     }));
   } catch (err) {
     throw new Error(`Bybit fetchPositions failed: ${err.message}`);
   }
 }
-// Optional: export both for clarity (not required if using named exports)
+
 export default { fetchBalance, fetchPositions };

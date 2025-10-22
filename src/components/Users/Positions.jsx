@@ -1,32 +1,35 @@
+// src/components/Users/PositionsTable.jsx
 import React, { useState, useEffect } from "react";
 import { useTheme } from "../../context/ThemeContext";
-import { useSocket } from "../../hooks/useSocket";
 
-export default function OpenPositions({ userId }) {
+export default function PositionsTable({ userId }) {
   const { isDarkMode } = useTheme();
   const [openPositions, setOpenPositions] = useState([]);
-  const [closedPositions, setClosedPositions] = useState([]);
+  const [closedPositions, setClosedPositions] = useState([]); // placeholder
   const [tableType, setTableType] = useState("open");
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
   const [filterSymbol, setFilterSymbol] = useState("All");
+  const [loading, setLoading] = useState(true);
 
-  const socket = useSocket("http://<server>:5000");
-
+  // Fetch open positions via REST
   useEffect(() => {
-    if (!socket || !userId) return;
-
-    const userChannel = `positions/${userId}`;
-    socket.on(userChannel, (update) => {
-      if (update.type === "open") {
-        setOpenPositions(update.positions || []);
-      } else {
-        setClosedPositions(update.positions || []);
+    const fetchPositions = async () => {
+      try {
+        const res = await fetch('/api/positions/active', { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          setOpenPositions(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch positions:', err);
+      } finally {
+        setLoading(false);
       }
-    });
+    };
 
-    return () => socket.off(userChannel);
-  }, [socket, userId]);
+    if (userId) fetchPositions();
+  }, [userId]);
 
   const positions = tableType === "open" ? openPositions : closedPositions;
   const filteredPositions =
@@ -85,11 +88,13 @@ export default function OpenPositions({ userId }) {
             className={`px-4 py-2 rounded-full text-sm ${
               tableType === "closed" ? "bg-red-500" : "bg-red-700 hover:bg-red-600"
             }`}
+            disabled={closedPositions.length === 0}
           >
             Closed Positions
           </button>
         </div>
       </div>
+
       <div className="p-[2px] rounded-xl bg-gradient-to-r from-green-400 to-red-500 shadow-[0_0_12px_4px_rgba(34,197,94,0.6)]">
         <div className="rounded-xl bg-black/30 backdrop-blur-md p-6 transition-transform duration-300 hover:scale-[1.01]">
           <table className="w-full">
@@ -125,41 +130,60 @@ export default function OpenPositions({ userId }) {
               </tr>
             </thead>
             <tbody className={`${isDarkMode ? "bg-black/20" : "bg-white/5"}`}>
-              {paginated.map((pos, i) => (
-                <tr key={i} className="border-t border-gray-600">
-                  {tableType === "open" ? (
-                    <>
-                      <td className="px-4 py-2">{pos.id}</td>
-                      <td className="px-4 py-2">{pos.symbol}</td>
-                      <td className="px-4 py-2">{pos.side}</td>
-                      <td className="px-4 py-2">{pos.amount}</td>
-                      <td className="px-4 py-2">{pos.orderValue}</td>
-                      <td className="px-4 py-2">{pos.openPrice}</td>
-                      <td className="px-4 py-2 text-green-400">{pos.status}</td>
-                      <td className="px-4 py-2">{pos.openDate}</td>
-                    </>
-                  ) : (
-                    <>
-                      <td className="px-4 py-2">{pos.id}</td>
-                      <td className="px-4 py-2">{pos.symbol}</td>
-                      <td className="px-4 py-2">{pos.side}</td>
-                      <td className="px-4 py-2">{pos.amount}</td>
-                      <td className="px-4 py-2">{pos.orderValue}</td>
-                      <td className="px-4 py-2">{pos.openPrice}</td>
-                      <td className="px-4 py-2">{pos.closePrice}</td>
-                      <td className="px-4 py-2 text-green-600 font-semibold">{pos.profit}</td>
-                      <td className="px-4 py-2 text-green-600 font-semibold">{pos.pnl}</td>
-                      <td className="px-4 py-2 text-red-600 font-semibold">{pos.status}</td>
-                      <td className="px-4 py-2">{pos.openDate}</td>
-                      <td className="px-4 py-2">{pos.closeDate}</td>
-                    </>
-                  )}
+              {paginated.length > 0 ? (
+                paginated.map((pos, i) => (
+                  <tr key={i} className="border-t border-gray-600">
+                    {tableType === "open" ? (
+                      <>
+                        <td className="px-4 py-2">{i + 1}</td>
+                        <td className="px-4 py-2">{pos.symbol}</td>
+                        <td className="px-4 py-2">
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            pos.side === 'buy' || pos.side === 'long'
+                              ? 'bg-green-400/30 text-green-200 border border-green-300'
+                              : 'bg-red-400/30 text-red-200 border border-red-300'
+                          }`}>
+                            {pos.side === 'buy' ? 'Buy' : pos.side === 'sell' ? 'Sell' : pos.side}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2">{(pos.size || 0).toFixed(4)}</td>
+                        <td className="px-4 py-2">${((pos.size || 0) * (pos.entryPrice || 0)).toFixed(2)}</td>
+                        <td className="px-4 py-2">${pos.entryPrice?.toFixed(2)}</td>
+                        <td className="px-4 py-2 text-green-400">{pos.status}</td>
+                        <td className="px-4 py-2">
+                          {new Date(pos.updateTime || Date.now()).toLocaleDateString()}
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-4 py-2">{i + 1}</td>
+                        <td className="px-4 py-2">{pos.symbol}</td>
+                        <td className="px-4 py-2">{pos.side}</td>
+                        <td className="px-4 py-2">{pos.amount || '-'}</td>
+                        <td className="px-4 py-2">{pos.orderValue || '-'}</td>
+                        <td className="px-4 py-2">{pos.openPrice || '-'}</td>
+                        <td className="px-4 py-2">{pos.closePrice || '-'}</td>
+                        <td className="px-4 py-2 text-green-600 font-semibold">{pos.profit || '-'}</td>
+                        <td className="px-4 py-2 text-green-600 font-semibold">{pos.pnl || '-'}</td>
+                        <td className="px-4 py-2 text-red-600 font-semibold">{pos.status || '-'}</td>
+                        <td className="px-4 py-2">{pos.openDate || '-'}</td>
+                        <td className="px-4 py-2">{pos.closeDate || '-'}</td>
+                      </>
+                    )}
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={tableType === "open" ? 8 : 12} className="text-center py-4 text-gray-400">
+                    {loading ? "Loading..." : "No positions found."}
+                  </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
       </div>
+
       <div className="flex justify-between items-center px-4 py-2 mt-2">
         <select
           value={pageSize}

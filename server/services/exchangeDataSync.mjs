@@ -1,5 +1,6 @@
 // File: services/exchangeDataSync.mjs
-import { PrismaClient } from "@prisma/client";
+import PrismaClientPkg from "@prisma/client";
+const { PrismaClient } = PrismaClientPkg;
 import { fetchExchangeData } from "./exchangeManager.mjs"; // ← NEW: your unified service router
 import { info, error as logError } from "../utils/logger.mjs";
 
