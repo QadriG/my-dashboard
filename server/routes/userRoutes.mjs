@@ -89,15 +89,18 @@ router.get("/dashboard", authMiddleware, async (req, res) => {
       error: d.error
     }));
 
+    // ✅ FIXED: Include openDate and all relevant fields
     const positions = data.flatMap(d =>
       (d.openPositions || []).map(p => ({
         exchange: d.exchange,
         type: d.type,
         symbol: p.symbol,
         side: p.side,
-        size: p.contracts || p.amount || 0,
-        entryPrice: p.entryPrice || 0,
+        size: p.size || p.amount || 0,           // support both
+        entryPrice: p.entryPrice || p.openPrice || 0,
         unrealizedPnl: p.unrealizedPnl || 0,
+        openDate: p.openDate,                    // ✅ CRITICAL: include openDate
+        orderValue: p.orderValue || 0,
       }))
     );
 
@@ -126,7 +129,6 @@ router.get("/dashboard", authMiddleware, async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
-
 
 router.get("/me/balance", authMiddleware, async (req, res) => {
   try {

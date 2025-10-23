@@ -2,7 +2,7 @@
 import axios from 'axios';
 import crypto from 'crypto';
 
-const BASE_URL = 'https://api.bybit.com'; // ✅ Fixed trailing space
+const BASE_URL = 'https://api.bybit.com'; // ✅ Removed trailing space
 
 async function getServerTime() {
   const res = await axios.get(`${BASE_URL}/v5/market/time`);
@@ -105,14 +105,22 @@ export async function fetchPositions(apiKey, apiSecret, accountType = 'UNIFIED')
     return response.data.result.list.map(p => ({
       symbol: p.symbol,
       side: p.side.toLowerCase(),
-      amount: parseFloat(p.size), // ✅ renamed to match dashboard
-      orderValue: (parseFloat(p.size) * parseFloat(p.avgPrice)).toFixed(2), // ✅ calculated
+      amount: parseFloat(p.size),
+      orderValue: (parseFloat(p.size) * parseFloat(p.avgPrice)).toFixed(2),
       openPrice: parseFloat(p.avgPrice),
       status: 'open',
-      openDate: new Date(parseInt(p.openTime)).toLocaleDateString(), // ✅ correct open date
-      entryPrice: parseFloat(p.avgPrice), // for dashboard card
-      size: parseFloat(p.size), // for dashboard card
-      unrealizedPnl: parseFloat(p.unrealisedPnl) // for dashboard card
+      // ✅ FIX: Use createdTime instead of openTime
+      openDate: new Date(parseInt(p.createdTime)).toLocaleString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      }),
+      entryPrice: parseFloat(p.avgPrice),
+      size: parseFloat(p.size),
+      unrealizedPnl: parseFloat(p.unrealisedPnl)
     }));
   } catch (err) {
     throw new Error(`Bybit fetchPositions failed: ${err.message}`);

@@ -24,6 +24,7 @@ export default function DashboardCards({ userId, isAdmin = false, balanceData })
   useEffect(() => {
     if (balanceData && balanceData.length > 0) {
       const item = balanceData[0];
+      console.log("First position side:", item.openPositions?.[0]?.side);
       const totalBalance = item.balance?.totalBalance || 0;
       const available = item.balance?.available || 0;
 
@@ -138,7 +139,8 @@ export default function DashboardCards({ userId, isAdmin = false, balanceData })
 
       <div className="mt-8">
         <div className="dashboard-column dashboard-column-green">
-          <OpenPositions positionsData={cardsData.openPositions} />
+          {/* Pass balanceData directly — OpenPositions expects it */}
+          <OpenPositions positions={cardsData.openPositions?.positions || []} />
         </div>
       </div>
     </>
