@@ -1,3 +1,4 @@
+// src/components/WeeklyRevenue.jsx
 import React, { useEffect, useRef, useState } from "react";
 import { Chart, registerables } from "chart.js";
 Chart.register(...registerables);
@@ -8,37 +9,34 @@ export default function WeeklyRevenue({ isDarkMode, balanceData }) {
 
   const [labels, setLabels] = useState([]);
   const [revenues, setRevenues] = useState([]);
-  const [range, setRange] = useState("4w"); // default = last 4 weeks
-  const [customRange, setCustomRange] = useState({ start: "", end: "" });
 
-  // 🔹 Use balanceData if available, otherwise fetch from backend
   useEffect(() => {
     if (balanceData && balanceData.length > 0) {
-      const latestData = balanceData[0];
-      setLabels(["Current Week"]); // Simplistic label, adjust based on data
-      setRevenues([latestData.revenue || 0]); // Adjust based on actual revenue field
-    } else {
-      fetchWeeklyRevenue();
+      const item = balanceData[0];
+      const positions = item.openPositions || [];
+
+      // Group by week and sum PnL
+      const weekMap = {};
+      positions.forEach(pos => {
+        const pnl = parseFloat(pos.unrealizedPnl) || 0;
+        // Simplistic: assume all positions are from current week
+        const week = "Current Week"; // You can calculate actual week from openDate if available
+        if (!weekMap[week]) {
+          weekMap[week] = 0;
+        }
+        weekMap[week] += pnl;
+      });
+
+      // Sort by week (if you have multiple weeks)
+      const sorted = Object.entries(weekMap).sort((a, b) => {
+        // For now, just return as is
+        return 0;
+      });
+
+      setLabels(sorted.map(([week]) => week));
+      setRevenues(sorted.map(([_, pnl]) => pnl));
     }
-  }, [balanceData, range, customRange]);
-
-  // 🔹 Fetch revenue data from backend
-  async function fetchWeeklyRevenue() {
-    try {
-      let url = `/api/user/weekly-revenue?range=${range}`;
-      if (range === "custom" && customRange.start && customRange.end) {
-        url = `/api/user/weekly-revenue?start=${customRange.start}&end=${customRange.end}`;
-      }
-
-      const res = await fetch(url, { credentials: "include" });
-      const data = await res.json();
-
-      setLabels(data.labels || []);
-      setRevenues(data.revenues || []);
-    } catch (err) {
-      console.error("Error fetching weekly revenue:", err);
-    }
-  }
+  }, [balanceData]);
 
   useEffect(() => {
     if (!canvasRef.current || revenues.length === 0) return;
@@ -119,10 +117,7 @@ export default function WeeklyRevenue({ isDarkMode, balanceData }) {
           Weekly Revenue
         </h2>
 
-        {/* 🔹 Range Selector */}
         <select
-          value={range}
-          onChange={(e) => setRange(e.target.value)}
           className="bg-black/50 border border-cyan-400 text-sm rounded px-2 py-1 text-white"
         >
           <option value="4w">Last 4 Weeks</option>
@@ -130,28 +125,6 @@ export default function WeeklyRevenue({ isDarkMode, balanceData }) {
           <option value="custom">Custom Range</option>
         </select>
       </div>
-
-      {/* 🔹 Custom Date Inputs */}
-      {range === "custom" && (
-        <div className="flex space-x-2 mb-2">
-          <input
-            type="date"
-            value={customRange.start}
-            onChange={(e) =>
-              setCustomRange((prev) => ({ ...prev, start: e.target.value }))
-            }
-            className="bg-black/50 border border-cyan-400 text-sm rounded px-2 py-1 text-white w-1/2"
-          />
-          <input
-            type="date"
-            value={customRange.end}
-            onChange={(e) =>
-              setCustomRange((prev) => ({ ...prev, end: e.target.value }))
-            }
-            className="bg-black/50 border border-cyan-400 text-sm rounded px-2 py-1 text-white w-1/2"
-          />
-        </div>
-      )}
 
       <div className="h-40">
         <canvas ref={canvasRef} className="w-full h-full bg-transparent"></canvas>

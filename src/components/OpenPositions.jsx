@@ -74,16 +74,16 @@ export default function OpenPositions() {
                   </td>
                   <td className="p-2">{pos.symbol}</td>
                   <td className="p-2">
-                    <span
-                      className={`px-2 py-1 rounded ${
-                        pos.side === "Long"
-                          ? "bg-green-600 text-white"
-                          : "bg-red-600 text-white"
-                      }`}
-                    >
-                      {pos.side}
-                    </span>
-                  </td>
+  <span
+    className={`px-2 py-1 rounded ${
+      pos.side?.toLowerCase() === 'buy' || pos.side?.toLowerCase() === 'long'
+        ? 'bg-green-500 text-white border border-green-500'
+        : 'bg-red-500 text-white border border-red-500'
+    }`}
+  >
+    {pos.side?.toLowerCase() === 'buy' ? 'Buy' : pos.side?.toLowerCase() === 'sell' ? 'Sell' : pos.side}
+  </span>
+</td>
                   <td className="p-2">{pos.amount}</td>
                   <td className="p-2">{pos.orderValue}</td>
                   <td className="p-2">{pos.openPrice}</td>

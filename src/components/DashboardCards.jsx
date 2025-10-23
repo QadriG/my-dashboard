@@ -1,13 +1,13 @@
 // src/components/DashboardCards.jsx
 import { useEffect, useState } from "react";
-import Profit from "./Profit";
-import UPL from "./UPL";
-import FundsDistribution from "./FundsDistribution";
-import BalanceGraph from "./BalanceGraph";
-import WeeklyRevenue from "./WeeklyRevenue";
-import DailyPnL from "./DailyPnL";
-import BestTradingPairs from "./BestTradingPairs";
-import OpenPositions from "./OpenPositions";
+import Profit from "./Users/Profit";
+import UPL from "./Users/UPL";
+import FundsDistribution from "./Users/FundsDistribution";
+import BalanceGraph from "./Users/BalanceGraph";
+import WeeklyRevenue from "./Users/WeeklyRevenue";
+import DailyPnL from "./Users/DailyPnL";
+import BestTradingPairs from "./Users/BestTradingPairs";
+import OpenPositions from "./Users/OpenPositions";
 
 export default function DashboardCards({ userId, isAdmin = false, balanceData }) {
   const [cardsData, setCardsData] = useState({

@@ -11,11 +11,19 @@ export default function BalanceGraph({ balanceData }) {
 
   useEffect(() => {
     if (balanceData && balanceData.length > 0) {
-      // Extract totalBalance from first exchange
+      // Extract balance history from first item
       const item = balanceData[0];
-      const totalBalance = item.balance?.totalBalance || 0;
-      setLabels([new Date().toLocaleDateString()]);
-      setBalances([totalBalance]);
+      const balanceHistory = item.balanceHistory || []; // assuming this is the field name
+
+      // If no history, fall back to current balance
+      if (balanceHistory.length === 0) {
+        setLabels([new Date().toLocaleDateString()]);
+        setBalances([item.balance?.totalBalance || 0]);
+      } else {
+        // Map to labels and balances
+        setLabels(balanceHistory.map(b => b.date));
+        setBalances(balanceHistory.map(b => b.balance));
+      }
     }
   }, [balanceData]);
 
