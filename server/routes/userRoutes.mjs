@@ -143,6 +143,42 @@ router.get("/me/balance", authMiddleware, async (req, res) => {
     res.status(500).json({ success: false, message: "Error fetching balance" });
   }
 });
+// Add this inside server/routes/user.mjs
 
+router.get("/daily-pnl", authMiddleware, async (req, res) => {
+  try {
+    const { range = '10d' } = req.query;
+    const days = range === '7d' ? 7 : range === '10d' ? 10 : 30;
+
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    startDate.setHours(0, 0, 0, 0);
+
+    const snapshots = await prisma.dailyPnLSnapshot.findMany({
+      where: {
+        userId: req.user.id,
+        date: { gte: startDate }
+      },
+      orderBy: { date: 'asc' }
+    });
+
+    const pnlData = snapshots.map((snap, i) => {
+      const prev = snapshots[i - 1];
+      const dailyPnL = prev ? snap.totalUnrealizedPnl - prev.totalUnrealizedPnl : 0;
+      return {
+        date: snap.date.toISOString().split('T')[0],
+        coin: 'USDT',
+        balance: snap.totalBalance,
+        pnl: dailyPnL,
+        pnlPercent: snap.totalBalance ? ((dailyPnL / snap.totalBalance) * 100).toFixed(2) : "0.00"
+      };
+    });
+
+    res.json(pnlData);
+  } catch (err) {
+    logError(`Error fetching daily PnL for user ${req.user?.id}`, err);
+    res.status(500).json([]);
+  }
+});
 router.use(errorHandler);
 export default router;

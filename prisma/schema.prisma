@@ -41,6 +41,8 @@ model User {
   positions Position[]
   balances  Balance[]
   syncLogs  SyncLog[]
+  dailyPnLSnapshots DailyPnLSnapshot[]
+  tradeEvents       TradeEvent[]
 }
 
 // ==============
@@ -177,4 +179,35 @@ model SyncLog {
   status    String   @default("success")
   message   String?
   createdAt DateTime @default(now())
+}
+
+
+model DailyPnLSnapshot {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  date      DateTime @db.Date // e.g., 2025-10-23
+  totalBalance Float
+  totalUnrealizedPnl Float
+  totalRealizedPnl   Float
+  positions Json     // optional: store full position list for debugging
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, date])
+}
+
+model TradeEvent {
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  user          User     @relation(fields: [userId], references: [id])
+  symbol        String
+  side          String   // "buy" or "sell"
+  size          Float
+  entryPrice    Float
+  closePrice    Float?
+  realizedPnl   Float?
+  status        String   // "open", "closed"
+  closedAt      DateTime? // when trade was closed
+  createdAt     DateTime @default(now())
 }

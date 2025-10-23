@@ -1,14 +1,11 @@
-// File: services/exchangeDataSync.mjs
+// services/exchangeDataSync.mjs
 import PrismaClientPkg from "@prisma/client";
 const { PrismaClient } = PrismaClientPkg;
-import { fetchExchangeData } from "./exchangeManager.mjs"; // ← NEW: your unified service router
+import { fetchExchangeData } from "./exchangeManager.mjs";
 import { info, error as logError } from "../utils/logger.mjs";
 
 const prisma = new PrismaClient();
 
-/**
- * Fetch user's exchange data using direct API calls (no CCXT)
- */
 export const fetchUserExchangeData = async (userId) => {
   try {
     const numericUserId = parseInt(userId, 10);
@@ -53,30 +50,51 @@ export const fetchUserExchangeData = async (userId) => {
       }
 
       try {
-        // Decrypt credentials here if needed
-        // const apiKey = decrypt(ex.apiKey);
-        // const apiSecret = decrypt(ex.apiSecret);
-        // const passphrase = ex.passphrase ? decrypt(ex.passphrase) : null;
-
         const accountType = ex.type || "spot";
-
         console.log(`[DEBUG] Fetching ${accountType.toUpperCase()} data for ${user.email} on ${exchangeName}`);
 
-        // ✅ NEW: Call your unified service (no CCXT)
         const exchangeResult = await fetchExchangeData(
           ex.provider,
-          ex.apiKey,      // pass raw or decrypted
-          ex.apiSecret,   // depending on your encryption strategy
+          ex.apiKey,
+          ex.apiSecret,
           ex.passphrase,
           accountType
         );
+
+        // 🔸 Calculate totals for PnL snapshot
+        const positions = exchangeResult.openPositions || [];
+        let totalUnrealizedPnl = 0;
+        positions.forEach(p => {
+          totalUnrealizedPnl += parseFloat(p.unrealizedPnl) || 0;
+        });
+        const totalBalance = exchangeResult.balance?.totalBalance || 0;
+
+        // 🔸 Save daily PnL snapshot
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // normalize to start of day
+        await prisma.dailyPnLSnapshot.upsert({
+          where: { userId_date: { userId: numericUserId, date: today } },
+          update: {
+            totalBalance,
+            totalUnrealizedPnl,
+            positions: positions,
+          },
+          create: {
+            userId: numericUserId,
+            date: today,
+            totalBalance,
+            totalUnrealizedPnl,
+            totalRealizedPnl: 0, // accumulate later if needed
+            positions: positions,
+          },
+        });
 
         results.push({
           exchange: exchangeName,
           type: accountType,
           balance: exchangeResult.balance,
           openOrders: exchangeResult.openOrders || [],
-          openPositions: exchangeResult.openPositions || [],
+          openPositions: positions,
           error: null,
         });
 
@@ -103,7 +121,6 @@ export const fetchUserExchangeData = async (userId) => {
   }
 };
 
-// ... rest of your functions (syncUserExchangesImmediately, startPeriodicExchangeSync) remain unchanged
 export async function syncUserExchangesImmediately(userId) {
   try {
     const data = await fetchUserExchangeData(userId);
