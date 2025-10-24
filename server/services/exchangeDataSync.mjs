@@ -84,9 +84,16 @@ export const fetchUserExchangeData = async (userId) => {
             date: today,
             totalBalance,
             totalUnrealizedPnl,
-            totalRealizedPnl: 0, // accumulate later if needed
+            totalRealizedPnl: 0,
             positions: positions,
           },
+        });
+
+        // 🔸 Fetch last 30 days of snapshots FOR THIS USER
+        const dailySnapshots = await prisma.dailyPnLSnapshot.findMany({
+          where: { userId: numericUserId },
+          orderBy: { date: 'desc' },
+          take: 30
         });
 
         results.push({
@@ -95,6 +102,7 @@ export const fetchUserExchangeData = async (userId) => {
           balance: exchangeResult.balance,
           openOrders: exchangeResult.openOrders || [],
           openPositions: positions,
+          dailyPnLSnapshots: dailySnapshots, // ✅ Now correctly included
           error: null,
         });
 
@@ -107,6 +115,7 @@ export const fetchUserExchangeData = async (userId) => {
           balance: null,
           openOrders: [],
           openPositions: [],
+          dailyPnLSnapshots: [],
           error: innerErr?.message || "Unknown error",
         });
       }

@@ -46,4 +46,4 @@ export default function BestTradingPairs({ balanceData }) {
       </ul>
     </div>
   );
-}
+} 

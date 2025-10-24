@@ -13,28 +13,33 @@ export default function WeeklyRevenue({ isDarkMode, balanceData }) {
   useEffect(() => {
     if (balanceData && balanceData.length > 0) {
       const item = balanceData[0];
-      const positions = item.openPositions || [];
+      const snapshots = item.dailyPnLSnapshots || [];
 
-      // Group by week and sum PnL
+      // Group by week
       const weekMap = {};
-      positions.forEach(pos => {
-        const pnl = parseFloat(pos.unrealizedPnl) || 0;
-        // Simplistic: assume all positions are from current week
-        const week = "Current Week"; // You can calculate actual week from openDate if available
-        if (!weekMap[week]) {
-          weekMap[week] = 0;
+      snapshots.forEach(snapshot => {
+        const date = new Date(snapshot.date);
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        const day = date.getDate();
+        const d = new Date(date);
+        d.setHours(0,0,0,0);
+        d.setDate(d.getDate() + 4 - (d.getDay()||7));
+        const yearStart = new Date(year,0,1);
+        const weekNo = Math.ceil(( (d - yearStart) / 86400000 + 1)/7);
+        const weekKey = `${year}-W${weekNo}`;
+
+        if (!weekMap[weekKey]) {
+          weekMap[weekKey] = { totalPnl: 0, count: 0 };
         }
-        weekMap[week] += pnl;
+        weekMap[weekKey].totalPnl += snapshot.totalUnrealizedPnl;
+        weekMap[weekKey].count++;
       });
 
-      // Sort by week (if you have multiple weeks)
-      const sorted = Object.entries(weekMap).sort((a, b) => {
-        // For now, just return as is
-        return 0;
-      });
-
-      setLabels(sorted.map(([week]) => week));
-      setRevenues(sorted.map(([_, pnl]) => pnl));
+      // Convert to arrays
+      const sortedWeeks = Object.keys(weekMap).sort();
+      setLabels(sortedWeeks);
+      setRevenues(sortedWeeks.map(key => weekMap[key].totalPnl));
     }
   }, [balanceData]);
 

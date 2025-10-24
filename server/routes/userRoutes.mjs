@@ -145,23 +145,34 @@ router.get("/me/balance", authMiddleware, async (req, res) => {
 });
 // Add this inside server/routes/user.mjs
 
+// In server/routes/user.mjs
+
 router.get("/daily-pnl", authMiddleware, async (req, res) => {
   try {
-    const { range = '10d' } = req.query;
-    const days = range === '7d' ? 7 : range === '10d' ? 10 : 30;
+    const { range = '10d', start, end } = req.query;
 
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
-    startDate.setHours(0, 0, 0, 0);
+    let startDate, endDate;
 
+    if (range === 'custom' && start && end) {
+      startDate = new Date(start);
+      endDate = new Date(end);
+    } else {
+      const days = range === '7d' ? 7 : range === '10d' ? 10 : 30;
+      startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+      endDate = new Date();
+    }
+
+    // 🔹 Fetch real snapshots from DB
     const snapshots = await prisma.dailyPnLSnapshot.findMany({
       where: {
         userId: req.user.id,
-        date: { gte: startDate }
+        date: { gte: startDate, lte: endDate }
       },
       orderBy: { date: 'asc' }
     });
 
+    // 🔹 Calculate daily PnL as delta from previous day
     const pnlData = snapshots.map((snap, i) => {
       const prev = snapshots[i - 1];
       const dailyPnL = prev ? snap.totalUnrealizedPnl - prev.totalUnrealizedPnl : 0;
@@ -180,5 +191,6 @@ router.get("/daily-pnl", authMiddleware, async (req, res) => {
     res.status(500).json([]);
   }
 });
+console.log("✅ Fetching daily PnL for user:", req.user.id, "Range:", range, "Start:", startDate, "End:", endDate);
 router.use(errorHandler);
 export default router;
