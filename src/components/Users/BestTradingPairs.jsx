@@ -8,12 +8,13 @@ export default function BestTradingPairs({ balanceData }) {
     if (balanceData && balanceData.length > 0) {
       const item = balanceData[0];
       const positions = item.openPositions || [];
+      const tradeEvents = item.tradeEvents || []; // assuming you have this field
 
-      // Group by symbol and sum profit
+      // Group by symbol and sum realized PnL from closed trades
       const symbolMap = {};
-      positions.forEach(pos => {
-        const symbol = pos.symbol;
-        const pnl = parseFloat(pos.unrealizedPnl) || 0;
+      tradeEvents.forEach(event => {
+        const symbol = event.symbol;
+        const pnl = parseFloat(event.realizedPnl) || 0;
         if (!symbolMap[symbol]) {
           symbolMap[symbol] = { symbol, profit: 0 };
         }
@@ -46,4 +47,4 @@ export default function BestTradingPairs({ balanceData }) {
       </ul>
     </div>
   );
-} 
+}

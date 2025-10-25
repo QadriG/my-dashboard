@@ -1,10 +1,12 @@
+// src/components/Profit.jsx
+
 import React from "react";
 
-export default function Profit({ profitData }) {
-  // Ensure values always exist and are numbers
-  const total = Number(profitData?.total ?? 0);
-  const long = Number(profitData?.long ?? 0);
-  const short = Number(profitData?.short ?? 0);
+export default function Profit({ profitData, balanceData }) {
+  // Use profitData if available, fall back to balanceData, default to 0
+  const total = Number(profitData?.total ?? (balanceData && balanceData[0]?.totalBalance != null ? balanceData[0].totalBalance : 0));
+  const long = Number(profitData?.long ?? (balanceData && balanceData[0]?.long != null ? balanceData[0].long : 0));
+  const short = Number(profitData?.short ?? (balanceData && balanceData[0]?.short != null ? balanceData[0].short : 0));
 
   return (
     <div className="dashboard-column p-6 text-center border-cyan-400">

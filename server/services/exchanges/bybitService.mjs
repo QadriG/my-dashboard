@@ -2,7 +2,7 @@
 import axios from 'axios';
 import crypto from 'crypto';
 
-const BASE_URL = 'https://api.bybit.com'; // ✅ Removed trailing space
+const BASE_URL = 'https://api.bybit.com'; // Removed trailing space
 
 async function getServerTime() {
   const res = await axios.get(`${BASE_URL}/v5/market/time`);
@@ -127,4 +127,69 @@ export async function fetchPositions(apiKey, apiSecret, accountType = 'UNIFIED')
   }
 }
 
-export default { fetchBalance, fetchPositions };
+// --- New Function: Close Position by Market Order ---
+export async function closePositionByMarket(apiKey, apiSecret, symbol, side, category = 'linear', settleCoin = 'USDT') {
+  try {
+    const serverTime = await getServerTime();
+    const timestamp = serverTime;
+    const recvWindow = 60000;
+
+    // Determine the closing side (opposite of the current position side)
+    const closeSide = side.toLowerCase() === 'buy' ? 'Sell' : 'Buy';
+
+    // Fetch the current position to get its size
+    const positions = await fetchPositions(apiKey, apiSecret, 'UNIFIED'); // Assuming UNIFIED account type for futures
+    const positionToClose = positions.find(p => p.symbol === symbol && p.side.toLowerCase() === side.toLowerCase());
+
+    if (!positionToClose) {
+      throw new Error(`Position to close not found for symbol ${symbol} and side ${side}`);
+    }
+
+    const orderSize = positionToClose.size; // Use the current position size
+
+    // Prepare the order payload
+    const orderPayload = {
+      category,
+      symbol,
+      side: closeSide,
+      orderType: 'Market',
+      qty: orderSize.toString(),
+      timeInForce: 'IOC', // Or 'FOK' depending on preference
+      reduceOnly: true, // Crucial for closing existing positions
+    };
+
+    const queryString = new URLSearchParams(orderPayload).toString();
+
+    // Sign the request
+    const signature = sign(timestamp, apiKey, recvWindow, queryString, apiSecret);
+
+    const headers = {
+      'X-BAPI-API-KEY': apiKey,
+      'X-BAPI-SIGN': signature,
+      'X-BAPI-SIGN-TYPE': '2',
+      'X-BAPI-TIMESTAMP': timestamp.toString(),
+      'X-BAPI-RECV-WINDOW': recvWindow.toString(),
+      'Content-Type': 'application/json'
+    };
+
+    const url = `${BASE_URL}/v5/order/create`;
+    const response = await axios.post(url, orderPayload, { headers });
+
+    if (response.data.retCode !== 0) {
+      throw new Error(`Bybit API Error ${response.data.retCode}: ${response.data.retMsg}`);
+    }
+
+    // Return success message or relevant data from the API response
+    return {
+      success: true,
+      message: `Position ${side} for ${symbol} closed successfully via Bybit API.`,
+      data: response.data.result // Include API response data if needed
+    };
+
+  } catch (err) {
+    console.error(`Error closing position on Bybit:`, err.message);
+    throw new Error(`Failed to close position on Bybit: ${err.message}`);
+  }
+}
+
+export default { fetchBalance, fetchPositions, closePositionByMarket };

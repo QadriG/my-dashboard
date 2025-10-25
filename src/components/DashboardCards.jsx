@@ -22,57 +22,36 @@ export default function DashboardCards({ userId, isAdmin = false, balanceData })
   });
 
   useEffect(() => {
-  if (balanceData && balanceData.length > 0) {
-    const item = balanceData[0];
-    const totalBalance = item.balance?.totalBalance || 0;
-    const available = item.balance?.available || 0;
+    if (balanceData && balanceData.length > 0) {
+      const item = balanceData[0];
+      const totalBalance = item.balance?.totalBalance || 0;
+      const available = item.balance?.available || 0;
 
-    let totalLongValue = 0;
-    let totalShortValue = 0;
-    let totalLongUPL = 0;
-    let totalShortUPL = 0;
+      let totalLongValue = 0;
+      let totalShortValue = 0;
+      let totalLongUPL = 0;
+      let totalShortUPL = 0;
 
-    const positions = item.openPositions || [];
-    positions.forEach(pos => {
-      const notional = (pos.size || 0) * (pos.entryPrice || 0);
-      const upl = parseFloat(pos.unrealizedPnl) || 0;
-      const side = (pos.side || '').toLowerCase();
-      if (side === 'buy' || side === 'long') {
-        totalLongValue += notional;
-        totalLongUPL += upl;
-      } else if (side === 'sell' || side === 'short') {
-        totalShortValue += notional;
-        totalShortUPL += upl;
-      }
-    });
+      const positions = item.openPositions || [];
+      positions.forEach(pos => {
+        const notional = (pos.size || 0) * (pos.entryPrice || 0);
+        const upl = parseFloat(pos.unrealizedPnl) || 0;
+        const side = (pos.side || '').toLowerCase();
+        if (side === 'buy' || side === 'long') {
+          totalLongValue += notional;
+          totalLongUPL += upl;
+        } else if (side === 'sell' || side === 'short') {
+          totalShortValue += notional;
+          totalShortUPL += upl;
+        }
+      });
 
-    const totalPositionsValue = totalLongValue + totalShortValue;
-    const totalUPL = totalLongUPL + totalShortUPL;
+      const totalPositionsValue = totalLongValue + totalShortValue;
+      const totalUPL = totalLongUPL + totalShortUPL;
 
-    // Fetch and transform mock data
-    Promise.all([
-      fetch('/api/user/balance-history', { credentials: 'include' }).then(r => r.json()).catch(() => []),
-      fetch('/api/user/daily-pnl', { credentials: 'include' }).then(r => r.json()).catch(() => []),
-      fetch('/api/user/weekly-revenue', { credentials: 'include' }).then(r => r.json()).catch(() => ({ labels: [], revenues: [] })),
-      fetch('/api/user/best-trading-pairs', { credentials: 'include' }).then(r => r.json()).catch(() => [])
-    ]).then(([balanceHistory, dailyPnL, weeklyData, bestPairs]) => {
-      // Transform data for cards
-      const balanceGraphData = balanceHistory.map(item => ({
-        date: item.date,
-        balance: item.balance
-      }));
-
-      const dailyPnLData = dailyPnL.map(item => ({
-        date: item.date,
-        pnl: item.pnl,
-        pnlPercent: totalBalance > 0 ? ((item.pnl / totalBalance) * 100).toFixed(2) : "0.00"
-      }));
-
-      const bestTradingPairsData = bestPairs.map(pair => ({
-        pair: pair.pair,
-        profit: pair.profit,
-        percent: totalBalance > 0 ? ((pair.profit / totalBalance) * 100).toFixed(2) : "0.00"
-      }));
+      // 🔹 Use real data from balanceData[0] where available
+      const dailyPnLSnapshots = item.dailyPnLSnapshots || [];
+      const tradeEvents = item.tradeEvents || []; // assuming this is the field for closed trades
 
       setCardsData({
         profit: { total: totalBalance, long: totalLongValue, short: totalShortValue },
@@ -91,15 +70,15 @@ export default function DashboardCards({ userId, isAdmin = false, balanceData })
           short: totalShortValue, 
           totalPositions: totalPositionsValue 
         },
-        balanceGraph: { data: balanceGraphData },
-        weeklyRevenue: weeklyData,
-        dailyPnL: { data: dailyPnLData },
-        bestTradingPairs: { pairs: bestTradingPairsData },
+        // ✅ Pass real data for the updated cards
+        balanceGraph: { data: dailyPnLSnapshots }, // used by BalanceGraph
+        weeklyRevenue: { labels: [], revenues: [] }, // WeeklyRevenue will calculate from dailyPnLSnapshots
+        dailyPnL: { data: dailyPnLSnapshots }, // used by DailyPnL
+        bestTradingPairs: { pairs: tradeEvents }, // used by BestTradingPairs
         openPositions: { positions }
       });
-    });
-  }
-}, [balanceData]);
+    }
+  }, [balanceData]);
 
   return (
     <>
@@ -118,27 +97,28 @@ export default function DashboardCards({ userId, isAdmin = false, balanceData })
         </div>
       </div>
 
-     <div className="flex gap-4 w-full items-start mt-8 max-lg:flex-col">
-  <div className="dashboard-column dashboard-column-cyan balance-graph w-full lg:w-1/2 p-4 h-[200px] overflow-hidden">
-    <BalanceGraph balanceData={balanceData} />
-  </div>
-  <div className="dashboard-column dashboard-column-purple weekly-revenue w-full lg:w-1/2 p-4 h-[200px] overflow-hidden">
-    <WeeklyRevenue isDarkMode={false} balanceData={balanceData} />
-  </div>
-</div>
+      <div className="flex gap-4 w-full items-start mt-8 max-lg:flex-col">
+        {/* ✅ Pass full balanceData to these cards */}
+        <div className="dashboard-column dashboard-column-cyan balance-graph w-full lg:w-1/2 p-4 h-[200px] overflow-hidden">
+          <BalanceGraph balanceData={balanceData} />
+        </div>
+        <div className="dashboard-column dashboard-column-purple weekly-revenue w-full lg:w-1/2 p-4 h-[200px] overflow-hidden">
+          <WeeklyRevenue isDarkMode={false} balanceData={balanceData} />
+        </div>
+      </div>
 
       <div className="grid grid-cols-2 gap-7 mt-8 max-sm:grid-cols-1">
+        {/* ✅ Pass full balanceData to these cards */}
         <div className="dashboard-column dashboard-column-cyan">
-          <DailyPnL balanceData={cardsData.dailyPnL} />
+          <DailyPnL balanceData={balanceData} />
         </div>
         <div className="dashboard-column dashboard-column-purple">
-          <BestTradingPairs pairsData={cardsData.bestTradingPairs} />
+          <BestTradingPairs balanceData={balanceData} />
         </div>
       </div>
 
       <div className="mt-8">
         <div className="dashboard-column dashboard-column-green">
-          {/* Pass balanceData directly — OpenPositions expects it */}
           <OpenPositions positions={cardsData.openPositions?.positions || []} />
         </div>
       </div>

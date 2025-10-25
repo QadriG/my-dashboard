@@ -33,5 +33,37 @@ router.get('/active', authMiddleware, async (req, res) => {
     res.status(500).json([]);
   }
 });
+// server/routes/positions.mjs
 
+// server/routes/positions.mjs
+
+router.get('/closed', authMiddleware, async (req, res) => {
+  try {
+    const data = await fetchUserExchangeData(req.user.id);
+
+    // Extract closed positions (positions that were open yesterday but not today)
+    // For now, return mock data
+    const closedPositions = [
+      {
+        id: 1,
+        symbol: "BTCUSDT",
+        side: "sell",
+        amount: 0.01,
+        orderValue: "600.00",
+        openPrice: 60000,
+        closePrice: 61000,
+        profit: 1000,
+        pnl: 1.67,
+        status: "closed",
+        openDate: "2025-08-01",
+        closeDate: "2025-08-02"
+      }
+    ];
+
+    res.json(closedPositions);
+  } catch (err) {
+    logError(`Failed to fetch closed positions for user ${req.user?.id}`, err);
+    res.status(500).json([]);
+  }
+});
 export default router;

@@ -35,7 +35,10 @@ export async function fetchExchangeData(provider, apiKey, apiSecret, passphrase,
       },
       openPositions: positionsData,
       openOrders: [],
-      error: null
+      error: null,
+      closePosition: async (symbol, side) => {
+        return await bybitService.closePositionByMarket(apiKey, apiSecret, symbol, side);
+      }
     };
   }
 

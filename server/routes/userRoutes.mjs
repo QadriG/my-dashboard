@@ -50,7 +50,8 @@ router.post("/apis", authMiddleware, async (req, res, next) => {
     const api = await prisma.userAPI.create({
       data: { userId: req.user.id, exchangeName, apiKey: encryptedKey, apiSecret: encryptedSecret, spotEnabled, futuresEnabled },
     });
-
+    // 🔹 Force immediate sync
+    await syncUserExchangesImmediately(req.user.id);
     info(`User ${req.user.id} added API key for ${exchangeName}`);
     res.json({ success: true, api });
   } catch (err) {
@@ -144,15 +145,14 @@ router.get("/me/balance", authMiddleware, async (req, res) => {
   }
 });
 // Add this inside server/routes/user.mjs
-
-// In server/routes/user.mjs
-
 router.get("/daily-pnl", authMiddleware, async (req, res) => {
+  console.log("📡 Backend: /daily-pnl called with params:", req.query);
+  console.log("👤 User ID:", req.user.id);
+
   try {
     const { range = '10d', start, end } = req.query;
 
     let startDate, endDate;
-
     if (range === 'custom' && start && end) {
       startDate = new Date(start);
       endDate = new Date(end);
@@ -163,7 +163,8 @@ router.get("/daily-pnl", authMiddleware, async (req, res) => {
       endDate = new Date();
     }
 
-    // 🔹 Fetch real snapshots from DB
+    console.log("📅 Querying snapshots from", startDate.toISOString(), "to", endDate.toISOString());
+
     const snapshots = await prisma.dailyPnLSnapshot.findMany({
       where: {
         userId: req.user.id,
@@ -172,7 +173,8 @@ router.get("/daily-pnl", authMiddleware, async (req, res) => {
       orderBy: { date: 'asc' }
     });
 
-    // 🔹 Calculate daily PnL as delta from previous day
+    console.log("📊 Found snapshots:", snapshots.length, "records");
+
     const pnlData = snapshots.map((snap, i) => {
       const prev = snapshots[i - 1];
       const dailyPnL = prev ? snap.totalUnrealizedPnl - prev.totalUnrealizedPnl : 0;
@@ -185,9 +187,11 @@ router.get("/daily-pnl", authMiddleware, async (req, res) => {
       };
     });
 
+    console.log("📤 Sending PnL response:", pnlData);
+
     res.json(pnlData);
   } catch (err) {
-    logError(`Error fetching daily PnL for user ${req.user?.id}`, err);
+    console.error("💥 Backend error in /daily-pnl:", err);
     res.status(500).json([]);
   }
 });

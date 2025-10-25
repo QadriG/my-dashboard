@@ -1,3 +1,5 @@
+// src/components/Admin/AdminPositions.jsx
+
 import React, { useState, useEffect } from "react";
 
 export default function AdminPositions() {
@@ -5,20 +7,21 @@ export default function AdminPositions() {
   const [closedPositions, setClosedPositions] = useState([]);
   const [activeTable, setActiveTable] = useState("open");
 
-  // ✅ Fetch positions from backend
+  // ✅ Fetch all users' open positions from backend
   useEffect(() => {
     const fetchPositions = async () => {
       try {
-        const resOpen = await fetch("http://localhost:5000/api/positions/open");
-        const resClosed = await fetch("http://localhost:5000/api/positions/closed");
-
-        const dataOpen = await resOpen.json();
-        const dataClosed = await resClosed.json();
-
-        setOpenPositions(dataOpen);
-        setClosedPositions(dataClosed);
-      } catch (error) {
-        console.error("Error fetching positions:", error);
+        const res = await fetch("http://localhost:5000/api/admin/all-positions", {
+          credentials: "include",
+        });
+        const data = await res.json();
+        if (data.success) {
+          setOpenPositions(data.positions);
+        } else {
+          console.error("Error fetching positions:", data.message);
+        }
+      } catch (err) {
+        console.error("Error fetching positions:", err);
       }
     };
 
@@ -30,14 +33,18 @@ export default function AdminPositions() {
   }, []);
 
   // ✅ Send "close" action to backend
-  const handleClose = async (posId) => {
+  const handleClose = async (userId, symbol, side) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/positions/close/${posId}`, {
+      const res = await fetch(`http://localhost:5000/api/admin/positions/close`, {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId, symbol, side }),
       });
       if (res.ok) {
         // Refresh data after closing
-        const updatedOpen = openPositions.filter((p) => p.id !== posId);
+        const updatedOpen = openPositions.filter((p) => !(p.userId === userId && p.symbol === symbol && p.side === side));
         setOpenPositions(updatedOpen);
       }
     } catch (err) {
@@ -53,7 +60,7 @@ export default function AdminPositions() {
       </div>
 
       {/* Filter + Toggle */}
-      <div className="flex items-center justify-between">
+      <div className="flex justify-between items-center">
         <div>
           <label className="block text-sm font-medium mb-1">Filter by Pair:</label>
           <select className="px-3 py-2 rounded border border-gray-700 bg-black w-48">
@@ -115,7 +122,7 @@ export default function AdminPositions() {
                       <td className="px-4 py-2">
                         <span
                           className={`px-2 py-1 text-xs font-semibold rounded ${
-                            pos.side === "Long"
+                            pos.side.toLowerCase() === "buy" || pos.side.toLowerCase() === "long"
                               ? "bg-green-100 text-green-700"
                               : "bg-red-100 text-red-700"
                           }`}
@@ -124,13 +131,13 @@ export default function AdminPositions() {
                         </span>
                       </td>
                       <td className="px-4 py-2">{pos.amount}</td>
-                      <td className="px-4 py-2">{pos.value}</td>
-                      <td className="px-4 py-2">{pos.price}</td>
+                      <td className="px-4 py-2">${pos.value}</td>
+                      <td className="px-4 py-2">${pos.price}</td>
                       <td className="px-4 py-2 text-green-600">{pos.status}</td>
                       <td className="px-4 py-2">{pos.openDate}</td>
                       <td className="px-4 py-2">
                         <button
-                          onClick={() => handleClose(pos.id)}
+                          onClick={() => handleClose(pos.userId, pos.symbol, pos.side)}
                           className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 text-xs rounded"
                         >
                           Close

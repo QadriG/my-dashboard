@@ -1,47 +1,26 @@
-import React, { useEffect, useState } from "react";
+// src/components/ActiveUsers.jsx
 
-export default function ActiveUsers() {
-  const [count, setCount] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+import React from "react";
 
-  useEffect(() => {
-    const fetchActiveUsers = async () => {
-      try {
-        const res = await fetch("http://localhost:5000/api/users/active", {
-          method: "GET",
-          credentials: "include",
-        });
-        const data = await res.json();
-
-        if (res.ok && data.success) {
-          setCount(data.total);
-        } else {
-          setError(data.error || "Failed to fetch active users");
-        }
-      } catch (err) {
-        console.error("Error fetching active users:", err);
-        setError("Unable to load active users");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchActiveUsers();
-  }, []);
+export default function ActiveUsers({ data }) {
+  // If no data is passed, show a loading state or fallback
+  if (!data) {
+    return (
+      <div className="dashboard-column text-center">
+        <p className="text-2xl font-bold uppercase tracking-wide text-white-100">
+          Active Users
+        </p>
+        <p className="text-lg mt-2 text-gray-400">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard-column text-center">
       <p className="text-2xl font-bold uppercase tracking-wide text-white-100">
         Active Users
       </p>
-      {loading ? (
-        <p className="text-lg mt-2 text-gray-400">Loading...</p>
-      ) : error ? (
-        <p className="text-lg mt-2 text-red-500">{error}</p>
-      ) : (
-        <p className="text-2xl font-bold mt-2">{count !== null ? count : 0}</p>
-      )}
+      <p className="text-2xl font-bold mt-2">{data.count || 0}</p>
     </div>
   );
 }

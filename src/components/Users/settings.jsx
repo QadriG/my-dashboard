@@ -117,7 +117,15 @@ export default function Settings() {
           )}
         </div>
       </div>
-
+<button
+  onClick={async () => {
+    const res = await fetch('/api/user/sync', { method: 'POST', credentials: 'include' });
+    if (res.ok) alert('Sync triggered!');
+  }}
+  className="px-4 py-2 bg-cyan-600 text-white rounded"
+>
+  Sync Now
+</button>
       {/* Leverage Setting Section */}
       <div className="w-full py-4">
         <div className="w-full bg-black/30 backdrop-blur-md border-2 border-red-400 hover:shadow-[0_0_12px_4px_rgba(239,68,68,0.6)] rounded-xl transition-transform duration-300 transform hover:scale-[1.02] overflow-hidden px-6 py-6">

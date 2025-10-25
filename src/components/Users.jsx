@@ -1,3 +1,5 @@
+// src/components/Admin/AdminUsers.jsx
+
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -9,23 +11,6 @@ export default function AdminUsers() {
   const [actionLoading, setActionLoading] = useState({});
   const navigate = useNavigate();
 
-  // ✅ Define missing helper function
-  const fetchUserExchangeData = async (userId) => {
-    try {
-      const res = await fetch(`http://localhost:5000/api/admin/users/${userId}/exchange-data`, {
-        method: "GET",
-        credentials: "include",
-      });
-      if (!res.ok) return [];
-      const data = await res.json();
-      // Ensure we always return a valid array
-      return Array.isArray(data) ? data : data.data || [];
-    } catch (err) {
-      console.error("fetchUserExchangeData error:", err);
-      return [];
-    }
-  };
-
   // Fetch users from backend
   const fetchUsers = async () => {
     setLoading(true);
@@ -36,14 +21,8 @@ export default function AdminUsers() {
         credentials: "include",
       });
       const data = await res.json();
-      if (res.ok || data.success) {
-        const usersWithBalance = await Promise.all(
-          (data.users || data || []).map(async (user) => ({
-            ...user,
-            balanceData: await fetchUserExchangeData(user.id),
-          }))
-        );
-        setUsers(usersWithBalance);
+      if (res.ok && data.success) {
+        setUsers(data.users || []);
       } else {
         setError(data.message || data.error || "Failed to fetch users");
       }
@@ -86,13 +65,13 @@ export default function AdminUsers() {
     if (!term) return true;
 
     if (term === "free" && user.free > 0) return true;
-    const status = (user.status || statusDisplay(user) || "").toLowerCase();
+    const status = (user.status || "").toLowerCase();
     if (term === "active" && status === "active") return true;
     if (term === "inactive" && status === "inactive") return true;
     if (term === "paused" && status === "paused") return true;
     if (term === "disabled" && status === "disabled") return true;
 
-    const apiNames = (user.apis || []).map((a) => a.exchangeName || "").join(" ").toLowerCase();
+    const apiNames = (user.apis || []).map((a) => a.provider || "").join(" ").toLowerCase();
 
     return (
       (user.email && user.email.toLowerCase().includes(term)) ||
@@ -175,7 +154,7 @@ export default function AdminUsers() {
           placeholder="Search (email, name, api, status)"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="border border-gray-300 bg-white text-black rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="border border-gray-300 bg-white text-black rounded px-3 py-2"
         />
         <button
           onClick={() => setSearchTerm(searchTerm)}
@@ -206,14 +185,13 @@ export default function AdminUsers() {
                 <th className="px-2 py-2 font-semibold w-16">Total</th>
                 <th className="px-2 py-2 font-semibold w-20">Created At</th>
                 <th className="px-2 py-2 font-semibold w-16">Status</th>
-                <th className="px-2 py-2 font-semibold w-64">Balance</th>
                 <th className="px-2 py-2 font-semibold w-64">Manage</th>
               </tr>
             </thead>
             <tbody>
               {filteredUsers.map((user) => {
                 const disp = statusDisplay(user);
-                const apiNames = user.apis?.map((a) => a.exchangeName).join(", ") || "-";
+                const apiNames = user.apis?.map((a) => a.provider).join(", ") || "-";
                 const pauseKey = `${user.id}_pause`;
                 const disableKey = `${user.id}_disable`;
                 const deleteKey = `${user.id}_delete`;
@@ -229,21 +207,6 @@ export default function AdminUsers() {
                     <td className="px-2 py-2">{(user.total ?? 0).toFixed(2)}</td>
                     <td className="px-2 py-2">{new Date(user.createdAt).toLocaleDateString()}</td>
                     <td className={`px-2 py-2 text-sm font-medium ${statusClass(user)}`}>{disp}</td>
-                    <td className="px-2 py-2">
-                      {user.balanceData && user.balanceData.length > 0 ? (
-                        user.balanceData.map((data, idx) => (
-                          <div key={idx} className="ml-4">
-                            <p>Exchange: {data.exchange}</p>
-                            <p>Balance: {JSON.stringify(data.balances)}</p>
-                            <p>Open Orders - Spot: {data.openOrders?.spot ?? 0}</p>
-                            <p>Open Orders - Futures: {data.openOrders?.futures ?? 0}</p>
-                            <p>Positions: {JSON.stringify(data.positions || [])}</p>
-                          </div>
-                        ))
-                      ) : (
-                        <p>No balance data</p>
-                      )}
-                    </td>
                     <td className="px-2 py-2">
                       <div className="flex gap-1 justify-between">
                         <button
@@ -320,7 +283,7 @@ export default function AdminUsers() {
               })}
               {filteredUsers.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="py-6 text-center text-gray-400">
+                  <td colSpan="11" className="py-6 text-center text-gray-400">
                     No users found.
                   </td>
                 </tr>

@@ -1,4 +1,4 @@
-// src/components/BalanceGraph.jsx
+// src/components/Users/BalanceGraph.jsx
 import React, { useRef, useState, useEffect } from "react";
 import { Chart, registerables } from "chart.js";
 Chart.register(...registerables);
@@ -8,23 +8,30 @@ export default function BalanceGraph({ balanceData }) {
   const chartRef = useRef(null);
   const [labels, setLabels] = useState([]);
   const [balances, setBalances] = useState([]);
+  const [range, setRange] = useState("30d"); // ✅ Add state for range
 
   useEffect(() => {
     if (balanceData && balanceData.length > 0) {
       const item = balanceData[0];
-      const snapshots = item.dailyPnLSnapshots || [];
+      let snapshots = item.dailyPnLSnapshots || [];
 
-      if (snapshots.length === 0) {
-        setLabels([new Date().toLocaleDateString()]);
-        setBalances([item.balance?.totalBalance || 0]);
-      } else {
-        // Sort by date ascending for line chart
-        const sorted = [...snapshots].sort((a, b) => new Date(a.date) - new Date(b.date));
-        setLabels(sorted.map(s => s.date.split('T')[0]));
-        setBalances(sorted.map(s => s.totalBalance));
+      // 🔹 Filter by range
+      const now = new Date();
+      let filtered = snapshots;
+
+      if (range !== "all") {
+        const days = range === "7d" ? 7 : range === "10d" ? 10 : 30;
+        const cutoff = new Date(now);
+        cutoff.setDate(cutoff.getDate() - days);
+        filtered = snapshots.filter(s => new Date(s.date) >= cutoff);
       }
+
+      // Sort by date ascending
+      const sorted = [...filtered].sort((a, b) => new Date(a.date) - new Date(b.date));
+      setLabels(sorted.map(s => s.date.split('T')[0]));
+      setBalances(sorted.map(s => s.totalBalance));
     }
-  }, [balanceData]);
+  }, [balanceData, range]); // ✅ Re-run when range changes
 
   useEffect(() => {
     if (!canvasRef.current || balances.length === 0) return;
@@ -96,8 +103,16 @@ export default function BalanceGraph({ balanceData }) {
     <div className="bg-black/40 backdrop-blur-md rounded-xl p-4 border-2 border-cyan-400 dashboard-column sidebar-cyan overflow-hidden transition duration-300 hover:shadow-[0_0_20px_#00ffff,_0_0_40px_#00ffff,_0_0_60px_#00ffff] hover:scale-105">
       <div className="flex justify-between items-center mb-2">
         <h2 className="text-lg font-semibold text-white">Balance Graph</h2>
-        <select className="bg-gray-800 text-white text-sm p-1 rounded">
-          <option value="30">Last 30 Days</option>
+        {/* ✅ Add date range selector */}
+        <select
+          value={range}
+          onChange={(e) => setRange(e.target.value)}
+          className="bg-gray-800 text-white text-sm p-1 rounded"
+        >
+          <option value="7d">Last 7 Days</option>
+          <option value="10d">Last 10 Days</option>
+          <option value="30d">Last 30 Days</option>
+          <option value="all">All Time</option>
         </select>
       </div>
       <div className="h-40">
@@ -105,4 +120,4 @@ export default function BalanceGraph({ balanceData }) {
       </div>
     </div>
   );
-}
+} 

@@ -1,21 +1,20 @@
+// src/components/FundsDistribution.jsx
+
 import React from "react";
 
-export default function FundsDistribution({ fundsData }) {
-  const totalBalance = fundsData?.totalBalance ?? 0;
-  const available = fundsData?.available ?? 0;
-  const long = fundsData?.long ?? 0;
-  const short = fundsData?.short ?? 0;
-  const totalPositions = fundsData?.totalPositions ?? 0;
+export default function FundsDistribution({ fundsData, balanceData }) {
+  // Use fundsData if available, fall back to balanceData, default to 0
+  const totalBalance = Number(fundsData?.totalBalance ?? (balanceData && balanceData[0]?.totalBalance != null ? balanceData[0].totalBalance : 0));
+  const available = Number(fundsData?.available ?? (balanceData && balanceData[0]?.available != null ? balanceData[0].available : 0));
+  const long = Number(fundsData?.long ?? (balanceData && balanceData[0]?.long != null ? balanceData[0].long : 0));
+  const short = Number(fundsData?.short ?? (balanceData && balanceData[0]?.short != null ? balanceData[0].short : 0));
+  const totalPositions = Number(fundsData?.totalPositions ?? (balanceData && balanceData[0]?.totalPositions != null ? balanceData[0].totalPositions : 0));
 
   // Percentages (safe default to 0 if totalBalance is 0)
-  const availablePercent =
-    totalBalance > 0 ? ((available / totalBalance) * 100).toFixed(2) : 0;
-  const longPercent =
-    totalBalance > 0 ? ((long / totalBalance) * 100).toFixed(2) : 0;
-  const shortPercent =
-    totalBalance > 0 ? ((short / totalBalance) * 100).toFixed(2) : 0;
-  const positionsPercent =
-    totalBalance > 0 ? ((totalPositions / totalBalance) * 100).toFixed(2) : 0;
+  const availablePercent = totalBalance > 0 ? ((available / totalBalance) * 100).toFixed(2) : "0";
+  const longPercent = totalBalance > 0 ? ((long / totalBalance) * 100).toFixed(2) : "0";
+  const shortPercent = totalBalance > 0 ? ((short / totalBalance) * 100).toFixed(2) : "0";
+  const positionsPercent = totalBalance > 0 ? ((totalPositions / totalBalance) * 100).toFixed(2) : "0";
 
   const formatAmount = (val) => Number(val).toFixed(2);
 

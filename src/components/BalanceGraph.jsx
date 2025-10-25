@@ -1,40 +1,37 @@
-import React, { useEffect, useRef, useState } from "react";
+// src/components/Users/BalanceGraph.jsx
+import React, { useRef, useState, useEffect } from "react";
 import { Chart, registerables } from "chart.js";
 Chart.register(...registerables);
 
-export default function BalanceGraph({ isDarkMode }) {
+export default function BalanceGraph({ balanceData }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
-
   const [labels, setLabels] = useState([]);
   const [balances, setBalances] = useState([]);
-  const [range, setRange] = useState("30"); // default last 30 days
-  const [customRange, setCustomRange] = useState({ start: "", end: "" });
-
-  async function fetchBalanceHistory(days, startDate, endDate) {
-    try {
-      let url = `/api/user/balance-history?days=${days}`;
-      if (startDate && endDate) {
-        url = `/api/user/balance-history?start=${startDate}&end=${endDate}`;
-      }
-
-      const res = await fetch(url, { credentials: "include" });
-      const data = await res.json();
-
-      setLabels(data.labels || []);
-      setBalances(data.balances || []);
-    } catch (err) {
-      console.error("Error fetching balance history:", err);
-    }
-  }
+  const [range, setRange] = useState("30d"); // ✅ Add state for range
 
   useEffect(() => {
-    if (range !== "custom") {
-      fetchBalanceHistory(range);
-    } else if (customRange.start && customRange.end) {
-      fetchBalanceHistory(null, customRange.start, customRange.end);
+    if (balanceData && balanceData.length > 0) {
+      const item = balanceData[0];
+      let snapshots = item.dailyPnLSnapshots || [];
+
+      // 🔹 Filter by range
+      const now = new Date();
+      let filtered = snapshots;
+
+      if (range !== "all") {
+        const days = range === "7d" ? 7 : range === "10d" ? 10 : 30;
+        const cutoff = new Date(now);
+        cutoff.setDate(cutoff.getDate() - days);
+        filtered = snapshots.filter(s => new Date(s.date) >= cutoff);
+      }
+
+      // Sort by date ascending
+      const sorted = [...filtered].sort((a, b) => new Date(a.date) - new Date(b.date));
+      setLabels(sorted.map(s => s.date.split('T')[0]));
+      setBalances(sorted.map(s => s.totalBalance));
     }
-  }, [range, customRange]);
+  }, [balanceData, range]); // ✅ Re-run when range changes
 
   useEffect(() => {
     if (!canvasRef.current || balances.length === 0) return;
@@ -44,20 +41,10 @@ export default function BalanceGraph({ isDarkMode }) {
       chartRef.current.destroy();
     }
 
-    const labelColor = isDarkMode ? "#ffffff" : "#000000";
-    const gridColor = isDarkMode
-      ? "rgba(255,255,255,0.1)"
-      : "rgba(0,0,0,0.1)";
-    const tooltipBg = isDarkMode ? "#111827" : "#ffffff";
-
-    const balancePointColors = balances.map((val, i) =>
-      i === 0 ? labelColor : val >= balances[i - 1] ? "green" : "red"
-    );
-
     chartRef.current = new Chart(ctx, {
       type: "line",
       data: {
-        labels: labels,
+        labels,
         datasets: [
           {
             label: "Balance",
@@ -67,7 +54,7 @@ export default function BalanceGraph({ isDarkMode }) {
             borderColor: "rgba(59,130,246,1)",
             borderWidth: 2,
             tension: 0.4,
-            pointBackgroundColor: balancePointColors,
+            pointBackgroundColor: "white",
             pointRadius: 4,
             pointHoverRadius: 6,
           },
@@ -82,24 +69,23 @@ export default function BalanceGraph({ isDarkMode }) {
             beginAtZero: false,
             ticks: {
               callback: (value) => `$${value}`,
-              color: labelColor,
-              font: { size: 12 },
+              color: "#fff",
             },
-            grid: { color: gridColor },
+            grid: { color: "rgba(255,255,255,0.1)" },
           },
           x: {
-            ticks: { color: labelColor, font: { size: 12 } },
-            grid: { color: gridColor },
+            ticks: { color: "#fff", font: { size: 12 } },
+            grid: { color: "rgba(255,255,255,0.1)" },
           },
         },
         plugins: {
           legend: { display: false },
           tooltip: {
             callbacks: { label: (ctx) => `$${ctx.parsed.y}` },
-            bodyColor: labelColor,
-            titleColor: labelColor,
-            backgroundColor: tooltipBg,
-            borderColor: isDarkMode ? "#ffffff33" : "#00000033",
+            bodyColor: "#fff",
+            titleColor: "#fff",
+            backgroundColor: "#111827",
+            borderColor: "rgba(255,255,255,0.33)",
             borderWidth: 1,
           },
         },
@@ -111,56 +97,27 @@ export default function BalanceGraph({ isDarkMode }) {
         chartRef.current.destroy();
       }
     };
-  }, [isDarkMode, labels, balances]);
+  }, [labels, balances]);
 
   return (
     <div className="bg-black/40 backdrop-blur-md rounded-xl p-4 border-2 border-cyan-400 dashboard-column sidebar-cyan overflow-hidden transition duration-300 hover:shadow-[0_0_20px_#00ffff,_0_0_40px_#00ffff,_0_0_60px_#00ffff] hover:scale-105">
       <div className="flex justify-between items-center mb-2">
-        <h2
-          className="text-lg font-semibold"
-          style={{ color: isDarkMode ? "#fff" : "#000" }}
-        >
-          Balance Graph
-        </h2>
-
-        {/* 🔽 Dropdown */}
+        <h2 className="text-lg font-semibold text-white">Balance Graph</h2>
+        {/* ✅ Add date range selector */}
         <select
-          className="bg-gray-800 text-white text-sm p-1 rounded"
           value={range}
           onChange={(e) => setRange(e.target.value)}
+          className="bg-gray-800 text-white text-sm p-1 rounded"
         >
-          <option value="30">Last 30 Days</option>
-          <option value="60">Last 60 Days</option>
-          <option value="90">Last 90 Days</option>
-          <option value="custom">Custom Range</option>
+          <option value="7d">Last 7 Days</option>
+          <option value="10d">Last 10 Days</option>
+          <option value="30d">Last 30 Days</option>
+          <option value="all">All Time</option>
         </select>
       </div>
-
-      {/* 🗓 Custom Range */}
-      {range === "custom" && (
-        <div className="flex space-x-2 mb-2">
-          <input
-            type="date"
-            className="bg-gray-700 text-white p-1 rounded"
-            value={customRange.start}
-            onChange={(e) =>
-              setCustomRange({ ...customRange, start: e.target.value })
-            }
-          />
-          <input
-            type="date"
-            className="bg-gray-700 text-white p-1 rounded"
-            value={customRange.end}
-            onChange={(e) =>
-              setCustomRange({ ...customRange, end: e.target.value })
-            }
-          />
-        </div>
-      )}
-
       <div className="h-40">
         <canvas ref={canvasRef} className="w-full h-full bg-transparent"></canvas>
       </div>
     </div>
   );
-}
+} 

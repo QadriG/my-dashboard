@@ -1,14 +1,12 @@
+// server/controllers/adminController.mjs
+
 import pkg from "@prisma/client";
 const { PrismaClient } = pkg;
-
-import { info, warn, error } from "../utils/logger.mjs";
-
 const prisma = new PrismaClient();
 
-// ======================
-// List all users
-// ======================
-export const listAllUsers = async (req, res, next) => {
+// Remove next parameter from all functions
+
+export async function listAllUsers() {
   try {
     const users = await prisma.user.findMany({
       select: {
@@ -16,256 +14,179 @@ export const listAllUsers = async (req, res, next) => {
         email: true,
         name: true,
         role: true,
+        isVerified: true,
         status: true,
-        free: true,
-        used: true,
-        total: true,
         createdAt: true,
         updatedAt: true,
-        lastActivity: true,
-        exchanges: {
-          select: {
-            provider: true, // Changed from exchangeName
-            type: true,
-            isActive: true,
-          },
-        },
-      },
-      orderBy: { id: "asc" },
-    });
-    res.json({ success: true, users });
-  } catch (err) {
-    error("listAllUsers error:", err);
-    next(err);
-  }
-};
-
-// ======================
-// Helper: Pause/cancel trades and positions
-// ======================
-const pauseUserTradesAndPositions = async (userId) => {
-  try {
-    await prisma.trade.updateMany({
-      where: { userId, status: "active" },
-      data: { status: "paused" },
-    });
-    await prisma.position.updateMany({
-      where: { userId, status: "open" },
-      data: { status: "paused" },
-    });
-    info(`Paused all active trades and positions for user ${userId}`);
-  } catch (err) {
-    error(`Error pausing trades/positions for user ${userId}:`, err);
-  }
-};
-
-// ======================
-// Pause user
-// ======================
-export const pauseUser = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    if (isNaN(Number(id))) return res.status(400).json({ success: false, message: "Invalid user ID" });
-
-    const user = await prisma.user.update({
-      where: { id: Number(id) },
-      data: {
-        status: "disabled", // or "paused" for pauseUser function
-        tokenVersion: { increment: 1 },
+        // ❌ Remove 'balance' - it doesn't exist in User model
+        // balance: true,
+        // Instead, fetch related data if needed (e.g., UserExchangeAccount)
+        // APIs: true, // If you want to include APIs, make sure it's defined in your schema
       },
     });
-
-    await pauseUserTradesAndPositions(Number(id));
-
-    info(`User ${id} paused by admin ${req.user?.id}`);
-    res.json({ success: true, message: "User paused", user });
+    return users;
   } catch (err) {
-    error("pauseUser error:", err);
-    next(err);
+    console.error("Error fetching users:", err);
+    throw err; // Re-throw for caller to handle
   }
-};
+}
 
-// ======================
-// Unpause user
-// ======================
-export const unpauseUser = async (req, res, next) => {
+export async function deleteUser(req, res, next) {
   try {
-    const { id } = req.params;
-    if (isNaN(Number(id))) return res.status(400).json({ success: false, message: "Invalid user ID" });
+    const userId = parseInt(req.params.id, 10);
+    const user = await prisma.user.delete({
+      where: { id: userId },
+    });
+    return user;
+  } catch (err) {
+    console.error("Error deleting user:", err);
+    throw err;
+  }
+}
+
+export async function updateUserRole(req, res, next) {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    const { role } = req.body;
 
     const user = await prisma.user.update({
-      where: { id: Number(id) },
-      data: { status: "active" },
+      where: { id: userId },
+      data: { role },
     });
 
-    info(`User ${id} unpaused by admin ${req.user?.id}`);
-    res.json({ success: true, message: "User unpaused", user });
+    return user;
   } catch (err) {
-    error("unpauseUser error:", err);
-    next(err);
+    console.error("Error updating user role:", err);
+    throw err;
   }
-};
+}
 
-// ======================
-// Disable user
-// ======================
-export const disableUser = async (req, res, next) => {
+export async function pauseUser(req, res, next) {
   try {
-    const { id } = req.params;
-    if (isNaN(Number(id))) return res.status(400).json({ success: false, message: "Invalid user ID" });
+    const userId = parseInt(req.params.id, 10);
 
     const user = await prisma.user.update({
-      where: { id: Number(id) },
+      where: { id: userId },
+      data: { status: "paused" },
+    });
+
+    return user;
+  } catch (err) {
+    console.error("Error pausing user:", err);
+    throw err;
+  }
+}
+
+export async function disableUser(req, res, next) {
+  try {
+    const userId = parseInt(req.params.id, 10);
+
+    const user = await prisma.user.update({
+      where: { id: userId },
       data: { status: "disabled" },
     });
 
-    await pauseUserTradesAndPositions(Number(id));
-
-    info(`User ${id} disabled by admin ${req.user?.id}`);
-    res.json({ success: true, message: "User disabled", user });
+    return user;
   } catch (err) {
-    error("disableUser error:", err);
-    next(err);
+    console.error("Error disabling user:", err);
+    throw err;
   }
-};
+}
 
-// ======================
-// Enable user
-// ======================
-export const enableUser = async (req, res, next) => {
+export async function getUserStats(req, res, next) {
   try {
-    const { id } = req.params;
-    if (isNaN(Number(id))) return res.status(400).json({ success: false, message: "Invalid user ID" });
+    const userId = parseInt(req.params.id, 10);
 
-    const user = await prisma.user.update({
-      where: { id: Number(id) },
-      data: { status: "active" },
-    });
-
-    info(`User ${id} enabled by admin ${req.user?.id}`);
-    res.json({ success: true, message: "User enabled", user });
-  } catch (err) {
-    error("enableUser error:", err);
-    next(err);
-  }
-};
-
-// ======================
-// Delete user
-// ======================
-export const deleteUser = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    if (isNaN(Number(id))) return res.status(400).json({ success: false, message: "Invalid user ID" });
-
-    const user = await prisma.user.findUnique({ where: { id: Number(id) } });
-    if (!user) return res.status(404).json({ success: false, message: "User not found" });
-
-    await prisma.user.delete({ where: { id: Number(id) } });
-    info(`User ${id} deleted by admin ${req.user?.id}`);
-    res.json({ success: true, message: "User deleted" });
-  } catch (err) {
-    error("deleteUser error:", err);
-    next(err);
-  }
-};
-
-// ======================
-// Get user stats
-// ======================
-export const getUserStats = async (req, res, next) => {
-  try {
-    const userId = Number(req.params.id);
-    if (isNaN(userId)) return res.status(400).json({ success: false, message: "Invalid user ID" });
-
+    // Example: Fetch basic stats
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
         id: true,
         email: true,
         name: true,
-        role: true,
         status: true,
-        free: true,
-        used: true,
-        total: true,
-        lastActivity: true,
         createdAt: true,
-        exchanges: {
-          select: {
-            provider: true, // Changed from exchangeName
-            type: true,
-            isActive: true,
-          },
-        },
-        trades: {
-          select: {
-            id: true,
-            symbol: true,
-            amount: true,
-            price: true,
-            tradeTime: true,
-            status: true,
-          },
-        },
-        positions: {
-          select: {
-            id: true,
-            symbol: true,
-            amount: true,
-            entryPrice: true, // Changed from price
-            status: true,
-          },
-        },
+        // Add any other fields you need
       },
     });
 
-    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    // You might want to add logic to calculate stats based on related tables
+    // e.g., count of positions, total balance from exchange accounts
 
-    return res.json({ success: true, stats: user });
+    return {
+      user,
+      // Add calculated stats here
+      // totalPositions: ...,
+      // totalBalance: ...
+    };
   } catch (err) {
-    error("getUserStats error:", err);
-    return res.status(500).json({ success: false, message: "Failed to fetch user stats" });
+    console.error("Error fetching user stats:", err);
+    throw err;
   }
-};
+}
 
-// ======================
-// Get user positions
-// ======================
-export const getUserPositions = async (req, res, next) => {
+export async function getUserPositions(req, res, next) {
   try {
-    const { id } = req.params;
-    if (isNaN(Number(id))) return res.status(400).json({ success: false, message: "Invalid user ID" });
+    const userId = parseInt(req.params.id, 10);
 
-    const positions = await prisma.position.findMany({
-      where: { userId: Number(id) },
-    });
-    res.json({ success: true, positions });
-  } catch (err) {
-    error("getUserPositions error:", err);
-    next(err);
-  }
-};
-
-// ======================
-// Update user role
-// ======================
-export const updateUserRole = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    if (isNaN(Number(id))) return res.status(400).json({ success: false, message: "Invalid user ID" });
-    const { role } = req.body;
-    if (!role) return res.status(400).json({ success: false, message: "Role required" });
-
-    const updatedUser = await prisma.user.update({
-      where: { id: Number(id) },
-      data: { role },
+    // Fetch user's positions via their exchange accounts
+    const userExchanges = await prisma.userExchangeAccount.findMany({
+      where: { userId },
+      select: {
+        provider: true,
+        type: true,
+        apiKey: true,
+        apiSecret: true,
+        passphrase: true,
+      },
     });
 
-    info(`User ${id} role changed to ${role} by admin ${req.user?.id}`);
-    res.json({ success: true, message: "User role updated", user: updatedUser });
+    // For each exchange, you would call fetchUserExchangeData or a similar function
+    // This is a placeholder - you'd need to implement the actual position fetching logic
+    const positions = [];
+
+    for (const ex of userExchanges) {
+      // Placeholder: In real code, you'd use your existing `fetchUserExchangeData` function
+      // and extract positions
+      // const exchangeData = await fetchUserExchangeData(userId); // This function needs to be available
+      // positions.push(...exchangeData[0]?.openPositions || []);
+    }
+
+    return positions;
   } catch (err) {
-    error("updateUserRole error:", err);
-    next(err);
+    console.error("Error fetching user positions:", err);
+    throw err;
   }
-};
+}
+
+export async function unpauseUser(req, res, next) {
+  try {
+    const userId = parseInt(req.params.id, 10);
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { status: "active" },
+    });
+
+    return user;
+  } catch (err) {
+    console.error("Error unpausing user:", err);
+    throw err;
+  }
+}
+
+export async function enableUser(req, res, next) {
+  try {
+    const userId = parseInt(req.params.id, 10);
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { status: "active" },
+    });
+
+    return user;
+  } catch (err) {
+    console.error("Error enabling user:", err);
+    throw err;
+  }
+}

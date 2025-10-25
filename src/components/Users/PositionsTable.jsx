@@ -5,45 +5,61 @@ import { useTheme } from "../../context/ThemeContext";
 export default function PositionsTable({ userId }) {
   const { isDarkMode } = useTheme();
   const [openPositions, setOpenPositions] = useState([]);
-  const [closedPositions, setClosedPositions] = useState([
-    // ✅ Mock closed position for testing
-    {
-      id: 1,
-      symbol: "BTCUSDT",
-      side: "sell",
-      amount: 0.01,
-      orderValue: "600.00",
-      openPrice: 60000,
-      closePrice: 61000,
-      profit: 1000,
-      pnl: 1.67,
-      status: "closed",
-      openDate: "2025-08-01",
-      closeDate: "2025-08-02"
-    }
-  ]);
+  const [closedPositions, setClosedPositions] = useState([]); // 👈 Will be populated from API
   const [tableType, setTableType] = useState("open");
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
   const [filterSymbol, setFilterSymbol] = useState("All");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchPositions = async () => {
-      try {
-        const res = await fetch('/api/positions/active', { credentials: 'include' });
-        if (res.ok) {
-          const data = await res.json();
-          setOpenPositions(data);
-        }
-      } catch (err) {
-        console.error('Failed to fetch positions:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // 🔹 Fetch open positions from /api/positions/active
+  async function fetchOpenPositions() {
+    try {
+      const res = await fetch('/api/positions/active', { credentials: 'include' });
+      const data = await res.json();
+      setOpenPositions(data);
+    } catch (err) {
+      console.error('Failed to fetch open positions:', err);
+    } finally {
+      setLoading(false);
+    }
+  }
 
-    if (userId) fetchPositions();
+  // 🔹 Fetch closed positions from /api/positions/closed (you need to implement this endpoint)
+  async function fetchClosedPositions() {
+    try {
+      const res = await fetch('/api/positions/closed', { credentials: 'include' });
+      const data = await res.json();
+      setClosedPositions(data);
+    } catch (err) {
+      console.error('Failed to fetch closed positions:', err);
+      // Fallback to mock if API fails
+      setClosedPositions([
+        {
+          id: 1,
+          symbol: "BTCUSDT",
+          side: "sell",
+          amount: 0.01,
+          orderValue: "600.00",
+          openPrice: 60000,
+          closePrice: 61000,
+          profit: 1000,
+          pnl: 1.67,
+          status: "closed",
+          openDate: "2025-08-01",
+          closeDate: "2025-08-02"
+        }
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (userId) {
+      fetchOpenPositions();
+      fetchClosedPositions(); // 👈 Always fetch closed positions
+    }
   }, [userId]);
 
   const positions = tableType === "open" ? openPositions : closedPositions;
@@ -162,7 +178,7 @@ export default function PositionsTable({ userId }) {
                         </td>
                         <td className="px-4 py-2">{pos.amount.toFixed(4)}</td>
                         <td className="px-4 py-2">${pos.orderValue}</td>
-                        <td className="px-4 py-2">${pos.openPrice.toFixed(2)}</td>
+                        <td className="px-4 py-2">${pos.openPrice}</td>
                         <td className="px-4 py-2 text-green-400">{pos.status}</td>
                         <td className="px-4 py-2">{pos.openDate}</td>
                       </>
