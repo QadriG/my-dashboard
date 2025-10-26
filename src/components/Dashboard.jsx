@@ -46,26 +46,25 @@ export default function AdminDashboard() {
 
   // --- Centralized state for card data ---
   const [cardsData, setCardsData] = useState({
-    // Top 4 Aggregated Cards
+    // Top 4 Aggregated Cards (Receive data directly from backend)
     activeUsers: null,
     activeExchange: null,
     activePositions: null,
-    totalBalances: null,
-    // Standard Cards (need detailed data)
+    totalBalances: null, // This holds the aggregated total from backend
+    // Standard Cards Data Structures
     profit: null,
     upl: null,
-    fundsDistribution: null,
+    fundsDistribution: null, // Not directly used if balanceData is correct, but pass empty obj or specific data if needed by that component directly
     balanceGraph: null,
     weeklyRevenue: null,
-    dailyPnL: null,
+    dailyPnL: null, // Not directly used if balanceData is correct
     bestTradingPairs: null,
     openPositions: null,
   });
 
-  // --- Mimic user dashboard's balanceData structure ---
-  // This will be an array where each element represents an "exchange account"
-  // containing balance info and nested positions/orders.
-  const [balanceData, setBalanceData] = useState([]); // This is crucial for standard cards
+  // --- Crucial: Mimic user dashboard's balanceData structure for standard cards ---
+  // This will be an array containing a single, virtual "aggregated user" object.
+  const [balanceData, setBalanceData] = useState([]); // Starts as empty array
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -112,59 +111,20 @@ export default function AdminDashboard() {
           totalBalances: { total: 0, breakdown: {} }
         };
 
-        // 3. --- Prepare data for STANDARD CARDS (like FundsDistribution, BalanceGraph) ---
-        // We need to mimic the structure from the user dashboard's /api/users/dashboard endpoint.
-        // The user dashboard gets an array like:
-        // [
-        //   {
-        //     exchange: "...",
-        //     type: "...",
-        //     balance: { totalBalance: ..., available: ..., used: ... },
-        //     openPositions: [...],
-        //     openOrders: [...],
-        //     error: null
-        //   },
-        //   ...
-        // ]
-
-        // Our backend's `/api/admin/users` now returns `users` array.
-        // Each user has `balanceData` (array from fetchUserExchangeData) and summary fields (free, used, total).
-        // Let's flatten this to create a list of "exchange accounts" for the dashboard cards.
-        // We'll aggregate balances and positions from all users.
-        const flattenedExchangeAccounts = [];
-
-        // Aggregate data across all users to pass to standard cards
-        let totalProfit = 0;
-        let totalUPL = 0;
-        let totalLongUPL = 0;
-        let totalShortUPL = 0;
+        // 3. --- Aggregate detailed data for STANDARD CARDS ---
+        let totalBalanceForCards = 0; // Sum of all user.total
         let totalLongValue = 0;
         let totalShortValue = 0;
-        let totalBalanceForCards = 0; // For FundsDistribution-like calcs if needed directly
-        let aggregatedPositionsForCards = [];
-        let aggregatedBalancesForCards = {}; // { 'USDT': { total: ..., free: ..., used: ... }, ... }
+        let totalLongUPL = 0;
+        let totalShortUPL = 0;
+        let aggregatedBalancesForCards = {}; // { 'USDT': { total: X, free: Y, used: Z }, ... }
 
         if (result.users && Array.isArray(result.users)) {
             result.users.forEach(user => {
-                // Add user's summary balances to aggregated balances for cards
-                // Assuming user object now has free, used, total from backend aggregation
                  totalBalanceForCards += user.total || 0;
-                 // Note: For more granular asset balances, you'd iterate user.balanceData[].balance.balances
 
                 if (user.balanceData && Array.isArray(user.balanceData)) {
                     user.balanceData.forEach(exchangeAccount => {
-                         // Push a transformed version of each user's exchange account data
-                        // This mimics the structure from user dashboard's fetch
-                        flattenedExchangeAccounts.push({
-                            exchange: exchangeAccount.exchange,
-                            type: exchangeAccount.type,
-                            balance: exchangeAccount.balance, // This should have totalBalance, available, used
-                            openPositions: exchangeAccount.openPositions || [],
-                            openOrders: exchangeAccount.openOrders || [], // If you have this
-                            error: exchangeAccount.error
-                        });
-
-                        // Aggregate for Profit/UPL cards (example logic)
                         const positions = exchangeAccount.openPositions || [];
                         positions.forEach(pos => {
                             const notional = (pos.size || 0) * (pos.entryPrice || 0);
@@ -179,36 +139,28 @@ export default function AdminDashboard() {
                             }
                         });
 
-                        // Aggregate balances if needed by other cards (e.g., FundsDistribution if it parsed balanceData)
-                         const balances = exchangeAccount.balance?.balances || {};
-                         Object.entries(balances).forEach(([asset, balanceInfo]) => {
+                        const balances = exchangeAccount.balance?.balances || {};
+                        Object.entries(balances).forEach(([asset, balanceInfo]) => {
                            if (!aggregatedBalancesForCards[asset]) {
                              aggregatedBalancesForCards[asset] = { total: 0, free: 0, used: 0 };
                            }
                            aggregatedBalancesForCards[asset].total += balanceInfo.total || 0;
                            aggregatedBalancesForCards[asset].free += balanceInfo.free || 0;
                            aggregatedBalancesForCards[asset].used += balanceInfo.used || 0;
-                         });
-
-                         // Collect positions for cards like OpenPositions, BestTradingPairs if they use balanceData
-                         aggregatedPositionsForCards.push(...(exchangeAccount.openPositions || []));
+                        });
                     });
                 }
             });
         }
 
-        // Calculate total UPL and Profit-like values
-        totalUPL = totalLongUPL + totalShortUPL;
-        // Profit calc might be different, this is just an example using UPL
-        totalProfit = totalUPL; // Or derive from daily PnL snapshots if available
+        const totalUPL = totalLongUPL + totalShortUPL;
+        const totalProfit = totalUPL; // Simplified
 
-        // Prepare data for standard cards
-        // Some cards might need specific aggregated data objects
+        // --- Prepare data structures for standard cards ---
         const profitData = {
-            total: totalBalanceForCards, // Or a derived profit value
+            total: totalBalanceForCards,
             long: totalLongValue,
             short: totalShortValue,
-            // ... other fields Profit component might need
         };
 
         const uplData = {
@@ -220,43 +172,47 @@ export default function AdminDashboard() {
             shortPercent: totalBalanceForCards > 0 ? (totalShortUPL / totalBalanceForCards) * 100 : 0,
         };
 
-        // FundsDistribution might look at totalBalanceForCards and aggregatedBalancesForCards
-        // or parse the flattenedExchangeAccounts if it's designed that way.
-        // For now, pass the flattened data which is the closest equivalent to user's balanceData.
-        const fundsData = {
-             // If FundsDistribution expects specific aggregated values, put them here
-             // Otherwise, it will parse balanceData.
-             totalBalance: totalBalanceForCards,
-             // available, long, short, totalPositions would need to be calculated based on your logic
-             // This is a placeholder. You might need to refine this based on FundsDistribution's internal logic.
-             available: aggregatedBalancesForCards['USDT']?.free || 0, // Example
-             long: totalLongValue, // Example
-             short: totalShortValue, // Example
-             totalPositions: totalLongValue + totalShortValue, // Example
+        // --- ✅ KEY FIX: Create a virtual "user" balanceData object ---
+        // This mimics the structure user dashboard components expect from balanceData[0]
+        const virtualAggregatedBalanceData = {
+          // --- Fields for FundsDistribution ---
+          totalBalance: totalBalanceForCards,
+          available: aggregatedBalancesForCards['USDT']?.free || 0, // Example logic
+          long: totalLongValue,
+          short: totalShortValue,
+          totalPositions: totalLongValue + totalShortValue,
+
+          // --- Fields for DailyPnL (needs real data, placeholder for now) ---
+          dailyPnLSnapshots: [],
+
+          // --- Useful for other components if needed ---
+          balances: aggregatedBalancesForCards,
+          error: null,
+          exchange: "Aggregated",
+          type: "Unified",
         };
 
         // --- Update State ---
         setCardsData({
-            // Top 4 Cards
+            // Top 4 Cards receive aggregated data directly
             activeUsers: aggregatedData.activeUsers,
             activeExchange: aggregatedData.activeExchange,
             activePositions: aggregatedData.activePositions,
-            totalBalances: aggregatedData.totalBalances,
+            totalBalances: aggregatedData.totalBalances, // Pass the backend's aggregated total object
             // Standard Cards Data
             profit: profitData,
             upl: uplData,
-            // Pass the flattened structure for cards that expect it (like FundsDistribution, BalanceGraph, etc.)
-            // If a card needs specific aggregated data, pass it via its prop (e.g., fundsData for FundsDistribution)
-            fundsDistribution: fundsData, // Pass specific aggregated data if needed
-            balanceGraph: { data: [] }, // Needs historical data, populate if available
-            weeklyRevenue: { labels: [], revenues: [] }, // Needs historical data, populate if available
-            dailyPnL: { data: [] }, // Needs historical data, populate if available
-            bestTradingPairs: { pairs: [] }, // Needs logic to rank pairs, populate if available
-            openPositions: { positions: aggregatedPositionsForCards }, // Pass aggregated positions
+            fundsDistribution: {}, // Pass empty object, data comes from balanceData
+            balanceGraph: { data: [] }, // Needs historical data
+            weeklyRevenue: { labels: [], revenues: [] }, // Needs historical data
+            dailyPnL: {}, // Pass empty object, data comes from balanceData
+            bestTradingPairs: { pairs: [] }, // Needs logic
+            openPositions: { positions: [] }, // Needs logic or data from balanceData iteration if collected
         });
 
-        // This is the key part: pass the flattened structure to cards that expect it (like user dashboard)
-        setBalanceData(flattenedExchangeAccounts); // This feeds FundsDistribution, BalanceGraph, etc.
+        // ✅ Pass the virtual aggregated data inside an array to mimic user's balanceData structure
+        // This is crucial for FundsDistribution, DailyPnL, etc.
+        setBalanceData([virtualAggregatedBalanceData]);
 
 
       } catch (err) {
@@ -301,6 +257,7 @@ export default function AdminDashboard() {
             <ActivePositions data={cardsData.activePositions} />
           </div>
           <div className="dashboard-column dashboard-column-teal">
+            {/* Pass the aggregated total data to TotalBalances */}
             <TotalBalances data={cardsData.totalBalances} />
           </div>
         </div>
@@ -314,7 +271,7 @@ export default function AdminDashboard() {
             <UPL uplData={cardsData.upl} />
           </div>
           <div className="dashboard-column dashboard-column-green">
-             {/* Pass aggregated fundsData OR let it parse balanceData */}
+            {/* Pass balanceData so FundsDistribution can parse virtualAggregatedBalanceData */}
             <FundsDistribution fundsData={cardsData.fundsDistribution} balanceData={balanceData} />
           </div>
         </div>
@@ -332,7 +289,8 @@ export default function AdminDashboard() {
         {/* Daily PnL + Best Trading Pairs */}
         <div className="grid grid-cols-2 gap-7 mt-8 max-sm:grid-cols-1">
           <div className="dashboard-column dashboard-column-cyan">
-            <DailyPnL balanceData={cardsData.dailyPnL} />
+            {/* Pass balanceData so DailyPnL can parse virtualAggregatedBalanceData.dailyPnLSnapshots */}
+            <DailyPnL balanceData={balanceData} />
           </div>
           <div className="dashboard-column dashboard-column-purple">
             <BestTradingPairs pairsData={cardsData.bestTradingPairs} balanceData={balanceData} />
@@ -342,7 +300,7 @@ export default function AdminDashboard() {
         {/* Open Positions */}
         <div className="mt-8">
           <div className="dashboard-column dashboard-column-green">
-            <OpenPositions positions={cardsData.openPositions?.positions || []} balanceData={balanceData} />
+            <OpenPositions positionsData={cardsData.openPositions} balanceData={balanceData} />
           </div>
         </div>
 
