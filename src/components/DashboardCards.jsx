@@ -9,7 +9,7 @@ import DailyPnL from "./Users/DailyPnL";
 import BestTradingPairs from "./Users/BestTradingPairs";
 import OpenPositions from "./Users/OpenPositions";
 
-export default function DashboardCards({ userId, isAdmin = false, balanceData }) {
+export default function DashboardCards({ userId, isAdmin = false, dashboardData }) {
   const [cardsData, setCardsData] = useState({
     profit: null,
     upl: null,
@@ -22,18 +22,18 @@ export default function DashboardCards({ userId, isAdmin = false, balanceData })
   });
 
   useEffect(() => {
-    if (balanceData && balanceData.length > 0) {
-      const item = balanceData[0];
-      const totalBalance = item.balance?.totalBalance || 0;
-      const available = item.balance?.available || 0;
+    if (dashboardData && dashboardData.balances && dashboardData.balances.length > 0) {
+      const item = dashboardData.balances[0];
+      const totalBalance = dashboardData.balances.reduce((sum, acc) => sum + (acc.balance?.totalBalance || 0), 0);
+      const available = dashboardData.balances.reduce((sum, acc) => sum + (acc.balance?.available || 0), 0);
 
       let totalLongValue = 0;
       let totalShortValue = 0;
       let totalLongUPL = 0;
       let totalShortUPL = 0;
 
-      const positions = item.openPositions || [];
-      positions.forEach(pos => {
+      const allPositions = dashboardData.positions || [];
+      allPositions.forEach(pos => {
         const notional = (pos.size || 0) * (pos.entryPrice || 0);
         const upl = parseFloat(pos.unrealizedPnl) || 0;
         const side = (pos.side || '').toLowerCase();
@@ -49,36 +49,33 @@ export default function DashboardCards({ userId, isAdmin = false, balanceData })
       const totalPositionsValue = totalLongValue + totalShortValue;
       const totalUPL = totalLongUPL + totalShortUPL;
 
-      // 🔹 Use real data from balanceData[0] where available
-      const dailyPnLSnapshots = item.dailyPnLSnapshots || [];
-      const tradeEvents = item.tradeEvents || []; // assuming this is the field for closed trades
-
+      // ✅ Use the `dailyPnL` data directly from dashboardData
       setCardsData({
         profit: { total: totalBalance, long: totalLongValue, short: totalShortValue },
-        upl: { 
-          total: totalUPL, 
+        upl: {
+          total: totalUPL,
           totalPercent: totalBalance > 0 ? (totalUPL / totalBalance) * 100 : 0,
           long: totalLongUPL,
           longPercent: totalBalance > 0 ? (totalLongUPL / totalBalance) * 100 : 0,
           short: totalShortUPL,
           shortPercent: totalBalance > 0 ? (totalShortUPL / totalBalance) * 100 : 0,
         },
-        fundsDistribution: { 
-          totalBalance, 
-          available, 
-          long: totalLongValue, 
-          short: totalShortValue, 
-          totalPositions: totalPositionsValue 
+        fundsDistribution: {
+          totalBalance,
+          available,
+          long: totalLongValue,
+          short: totalShortValue,
+          totalPositions: totalPositionsValue
         },
-        // ✅ Pass real data for the updated cards
-        balanceGraph: { data: dailyPnLSnapshots }, // used by BalanceGraph
-        weeklyRevenue: { labels: [], revenues: [] }, // WeeklyRevenue will calculate from dailyPnLSnapshots
-        dailyPnL: { data: dailyPnLSnapshots }, // used by DailyPnL
-        bestTradingPairs: { pairs: tradeEvents }, // used by BestTradingPairs
-        openPositions: { positions }
+        // ✅ Pass the historical data from dashboardData
+        balanceGraph: dashboardData.balanceHistory || [],
+        weeklyRevenue: dashboardData.weeklyRevenue || [],
+        dailyPnL: dashboardData.dailyPnL || [],
+        bestTradingPairs: dashboardData.bestTradingPairs || [],
+        openPositions: { positions: allPositions }
       });
     }
-  }, [balanceData]);
+  }, [dashboardData]);
 
   return (
     <>
@@ -92,28 +89,28 @@ export default function DashboardCards({ userId, isAdmin = false, balanceData })
         <div className="dashboard-column dashboard-column-green">
           <FundsDistribution
             fundsData={cardsData.fundsDistribution}
-            balanceData={balanceData}
+            balanceData={dashboardData} // Pass the full dashboardData if needed
           />
         </div>
       </div>
 
       <div className="flex gap-4 w-full items-start mt-8 max-lg:flex-col">
         {/* ✅ Pass full balanceData to these cards */}
-        <div className="dashboard-column dashboard-column-cyan balance-graph w-full lg:w-1/2 p-4 h-[200px] overflow-hidden">
-          <BalanceGraph balanceData={balanceData} />
+        <div className="dashboard-column dashboard-column-cyan w-full lg:w-1/2 p-4 h-[200px] overflow-hidden">
+          <BalanceGraph balanceData={dashboardData} />
         </div>
-        <div className="dashboard-column dashboard-column-purple weekly-revenue w-full lg:w-1/2 p-4 h-[200px] overflow-hidden">
-          <WeeklyRevenue isDarkMode={false} balanceData={balanceData} />
+        <div className="dashboard-column dashboard-column-purple w-full lg:w-1/2 p-4 h-[200px] overflow-hidden">
+          <WeeklyRevenue isDarkMode={false} balanceData={dashboardData} />
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-7 mt-8 max-sm:grid-cols-1">
         {/* ✅ Pass full balanceData to these cards */}
         <div className="dashboard-column dashboard-column-cyan">
-          <DailyPnL balanceData={balanceData} />
+          <DailyPnL balanceData={dashboardData} />
         </div>
         <div className="dashboard-column dashboard-column-purple">
-          <BestTradingPairs balanceData={balanceData} />
+          <BestTradingPairs balanceData={dashboardData} />
         </div>
       </div>
 

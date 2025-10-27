@@ -55,8 +55,8 @@ export const fetchUserExchangeData = async (userId) => {
 
         const exchangeResult = await fetchExchangeData(
           ex.provider,
-          ex.apiKey,
-          ex.apiSecret,
+          ex.apiKey,      // pass raw or decrypted
+          ex.apiSecret,   // depending on your encryption strategy
           ex.passphrase,
           accountType
         );
@@ -72,28 +72,25 @@ export const fetchUserExchangeData = async (userId) => {
         // 🔸 Save daily PnL snapshot
         const today = new Date();
         today.setHours(0, 0, 0, 0); // normalize to start of day
+        // ✅ FIX: Use a string in YYYY-MM-DD format for the date
+        const todayStr = today.toISOString().split('T')[0]; // This gives "2025-10-27"
+
+        // ✅ FIX: Use the string for the upsert condition and create
         await prisma.dailyPnLSnapshot.upsert({
-          where: { userId_date: { userId: numericUserId, date: today } },
+          where: { userId_date: { userId: numericUserId, date: new Date(todayStr) } }, // ✅ Use new Date(todayStr)
           update: {
             totalBalance,
             totalUnrealizedPnl,
-            positions: positions,
+            positions: positions, // Store positions for debugging/trading pair analysis if needed
           },
           create: {
             userId: numericUserId,
-            date: today,
+            date: new Date(todayStr), // ✅ Use new Date(todayStr)
             totalBalance,
             totalUnrealizedPnl,
-            totalRealizedPnl: 0,
+            totalRealizedPnl: 0, // Accumulate this if you track realized PnL
             positions: positions,
           },
-        });
-
-        // 🔸 Fetch last 30 days of snapshots FOR THIS USER
-        const dailySnapshots = await prisma.dailyPnLSnapshot.findMany({
-          where: { userId: numericUserId },
-          orderBy: { date: 'desc' },
-          take: 30
         });
 
         results.push({
@@ -102,7 +99,6 @@ export const fetchUserExchangeData = async (userId) => {
           balance: exchangeResult.balance,
           openOrders: exchangeResult.openOrders || [],
           openPositions: positions,
-          dailyPnLSnapshots: dailySnapshots, // ✅ Now correctly included
           error: null,
         });
 
@@ -115,7 +111,6 @@ export const fetchUserExchangeData = async (userId) => {
           balance: null,
           openOrders: [],
           openPositions: [],
-          dailyPnLSnapshots: [],
           error: innerErr?.message || "Unknown error",
         });
       }
@@ -129,6 +124,7 @@ export const fetchUserExchangeData = async (userId) => {
     return [];
   }
 };
+
 
 export async function syncUserExchangesImmediately(userId) {
   try {

@@ -1,14 +1,15 @@
-// src/components/DailyPnL.jsx
+// src/components/Users/DailyPnL.jsx
 import React, { useEffect, useRef, useState } from "react";
 
 export default function DailyPnL({ balanceData }) {
   const tableRef = useRef(null);
   const [rows, setRows] = useState([]);
-  const [range, setRange] = useState("all"); // ✅ Default: show all data
+  const [range, setRange] = useState("all");
 
   useEffect(() => {
     if (balanceData && balanceData.length > 0) {
       const item = balanceData[0];
+      // ✅ Use the dailyPnLSnapshots data from the first exchange account
       const snapshots = item.dailyPnLSnapshots || [];
 
       // Sort by date descending

@@ -1,3 +1,4 @@
+// src/components/UserDashboard.jsx
 /* eslint no-undef: "off" */
 import React, { useRef, useState, useEffect } from "react";
 import { useTheme } from "../../context/ThemeContext";
@@ -38,7 +39,7 @@ export default function Dashboard() {
   const adminView = location.state?.adminView || false;
   const userIdFromState = location.state?.userId || null;
 
-  const [balance, setBalance] = useState(null);
+  const [dashboardData, setDashboardData] = useState(null); // ✅ Keep this state
   const [loading, setLoading] = useState(true);
 
   const userId = user?.id || userIdFromState;
@@ -66,31 +67,20 @@ export default function Dashboard() {
 
         if (!res.ok) {
           console.warn(`API returned ${res.status}: ${res.statusText}`);
-          setBalance([]); // empty but valid
+          setDashboardData({ balances: [], positions: [], openOrders: [] }); // ✅ Set initial empty structure
           return;
         }
 
         const result = await res.json();
         if (result.success && result.dashboard) {
-          const transformed = result.dashboard.balances.map(bal => ({
-            exchange: bal.exchange,
-            type: bal.type,
-            balance: bal.balance,
-            openPositions: result.dashboard.positions.filter(p => 
-              p.exchange === bal.exchange && p.type === bal.type
-            ),
-            openOrders: result.dashboard.openOrders.filter(o => 
-              o.exchange === bal.exchange && o.type === bal.type
-            ),
-            error: bal.error
-          }));
-          setBalance(transformed);
+          // ✅ Pass the entire dashboard object
+          setDashboardData(result.dashboard);
         } else {
-          setBalance([]);
+          setDashboardData({ balances: [], positions: [], openOrders: [] });
         }
       } catch (err) {
         console.error('Fetch failed (dashboard will still load):', err);
-        setBalance([]); // allow render with empty data
+        setDashboardData({ balances: [], positions: [], openOrders: [] });
       } finally {
         setLoading(false);
       }
@@ -100,41 +90,41 @@ export default function Dashboard() {
   }, [userId]);
 
   // Safe fallback: always render dashboard, even if data is missing
-  const safeBalance = balance || [];
+  const safeDashboardData = dashboardData || { balances: [], positions: [], openOrders: [] };
 
   return (
-    <div className="zoom-out-container relative h-screen w-screen overflow-x-hidden overflow-y-auto">
-      <audio ref={audioRef} preload="auto">
-        <source src={hoverSound} type="audio/mpeg" />
-      </audio>
+  <div className="zoom-out-container relative h-screen w-screen overflow-x-hidden overflow-y-auto">
+    <audio ref={audioRef} preload="auto">
+      <source src={hoverSound} type="audio/mpeg" />
+    </audio>
 
-      <UserSidebar
-        isOpen={true}
-        playHoverSound={playHoverSound}
-        onLogout={logout}
+    <UserSidebar
+      isOpen={true}
+      playHoverSound={playHoverSound}
+      onLogout={logout}
+    />
+
+    <main
+      className="relative z-20 p-6 overflow-y-auto md:ml-64"
+      style={{
+        height: "100vh",
+        width: "100%",
+        maxWidth: "calc(100vw - 16rem)",
+      }}
+    >
+      <div className="shimmer-wrapper w-full py-4 px-6 mb-6 relative flex justify-between items-center">
+        <h1 className="text-4xl font-semibold drop-shadow-md inline-block title-bar-text">
+          Dashboard {loading ? "(Loading...)" : ""}
+        </h1>
+        <LightModeToggle />
+      </div>
+
+      <DashboardCards
+        userId={userId}
+        isAdmin={adminView}
+        dashboardData={safeDashboardData} // ✅ Pass the full dashboardData object
       />
-
-      <main
-        className="relative z-20 p-6 overflow-y-auto md:ml-64"
-        style={{
-          height: "100vh",
-          width: "100%",
-          maxWidth: "calc(100vw - 16rem)",
-        }}
-      >
-        <div className="shimmer-wrapper w-full py-4 px-6 mb-6 relative flex justify-between items-center">
-          <h1 className="text-4xl font-semibold drop-shadow-md inline-block title-bar-text">
-            Dashboard {loading ? "(Loading...)" : ""}
-          </h1>
-          <LightModeToggle />
-        </div>
-
-        <DashboardCards
-          userId={userId}
-          isAdmin={adminView}
-          balanceData={safeBalance}
-        />
-      </main>
-    </div>
-  );
+    </main>
+  </div>
+);
 }
