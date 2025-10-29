@@ -191,17 +191,6 @@ router.get("/dashboard", authMiddleware, async (req, res) => {
     // To get real data, you'd analyze position changes or trade events over time.
     const bestTradingPairs = [];
 
-    // ✅ LOGGING: Add this line to log the data being sent to the frontend
-    console.log("✅ Sending dashboard data to frontend:", {
-      balances,
-      positions,
-      openOrders,
-      balanceHistory,
-      dailyPnL,
-      weeklyRevenue: weeklyRevenueArray,
-      bestTradingPairs,
-    });
-
     res.json({
       success: true,
       dashboard: {
@@ -220,5 +209,46 @@ router.get("/dashboard", authMiddleware, async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
+
+// GET /api/balances/total
+router.get("/total", authMiddleware, async (req, res) => {
+  try {
+    const onlyAdmin = req.query.admin === "true";
+
+    // Fetch users
+    let users;
+    if (onlyAdmin) {
+      users = await prisma.user.findMany({ where: { role: "admin" } });
+    } else {
+      users = await prisma.user.findMany();
+    }
+
+    // Fetch balances from DB + exchange APIs
+    let total = 0;
+
+    for (const u of users) {
+      let dbBalance = u.balance || 0;
+
+      // try to get balance from exchange API (Bitunix, Binance, etc.)
+      let exchangeBalance = 0;
+      try {
+        const exchangeData = await fetchUserExchangeData(u.id);
+        if (exchangeData?.totalBalance) {
+          exchangeBalance = exchangeData.totalBalance;
+        }
+      } catch (err) {
+        console.warn(`Could not fetch exchange balance for user ${u.id}:`, err.message);
+      }
+
+      total += dbBalance + exchangeBalance;
+    }
+
+    res.json({ success: true, total });
+  } catch (err) {
+    console.error("Error fetching total balance:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 router.use(errorHandler);
 export default router;

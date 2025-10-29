@@ -39,7 +39,7 @@ export default function Dashboard() {
   const adminView = location.state?.adminView || false;
   const userIdFromState = location.state?.userId || null;
 
-  const [dashboardData, setDashboardData] = useState(null); // ✅ Keep this state
+  const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const userId = user?.id || userIdFromState;
@@ -67,7 +67,7 @@ export default function Dashboard() {
 
         if (!res.ok) {
           console.warn(`API returned ${res.status}: ${res.statusText}`);
-          setDashboardData({ balances: [], positions: [], openOrders: [] }); // ✅ Set initial empty structure
+          setDashboardData({ balances: [], positions: [], openOrders: [] });
           return;
         }
 
@@ -93,38 +93,38 @@ export default function Dashboard() {
   const safeDashboardData = dashboardData || { balances: [], positions: [], openOrders: [] };
 
   return (
-  <div className="zoom-out-container relative h-screen w-screen overflow-x-hidden overflow-y-auto">
-    <audio ref={audioRef} preload="auto">
-      <source src={hoverSound} type="audio/mpeg" />
-    </audio>
+    <div className="zoom-out-container relative h-screen w-screen overflow-x-hidden overflow-y-auto">
+      <audio ref={audioRef} preload="auto">
+        <source src={hoverSound} type="audio/mpeg" />
+      </audio>
 
-    <UserSidebar
-      isOpen={true}
-      playHoverSound={playHoverSound}
-      onLogout={logout}
-    />
-
-    <main
-      className="relative z-20 p-6 overflow-y-auto md:ml-64"
-      style={{
-        height: "100vh",
-        width: "100%",
-        maxWidth: "calc(100vw - 16rem)",
-      }}
-    >
-      <div className="shimmer-wrapper w-full py-4 px-6 mb-6 relative flex justify-between items-center">
-        <h1 className="text-4xl font-semibold drop-shadow-md inline-block title-bar-text">
-          Dashboard {loading ? "(Loading...)" : ""}
-        </h1>
-        <LightModeToggle />
-      </div>
-
-      <DashboardCards
-        userId={userId}
-        isAdmin={adminView}
-        dashboardData={safeDashboardData} // ✅ Pass the full dashboardData object
+      <UserSidebar
+        isOpen={true}
+        playHoverSound={playHoverSound}
+        onLogout={logout}
       />
-    </main>
-  </div>
-);
+
+      <main
+        className="relative z-20 p-6 overflow-y-auto md:ml-64"
+        style={{
+          height: "100vh",
+          width: "100%",
+          maxWidth: "calc(100vw - 16rem)",
+        }}
+      >
+        <div className="shimmer-wrapper w-full py-4 px-6 mb-6 relative flex justify-between items-center">
+          <h1 className="text-4xl font-semibold drop-shadow-md inline-block title-bar-text">
+            Dashboard {loading ? "(Loading...)" : ""}
+          </h1>
+          <LightModeToggle />
+        </div>
+
+        <DashboardCards
+          userId={userId}
+          isAdmin={adminView}
+          dashboardData={safeDashboardData}
+        />
+      </main>
+    </div>
+  );
 }

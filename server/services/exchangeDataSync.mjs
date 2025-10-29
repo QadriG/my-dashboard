@@ -1,4 +1,5 @@
 // services/exchangeDataSync.mjs
+
 import PrismaClientPkg from "@prisma/client";
 const { PrismaClient } = PrismaClientPkg;
 import { fetchExchangeData } from "./exchangeManager.mjs";
@@ -75,20 +76,22 @@ export const fetchUserExchangeData = async (userId) => {
         // ✅ FIX: Use a string in YYYY-MM-DD format for the date
         const todayStr = today.toISOString().split('T')[0]; // This gives "2025-10-27"
 
-        // ✅ FIX: Use the string for the upsert condition and create
+        // ✅ FIX: Convert to a Date object with only the date part
+        const dateOnly = new Date(todayStr);
+
         await prisma.dailyPnLSnapshot.upsert({
-          where: { userId_date: { userId: numericUserId, date: new Date(todayStr) } }, // ✅ Use new Date(todayStr)
+          where: { userId_date: { userId: numericUserId, date: dateOnly } }, // ✅ Use dateOnly
           update: {
             totalBalance,
             totalUnrealizedPnl,
-            positions: positions, // Store positions for debugging/trading pair analysis if needed
+            positions: positions,
           },
           create: {
             userId: numericUserId,
-            date: new Date(todayStr), // ✅ Use new Date(todayStr)
+            date: dateOnly, // ✅ Use dateOnly
             totalBalance,
             totalUnrealizedPnl,
-            totalRealizedPnl: 0, // Accumulate this if you track realized PnL
+            totalRealizedPnl: 0,
             positions: positions,
           },
         });
@@ -124,7 +127,6 @@ export const fetchUserExchangeData = async (userId) => {
     return [];
   }
 };
-
 
 export async function syncUserExchangesImmediately(userId) {
   try {
