@@ -1,4 +1,3 @@
-// src/components/Users/DailyPnL.jsx
 import React, { useEffect, useRef, useState } from "react";
 
 export default function DailyPnL({ balanceData }) {
@@ -7,31 +6,40 @@ export default function DailyPnL({ balanceData }) {
   const [range, setRange] = useState("all");
 
   useEffect(() => {
-    if (balanceData && balanceData.length > 0) {
-      const item = balanceData[0];
-      // ✅ Use the dailyPnLSnapshots data from the first exchange account
-      const snapshots = item.dailyPnLSnapshots || [];
+    // ✅ FIX: balanceData is the full dashboard object, not an array
+    const snapshots = balanceData?.dailyPnL || [];
 
-      // Sort by date descending
-      const sorted = [...snapshots].sort((a, b) => new Date(b.date) - new Date(a.date));
+    // Enrich with required fields
+    const enriched = snapshots.map(item => ({
+      coin: 'USDT',
+      balance: 0, // optional: enhance later with balanceHistory
+      pnl: item.pnl || 0,
+      pnlPercent: item.pnlPercent || 0,
+      date: item.date
+    }));
 
-      setRows(sorted);
-    }
+    // Sort by date descending
+    const sorted = [...enriched].sort((a, b) => new Date(b.date) - new Date(a.date));
+    setRows(sorted);
   }, [balanceData]);
 
   useEffect(() => {
-    if (!tableRef.current) return;
-    const trs = tableRef.current.querySelectorAll("tbody tr");
-    for (let i = 0; i < trs.length - 1; i++) {
-      const current = parseFloat(trs[i].children[2].textContent);
-      const next = parseFloat(trs[i + 1].children[2].textContent);
-      if (current > next) {
-        trs[i].classList.add("bg-green-600", "text-white");
-      } else if (current < next) {
-        trs[i].classList.add("bg-red-600", "text-white");
-      }
-    }
-  }, [rows]);
+  // balanceData is the full dashboard object, NOT an array
+  const rawPnL = balanceData?.dailyPnL || [];
+  
+  // Enrich with required fields for table
+  const enriched = rawPnL.map(item => ({
+    coin: 'USDT',
+    balance: 0, // or enhance later
+    pnl: typeof item.pnl === 'number' ? item.pnl : 0,
+    pnlPercent: typeof item.pnlPercent === 'number' ? item.pnlPercent : 0,
+    date: item.date || ''
+  }));
+
+  // Sort newest first
+  const sorted = enriched.sort((a, b) => new Date(b.date) - new Date(a.date));
+  setRows(sorted);
+}, [balanceData]);
 
   return (
     <div className="dashboard-column p-6 text-center border-emerald-400">
@@ -70,7 +78,7 @@ export default function DailyPnL({ balanceData }) {
                   ${row.pnl.toFixed(2)}
                 </td>
                 <td className={`py-1 px-2 ${row.pnlPercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {row.pnlPercent}%
+                  {row.pnlPercent.toFixed(2)}%
                 </td>
                 <td className="py-1 px-2">{row.date}</td>
               </tr>

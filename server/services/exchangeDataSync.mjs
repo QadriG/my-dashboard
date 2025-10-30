@@ -1,5 +1,3 @@
-// services/exchangeDataSync.mjs
-
 import PrismaClientPkg from "@prisma/client";
 const { PrismaClient } = PrismaClientPkg;
 import { fetchExchangeData } from "./exchangeManager.mjs";
@@ -56,13 +54,12 @@ export const fetchUserExchangeData = async (userId) => {
 
         const exchangeResult = await fetchExchangeData(
           ex.provider,
-          ex.apiKey,      // pass raw or decrypted
-          ex.apiSecret,   // depending on your encryption strategy
+          ex.apiKey,
+          ex.apiSecret,
           ex.passphrase,
           accountType
         );
 
-        // 🔸 Calculate totals for PnL snapshot
         const positions = exchangeResult.openPositions || [];
         let totalUnrealizedPnl = 0;
         positions.forEach(p => {
@@ -70,28 +67,55 @@ export const fetchUserExchangeData = async (userId) => {
         });
         const totalBalance = exchangeResult.balance?.totalBalance || 0;
 
-        // 🔸 Save daily PnL snapshot
+        // 🔸 TODAY as Date object (safe for Prisma)
         const today = new Date();
-        today.setHours(0, 0, 0, 0); // normalize to start of day
-        // ✅ FIX: Use a string in YYYY-MM-DD format for the date
-        const todayStr = today.toISOString().split('T')[0]; // This gives "2025-10-27"
+        today.setHours(0, 0, 0, 0);
+        const todayDate = new Date(today); // ✅ Prisma-safe Date object
 
-        // ✅ FIX: Convert to a Date object with only the date part
-        const dateOnly = new Date(todayStr);
+        let todayRealizedPnl = 0;
+        if (exchangeResult.closedExecutions?.length) {
+          const todayStr = today.toISOString().split('T')[0];
+          const todayExecutions = exchangeResult.closedExecutions.filter(exec => {
+            const execDate = new Date(exec.execTime).toISOString().split('T')[0];
+            return execDate === todayStr;
+          });
+          todayRealizedPnl = todayExecutions.reduce((sum, exec) => sum + exec.closedPnl, 0);
+        }
 
+        // 🔸 Get yesterday's snapshot for continuity
+        let previousBalance = totalBalance;
+        try {
+          const yesterday = new Date(today);
+          yesterday.setDate(yesterday.getDate() - 1);
+          const yesterdayDate = new Date(yesterday); // ✅ Date object
+
+          const yesterdaySnapshot = await prisma.dailyPnLSnapshot.findFirst({
+            where: { userId: numericUserId, date: yesterdayDate },
+            orderBy: { date: 'desc' }
+          });
+
+          if (yesterdaySnapshot) {
+            previousBalance = yesterdaySnapshot.totalBalance;
+          }
+        } catch (err) {
+          console.warn(`[WARN] Failed to fetch yesterday's snapshot for user ${numericUserId}:`, err.message);
+        }
+
+        // 🔸 UPSERT using Date objects (Prisma-safe)
         await prisma.dailyPnLSnapshot.upsert({
-          where: { userId_date: { userId: numericUserId, date: dateOnly } }, // ✅ Use dateOnly
+          where: { userId_date: { userId: numericUserId, date: todayDate } },
           update: {
             totalBalance,
             totalUnrealizedPnl,
+            totalRealizedPnl: todayRealizedPnl,
             positions: positions,
           },
           create: {
             userId: numericUserId,
-            date: dateOnly, // ✅ Use dateOnly
+            date: todayDate, // ✅ Date object
             totalBalance,
             totalUnrealizedPnl,
-            totalRealizedPnl: 0,
+            totalRealizedPnl: todayRealizedPnl,
             positions: positions,
           },
         });

@@ -15,7 +15,7 @@ import exchangesRoutes from "./server/routes/exchanges.mjs";
 import logger from "./server/utils/logger.mjs";
 import encryptUtils from "./server/utils/encrypt.mjs";
 import positionsRouter from "./server/routes/positions.mjs";
-import usersRouter from "./server/routes/users.mjs";
+import usersRouter from "./server/routes/userRoutes.mjs";
 import balancesRouter from "./server/routes/balances.mjs";
 import manualPushRouter from "./server/routes/manualPush.mjs";
 import { startPeriodicExchangeSync } from "./server/services/exchangeDataSync.mjs";
@@ -97,7 +97,7 @@ app.use("/api/positions", authMiddleware, positionsRouter);
 app.use("/api/exchanges", authMiddleware, exchangesRoutes);
 app.use("/api/webhook", webhookRoutes);
 app.use("/api/admin", authMiddleware, adminMiddleware, adminRoutes);
-app.use("/api/users", authMiddleware, usersRouter);
+app.use("/api/user", authMiddleware, userRouter);
 app.use("/api/balances", balancesRouter);
 app.use("/api/manual-push", authMiddleware, manualPushRouter);
 

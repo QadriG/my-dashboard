@@ -1,4 +1,4 @@
-// server/routes/user.mjs
+// server/routes/userroutes.mjs
 
 import express from "express";
 import pkg from "@prisma/client";
@@ -92,17 +92,16 @@ router.get("/dashboard", authMiddleware, async (req, res) => {
       error: d.error
     }));
 
-    // ✅ FIXED: Include openDate and all relevant fields
     const positions = data.flatMap(d =>
       (d.openPositions || []).map(p => ({
         exchange: d.exchange,
         type: d.type,
         symbol: p.symbol,
         side: p.side,
-        size: p.size || p.amount || 0,           // support both
+        size: p.size || p.amount || 0,
         entryPrice: p.entryPrice || p.openPrice || 0,
         unrealizedPnl: p.unrealizedPnl || 0,
-        openDate: p.openDate,                    // ✅ CRITICAL: include openDate
+        openDate: p.openDate,
         orderValue: p.orderValue || 0,
       }))
     );
@@ -119,76 +118,50 @@ router.get("/dashboard", authMiddleware, async (req, res) => {
       }))
     );
 
-    // --- Fetch Historical Data for Cards ---
-
-    // 1. Fetch Daily PnL Snapshots for the last 30 days
+    // --- Fetch Historical Data ---
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    // ✅ Use Date object for Prisma
+    const thirtyDaysAgoDate = new Date(thirtyDaysAgo);
+    thirtyDaysAgoDate.setHours(0, 0, 0, 0);
 
     const dailyPnLSnapshots = await prisma.dailyPnLSnapshot.findMany({
       where: {
         userId: req.user.id,
         date: {
-          gte: thirtyDaysAgo,
+          gte: thirtyDaysAgoDate, // ✅ Date object
         },
       },
       orderBy: {
-        date: 'asc', // Oldest first for charts
+        date: 'asc',
       },
     });
 
-    // 2. Transform for frontend (BalanceGraph, DailyPnL)
     const balanceHistory = dailyPnLSnapshots.map(snapshot => ({
-      date: snapshot.date.toISOString().split('T')[0], // YYYY-MM-DD
+      date: snapshot.date.toISOString().split('T')[0],
       balance: snapshot.totalBalance,
-      // You can add PnL here if needed by BalanceGraph
     }));
 
-    const dailyPnL = dailyPnLSnapshots.map((snapshot, index, arr) => {
-      const pnl = index === 0 ? 0 : snapshot.totalBalance - arr[index - 1].totalBalance;
-      return {
-        date: snapshot.date.toISOString().split('T')[0],
-        pnl: pnl,
-        // Calculate percentage if previous balance was > 0
-        pnlPercent: index === 0 || arr[index - 1].totalBalance <= 0 ? 0 :
-          ((pnl / arr[index - 1].totalBalance) * 100).toFixed(2)
-      };
-    });
+    const dailyPnL = dailyPnLSnapshots.map(snapshot => ({
+      date: snapshot.date.toISOString().split('T')[0],
+      pnl: snapshot.totalRealizedPnl || 0,
+      pnlPercent: 0 // enhance later if needed
+    }));
 
-    // 3. Aggregate for Weekly Revenue
     const weeklyRevenue = {};
     dailyPnLSnapshots.forEach(snapshot => {
       const date = new Date(snapshot.date);
-      // Get the Monday of the week
       const monday = new Date(date);
-      monday.setDate(monday.getDate() - (monday.getDay() + 6) % 7); // Adjust for Sunday start if needed
+      monday.setDate(monday.getDate() - (monday.getDay() + 6) % 7);
       const weekKey = monday.toISOString().split('T')[0];
-
-      if (!weeklyRevenue[weekKey]) {
-        weeklyRevenue[weekKey] = 0;
-      }
-      // Sum daily PnL for the week. We reuse the `pnl` calculated above.
-      // This requires a bit of trickery since we don't store daily PnL directly.
-      // Option 1: Recalculate PnL here (less efficient)
-      // Option 2: Store daily PnL in snapshot (better)
-      // For now, let's assume weeklyRevenue is totalBalance change for the week.
-      // A more accurate way is to calculate PnL between consecutive snapshots and sum by week.
-      // Let's do a simple weekly balance diff for now.
-      // This logic is flawed for intra-week dips, but it's a start.
-      // Better: Pre-calculate daily PnL in the snapshot creation and store it.
-      // Let's stick to balance for simplicity.
-      weeklyRevenue[weekKey] = snapshot.totalBalance; // This will be the last balance of the week captured
+      weeklyRevenue[weekKey] = snapshot.totalBalance;
     });
 
-    // Convert weeklyRevenue object to array for frontend
     const weeklyRevenueArray = Object.entries(weeklyRevenue).map(([date, balance]) => ({
-       date,
-       balance
+      date,
+      balance
     })).sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // 4. Best Trading Pairs (Placeholder - needs more logic)
-    // For now, we can pass an empty array or mock data.
-    // To get real data, you'd analyze position changes or trade events over time.
     const bestTradingPairs = [];
 
     res.json({
@@ -197,56 +170,15 @@ router.get("/dashboard", authMiddleware, async (req, res) => {
         balances,
         positions,
         openOrders,
-        // --- Historical Data ---
-        balanceHistory, // For BalanceGraph
-        dailyPnL,       // For DailyPnL
-        weeklyRevenue: weeklyRevenueArray, // For WeeklyRevenue
-        bestTradingPairs, // For BestTradingPairs
+        balanceHistory,
+        dailyPnL,
+        weeklyRevenue: weeklyRevenueArray,
+        bestTradingPairs,
       },
     });
   } catch (err) {
     logError(`Error fetching dashboard data for user ${req.user?.id}`, err);
     res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// GET /api/balances/total
-router.get("/total", authMiddleware, async (req, res) => {
-  try {
-    const onlyAdmin = req.query.admin === "true";
-
-    // Fetch users
-    let users;
-    if (onlyAdmin) {
-      users = await prisma.user.findMany({ where: { role: "admin" } });
-    } else {
-      users = await prisma.user.findMany();
-    }
-
-    // Fetch balances from DB + exchange APIs
-    let total = 0;
-
-    for (const u of users) {
-      let dbBalance = u.balance || 0;
-
-      // try to get balance from exchange API (Bitunix, Binance, etc.)
-      let exchangeBalance = 0;
-      try {
-        const exchangeData = await fetchUserExchangeData(u.id);
-        if (exchangeData?.totalBalance) {
-          exchangeBalance = exchangeData.totalBalance;
-        }
-      } catch (err) {
-        console.warn(`Could not fetch exchange balance for user ${u.id}:`, err.message);
-      }
-
-      total += dbBalance + exchangeBalance;
-    }
-
-    res.json({ success: true, total });
-  } catch (err) {
-    console.error("Error fetching total balance:", err);
-    res.status(500).json({ success: false, error: err.message });
   }
 });
 
