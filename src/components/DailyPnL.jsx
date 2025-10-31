@@ -1,36 +1,24 @@
-// src/components/DailyPnL.jsx
 import React, { useEffect, useRef, useState } from "react";
 
 export default function DailyPnL({ balanceData }) {
   const tableRef = useRef(null);
   const [rows, setRows] = useState([]);
-  const [range, setRange] = useState("all"); // ✅ Default: show all data
+  const [range, setRange] = useState("all");
 
   useEffect(() => {
-    if (balanceData && balanceData.length > 0) {
-      const item = balanceData[0];
-      const snapshots = item.dailyPnLSnapshots || [];
+    const snapshots = balanceData?.dailyPnL || [];
+    
+    const enriched = snapshots.map(item => ({
+      coin: 'USDT',
+      balance: item.balance || 0,
+      pnl: typeof item.pnl === 'number' ? item.pnl : 0,
+      pnlPercent: typeof item.pnlPercent === 'number' ? item.pnlPercent : 0,
+      date: item.date || ''
+    }));
 
-      // Sort by date descending
-      const sorted = [...snapshots].sort((a, b) => new Date(b.date) - new Date(a.date));
-
-      setRows(sorted);
-    }
+    const sorted = [...enriched].sort((a, b) => new Date(b.date) - new Date(a.date));
+    setRows(sorted);
   }, [balanceData]);
-
-  useEffect(() => {
-    if (!tableRef.current) return;
-    const trs = tableRef.current.querySelectorAll("tbody tr");
-    for (let i = 0; i < trs.length - 1; i++) {
-      const current = parseFloat(trs[i].children[2].textContent);
-      const next = parseFloat(trs[i + 1].children[2].textContent);
-      if (current > next) {
-        trs[i].classList.add("bg-green-600", "text-white");
-      } else if (current < next) {
-        trs[i].classList.add("bg-red-600", "text-white");
-      }
-    }
-  }, [rows]);
 
   return (
     <div className="dashboard-column p-6 text-center border-emerald-400">
@@ -69,7 +57,7 @@ export default function DailyPnL({ balanceData }) {
                   ${row.pnl.toFixed(2)}
                 </td>
                 <td className={`py-1 px-2 ${row.pnlPercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {row.pnlPercent}%
+                  {row.pnlPercent.toFixed(2)}%
                 </td>
                 <td className="py-1 px-2">{row.date}</td>
               </tr>

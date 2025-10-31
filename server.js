@@ -97,7 +97,7 @@ app.use("/api/positions", authMiddleware, positionsRouter);
 app.use("/api/exchanges", authMiddleware, exchangesRoutes);
 app.use("/api/webhook", webhookRoutes);
 app.use("/api/admin", authMiddleware, adminMiddleware, adminRoutes);
-app.use("/api/user", authMiddleware, userRouter);
+app.use("/api/users", authMiddleware, usersRouter); // ✅ plural "users"
 app.use("/api/balances", balancesRouter);
 app.use("/api/manual-push", authMiddleware, manualPushRouter);
 

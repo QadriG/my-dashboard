@@ -1,8 +1,10 @@
+// server/services/exchanges/bybitService.mjs
+
 import axios from 'axios';
 import crypto from 'crypto';
 
 // ✅ Fixed: removed trailing space
-const BASE_URL = 'https://api.bybit.com';
+const BASE_URL = 'https://api.bybit.com'; // No trailing space
 
 async function getServerTime() {
   const res = await axios.get(`${BASE_URL}/v5/market/time`);
@@ -224,18 +226,28 @@ export async function fetchClosedExecutions(apiKey, apiSecret, category = 'linea
       throw new Error(`Bybit API Error ${response.data.retCode}: ${response.data.retMsg}`);
     }
 
-    const executions = response.data.result.list || [];
-    return executions.map(exec => ({
-      execId: exec.execId,
-      symbol: exec.symbol,
-      side: exec.side.toLowerCase(),
-      price: parseFloat(exec.execPrice),
-      qty: parseFloat(exec.execQty),
-      closedPnl: parseFloat(exec.closedPnl || 0),
-      execTime: parseInt(exec.execTime),
-      fee: parseFloat(exec.fee || 0),
-      execType: exec.execType
-    }));
+    const executions = response.data.result?.list || []; // ✅ Add ? for safety
+
+    return executions.map(exec => {
+      // ✅ Validate each field
+      if (!exec || !exec.execId) {
+        console.warn("Skipping invalid execution:", exec);
+        return null;
+      }
+
+      return {
+        execId: exec.execId,
+        symbol: exec.symbol,
+        side: exec.side.toLowerCase(),
+        price: parseFloat(exec.execPrice),
+        qty: parseFloat(exec.execQty),
+        closedPnl: parseFloat(exec.closedPnl || 0),
+        execTime: parseInt(exec.execTime),
+        fee: parseFloat(exec.fee || 0),
+        execType: exec.execType
+      };
+    }).filter(Boolean); // ✅ Remove nulls
+
   } catch (err) {
     throw new Error(`Bybit fetchClosedExecutions failed: ${err.message}`);
   }

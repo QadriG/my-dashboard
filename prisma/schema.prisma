@@ -19,14 +19,14 @@ model User {
   email             String    @unique
   password          String
   name              String?
-  role              String    @default("user") // user, admin, agent
+  role              String    @default("user")
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   resetToken        String?
   resetTokenExp     DateTime?
   isVerified        Boolean   @default(false)
   verificationToken String?
-  status            String    @default("active") // active, paused, disabled
+  status            String    @default("active")
   tokenVersion      Int       @default(0)
   free              Float     @default(0)
   used              Float     @default(0)
@@ -34,15 +34,16 @@ model User {
   lastActivity      DateTime?
 
   // Relations
-  trades    Trade[]
-  alerts    AlertLog[]
-  exchanges UserExchangeAccount[]
-  logs      Log[]
-  positions Position[]
-  balances  Balance[]
-  syncLogs  SyncLog[]
+  trades            Trade[]
+  alerts            AlertLog[]
+  exchanges         UserExchangeAccount[]
+  logs              Log[]
+  positions         Position[]
+  balances          Balance[]
+  syncLogs          SyncLog[]
   dailyPnLSnapshots DailyPnLSnapshot[]
   tradeEvents       TradeEvent[]
+  executions        Execution[] // ✅ Add this line
 }
 
 // ==============
@@ -181,33 +182,49 @@ model SyncLog {
   createdAt DateTime @default(now())
 }
 
-
 model DailyPnLSnapshot {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id])
-  date      DateTime @db.Date // e.g., 2025-10-23
-  totalBalance Float
+  id                 Int      @id @default(autoincrement())
+  userId             Int
+  user               User     @relation(fields: [userId], references: [id])
+  date               DateTime @db.Date // e.g., 2025-10-23
+  totalBalance       Float
   totalUnrealizedPnl Float
   totalRealizedPnl   Float
-  positions Json     // optional: store full position list for debugging
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  positions          Json // optional: store full position list for debugging
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   @@unique([userId, date])
 }
 
 model TradeEvent {
-  id            Int      @id @default(autoincrement())
-  userId        Int
-  user          User     @relation(fields: [userId], references: [id])
-  symbol        String
-  side          String   // "buy" or "sell"
-  size          Float
-  entryPrice    Float
-  closePrice    Float?
-  realizedPnl   Float?
-  status        String   // "open", "closed"
-  closedAt      DateTime? // when trade was closed
-  createdAt     DateTime @default(now())
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id])
+  symbol      String
+  side        String // "buy" or "sell"
+  size        Float
+  entryPrice  Float
+  closePrice  Float?
+  realizedPnl Float?
+  status      String // "open", "closed"
+  closedAt    DateTime? // when trade was closed
+  createdAt   DateTime  @default(now())
+}
+
+model Execution {
+  id           Int      @id @default(autoincrement())
+  execId       String   @unique  // ✅ Unique Bybit execution ID
+  userId       Int
+  user         User     @relation(fields: [userId], references: [id])
+  symbol       String
+  side         String
+  qty          Float
+  price        Float
+  closedPnl    Float
+  fee          Float?
+  execTime     DateTime
+  balanceAfter Float?
+
+  @@index([userId, execTime])
 }

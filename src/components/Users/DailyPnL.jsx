@@ -1,3 +1,5 @@
+// src/components/Users/DailyPnL.jsx
+
 import React, { useEffect, useRef, useState } from "react";
 
 export default function DailyPnL({ balanceData }) {
@@ -6,45 +8,31 @@ export default function DailyPnL({ balanceData }) {
   const [range, setRange] = useState("all");
 
   useEffect(() => {
-    // ✅ FIX: balanceData is the full dashboard object, not an array
     const snapshots = balanceData?.dailyPnL || [];
-
-    // Enrich with required fields
+    
     const enriched = snapshots.map(item => ({
-      coin: 'USDT',
-      balance: 0, // optional: enhance later with balanceHistory
-      pnl: item.pnl || 0,
-      pnlPercent: item.pnlPercent || 0,
-      date: item.date
+      coin: item.symbol || 'USDT',
+      balance: item.balance || 0,
+      pnl: typeof item.pnl === 'number' ? item.pnl : 0,
+      pnlPercent: typeof item.pnlPercent === 'number' ? item.pnlPercent : 0,
+      date: item.date || '',
+      side: item.side || '',
+      qty: item.qty || 0,
     }));
 
-    // Sort by date descending
     const sorted = [...enriched].sort((a, b) => new Date(b.date) - new Date(a.date));
     setRows(sorted);
   }, [balanceData]);
 
-  useEffect(() => {
-  // balanceData is the full dashboard object, NOT an array
-  const rawPnL = balanceData?.dailyPnL || [];
-  
-  // Enrich with required fields for table
-  const enriched = rawPnL.map(item => ({
-    coin: 'USDT',
-    balance: 0, // or enhance later
-    pnl: typeof item.pnl === 'number' ? item.pnl : 0,
-    pnlPercent: typeof item.pnlPercent === 'number' ? item.pnlPercent : 0,
-    date: item.date || ''
-  }));
-
-  // Sort newest first
-  const sorted = enriched.sort((a, b) => new Date(b.date) - new Date(a.date));
-  setRows(sorted);
-}, [balanceData]);
-
   return (
     <div className="dashboard-column p-6 text-center border-emerald-400">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold text-white drop-shadow">Daily Balance & P&L</h2>
+        <h2 className="text-lg font-semibold text-white drop-shadow">
+          Daily Balance & P&L
+          {balanceData?.lastUpdated && (
+            <span className="text-xs opacity-75 ml-2">(Updated: {balanceData.lastUpdated})</span>
+          )}
+        </h2>
         <select
           value={range}
           onChange={(e) => setRange(e.target.value)}
@@ -72,7 +60,7 @@ export default function DailyPnL({ balanceData }) {
           {rows.length > 0 ? (
             rows.map((row, idx) => (
               <tr key={idx}>
-                <td className="py-1 px-2">{row.coin || 'USDT'}</td>
+                <td className="py-1 px-2">{row.coin}</td>
                 <td className="py-1 px-2">${row.balance.toFixed(2)}</td>
                 <td className={`py-1 px-2 ${row.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                   ${row.pnl.toFixed(2)}
