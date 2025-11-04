@@ -19,7 +19,6 @@ import { authMiddleware } from "../middleware/authMiddleware.mjs";
 import { roleMiddleware } from "../middleware/roleMiddleware.mjs";
 import { errorHandler } from "../middleware/errorHandler.mjs";
 import { info, error as logError } from "../utils/logger.mjs";
-import { encrypt } from "../utils/apiencrypt.mjs";
 import { fetchUserExchangeData } from "../services/exchangeDataSync.mjs";
 
 const router = express.Router();
@@ -32,11 +31,7 @@ const adminOnly = roleMiddleware(["admin"]);
 router.get('/users/active', authMiddleware, adminOnly, async (req, res) => {
   try {
     const users = await listAllUsers();
-    // Return a simple response for now
-    res.json({
-      success: true,
-      activeUsers: users.length
-    });
+    res.json({ success: true, activeUsers: users.length });
   } catch (err) {
     logError(`Error fetching active users for user ${req.user?.id}`, err);
     res.status(500).json({ success: false, message: err.message });
@@ -46,11 +41,7 @@ router.get('/users/active', authMiddleware, adminOnly, async (req, res) => {
 router.get('/users/active-users', authMiddleware, adminOnly, async (req, res) => {
   try {
     const users = await listAllUsers();
-    // Return a simple response for now
-    res.json({
-      success: true,
-      activeUsers: users.length
-    });
+    res.json({ success: true, activeUsers: users.length });
   } catch (err) {
     logError(`Error fetching active users for user ${req.user?.id}`, err);
     res.status(500).json({ success: false, message: err.message });
@@ -79,10 +70,7 @@ router.get('/dashboard', authMiddleware, adminOnly, async (req, res) => {
         openDate: p.openDate,
       }))
     );
-    res.json({
-      success: true,
-      dashboard: { balances, positions }
-    });
+    res.json({ success: true, dashboard: { balances, positions } });
   } catch (err) {
     logError(`Error fetching admin's own dashboard data for user ${req.user?.id}`, err);
     res.status(500).json({ success: false, message: err.message });
@@ -90,128 +78,143 @@ router.get('/dashboard', authMiddleware, adminOnly, async (req, res) => {
 });
 
 // --- Route: Aggregated user data for top 4 cards ---
+// --- Route: Aggregated user data for top 4 cards ---
 router.get('/users', authMiddleware, adminOnly, async (req, res) => {
   try {
-    // Fetch all users
-    const users = await listAllUsers(); // This should return an array of user objects
+    const users = await listAllUsers();
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const thirtyDaysAgoDate = new Date(thirtyDaysAgo);
+    thirtyDaysAgoDate.setHours(0, 0, 0, 0);
 
-    // For each user, fetch their balance data from the Balance model
-    const usersWithBalance = await Promise.all(
+    // Fetch full dashboard data for each user
+    const usersWithDashboard = await Promise.all(
       users.map(async (user) => {
-        // Fetch balance data for this user
-        const balanceRecords = await prisma.balance.findMany({
-          where: { userId: user.id },
-          select: {
-            asset: true,
-            free: true,
-            used: true,
-            total: true
-          }
-        });
-
-        // Calculate total free, used, and total for this user
-        let totalFree = 0;
-        let totalUsed = 0;
-        let totalTotal = 0;
-
-        balanceRecords.forEach(record => {
-          totalFree += record.free;
-          totalUsed += record.used;
-          totalTotal += record.total;
-        });
-
-        // Fetch API keys for this user
-        const apiKeys = await prisma.userExchangeAccount.findMany({
-          where: { userId: user.id },
-          select: {
-            provider: true,
-            type: true
-          }
-        });
-
-        // Return user object with balance data and API keys
-        return {
-          ...user,
-          free: totalFree,
-          used: totalUsed,
-          total: totalTotal,
-          APIs: apiKeys // Add this field for the frontend
-        };
-      })
-    );
-
-    // Calculate aggregated metrics
-    let totalActiveUsers = 0;
-    const exchangeCounts = {};
-    let totalActivePositions = 0;
-    let totalSizeOfPositions = 0;
-    let totalAllBalances = 0;
-    const balanceBreakdown = {};
-
-    // For each user, fetch their exchange data for position aggregation
-    const usersWithExchangeData = await Promise.all(
-      usersWithBalance.map(async (user) => {
         try {
-          const userExchangeData = await fetchUserExchangeData(user.id);
-          // Count this user if they have any exchange data
-          if (userExchangeData && userExchangeData.length > 0) {
-            totalActiveUsers++;
-          }
-
-          // Aggregate data for this user
-          userExchangeData.forEach(item => {
-            const exchange = item.exchange || 'unknown';
-            exchangeCounts[exchange] = (exchangeCounts[exchange] || 0) + 1;
-            const positions = item.openPositions || [];
-            totalActivePositions += positions.length;
-            positions.forEach(pos => {
-              totalSizeOfPositions += (pos.size || 0);
-            });
-
-            const balances = item.balance?.balances || {};
-            Object.entries(balances).forEach(([asset, balanceInfo]) => {
-              const totalBalance = balanceInfo.total || 0;
-              totalAllBalances += totalBalance;
-              balanceBreakdown[asset] = (balanceBreakdown[asset] || 0) + totalBalance;
-            });
-          });
-
-          return {
-            ...user,
-            balanceData: userExchangeData
-          };
+          const dashboardData = await fetchUserExchangeData(user.id);
+          return { ...user, dashboardData };
         } catch (err) {
-          console.error(`Error fetching data for user ${user.id}:`, err);
-          return {
-            ...user,
-            balanceData: [] // Return empty array if there's an error
-          };
+          console.warn(`Failed to fetch dashboard for user ${user.id}:`, err.message);
+          return { ...user, dashboardData: [] };
         }
       })
     );
 
-    // Prepare the response object with the exact structure the frontend expects
+    // --- Enhance each user with aggregated balance data ---
+    const usersWithBalances = usersWithDashboard.map(user => {
+      let totalFree = 0;
+      let totalUsed = 0;
+      let totalTotal = 0;
+
+      if (user.dashboardData && Array.isArray(user.dashboardData)) {
+        user.dashboardData.forEach(account => {
+          if (account.balance) {
+            totalFree += account.balance.available || 0;
+            totalUsed += account.balance.used || 0;
+            totalTotal += account.balance.totalBalance || 0;
+          }
+        });
+      }
+
+      return {
+        ...user,
+        free: totalFree,
+        used: totalUsed,
+        total: totalTotal
+      };
+    });
+
+    // --- Aggregated Metrics (Top 4 Cards) ---
+    let totalActiveUsers = 0;
+    const exchangeCounts = {};
+    let totalActivePositions = 0;
+    let totalAllBalances = 0;
+
+    usersWithBalances.forEach(({ dashboardData }) => {
+      if (dashboardData.length > 0) {
+        totalActiveUsers++;
+        dashboardData.forEach(item => {
+          const exchange = item.exchange || 'unknown';
+          exchangeCounts[exchange] = (exchangeCounts[exchange] || 0) + 1;
+          totalActivePositions += (item.openPositions?.length || 0);
+          totalAllBalances += (item.balance?.totalBalance || 0);
+        });
+      }
+    });
+
+    // --- Aggregate Historical Data for Admin Virtual User ---
+    const allExecutions = await prisma.execution.findMany({
+      where: { execTime: { gte: thirtyDaysAgoDate } },
+      orderBy: { execTime: 'desc' }
+    });
+
+    const allSnapshots = await prisma.dailyPnLSnapshot.findMany({
+      where: { date: { gte: thirtyDaysAgoDate } },
+      orderBy: { date: 'asc' }
+    });
+
+    const dailyPnL = allExecutions.map(exec => ({
+      date: new Date(exec.execTime).toISOString().split('T')[0],
+      balance: 0,
+      pnl: exec.closedPnl || 0,
+      pnlPercent: 0,
+      symbol: exec.symbol,
+      side: exec.side
+    }));
+
+    const balanceHistory = allSnapshots.map(snapshot => ({
+      date: snapshot.date.toISOString().split('T')[0],
+      balance: snapshot.totalBalance
+    }));
+
+    const weeklyRevenue = {};
+    allSnapshots.forEach(snapshot => {
+      const date = new Date(snapshot.date);
+      const monday = new Date(date);
+      monday.setDate(monday.getDate() - (monday.getDay() + 6) % 7);
+      const weekKey = monday.toISOString().split('T')[0];
+      weeklyRevenue[weekKey] = snapshot.totalBalance;
+    });
+
+    const weeklyRevenueArray = Object.entries(weeklyRevenue).map(([date, balance]) => ({
+      date,
+      balance
+    })).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    const adminDashboard = {
+      balances: usersWithBalances.flatMap(u => 
+        u.dashboardData.map(d => ({ ...d, userId: u.id, userEmail: u.email }))
+      ),
+      positions: usersWithBalances.flatMap(u => 
+        (u.dashboardData.flatMap(d => d.openPositions || []).map(p => ({ ...p, userId: u.id, userEmail: u.email })))
+      ),
+      openOrders: [],
+      balanceHistory,
+      dailyPnL,
+      weeklyRevenue: weeklyRevenueArray,
+      bestTradingPairs: []
+    };
+
     res.json({
       success: true,
       aggregated: {
         activeUsers: { count: totalActiveUsers },
         activeExchange: { count: Object.keys(exchangeCounts).length, exchanges: exchangeCounts },
-        activePositions: { count: totalActivePositions, totalSize: totalSizeOfPositions },
-        totalBalances: { total: totalAllBalances, breakdown: balanceBreakdown }
+        activePositions: { count: totalActivePositions, totalSize: 0 },
+        totalBalances: { total: totalAllBalances, breakdown: {} }
       },
-      // Also return the full user list with balance data for other parts of the UI
-      users: usersWithExchangeData
+      adminDashboard,
+      users: usersWithBalances // ✅ Now includes free/used/total
     });
   } catch (err) {
     logError(`Error fetching admin dashboard data for user ${req.user?.id}`, err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
-
 // --- Route: All users' open positions ---
 router.get('/all-positions', authMiddleware, adminOnly, async (req, res) => {
   try {
-    const users = await listAllUsers(); // Get all users
+    const users = await listAllUsers();
     const allUserPositions = await Promise.all(
       users.map(async (user) => {
         try {
@@ -220,7 +223,7 @@ router.get('/all-positions', authMiddleware, adminOnly, async (req, res) => {
           return userOpenPositions.map(pos => ({ ...pos, userId: user.id, userEmail: user.email }));
         } catch (err) {
           console.error(`Error fetching positions for user ${user.id}:`, err);
-          return []; // Return empty array for this user if there's an error
+          return [];
         }
       })
     );
@@ -235,42 +238,42 @@ router.get('/all-positions', authMiddleware, adminOnly, async (req, res) => {
 // --- Existing Routes (Preserved) ---
 router.delete("/users/:id", authMiddleware, adminOnly, (req, res) => {
   info(`Admin ${req.user.id} deleting user ${req.params.id}`);
-  deleteUser(req, res); // No next parameter
+  deleteUser(req, res);
 });
 
 router.patch("/users/:id/role", authMiddleware, adminOnly, (req, res) => {
   info(`Admin ${req.user.id} updating role for user ${req.params.id}`);
-  updateUserRole(req, res); // No next parameter
+  updateUserRole(req, res);
 });
 
 router.patch("/users/:id/pause", authMiddleware, adminOnly, (req, res) => {
   info(`Admin ${req.user.id} pausing user ${req.params.id}`);
-  pauseUser(req, res); // No next parameter
+  pauseUser(req, res);
 });
 
 router.patch("/users/:id/unpause", authMiddleware, adminOnly, (req, res) => {
   info(`Admin ${req.user.id} unpausing user ${req.params.id}`);
-  unpauseUser(req, res); // No next parameter
+  unpauseUser(req, res);
 });
 
 router.patch("/users/:id/disable", authMiddleware, adminOnly, (req, res) => {
   info(`Admin ${req.user.id} disabling user ${req.params.id}`);
-  disableUser(req, res); // No next parameter
+  disableUser(req, res);
 });
 
 router.patch("/users/:id/enable", authMiddleware, adminOnly, (req, res) => {
   info(`Admin ${req.user.id} enabling user ${req.params.id}`);
-  enableUser(req, res); // No next parameter
+  enableUser(req, res);
 });
 
 router.get("/users/:id/stats", authMiddleware, adminOnly, (req, res) => {
   info(`Admin ${req.user.id} fetching stats for user ${req.params.id}`);
-  getUserStats(req, res); // No next parameter
+  getUserStats(req, res);
 });
 
 router.get("/users/:id/positions", authMiddleware, adminOnly, (req, res) => {
   info(`Admin ${req.user.id} fetching positions for user ${req.params.id}`);
-  getUserPositions(req, res); // No next parameter
+  getUserPositions(req, res);
 });
 
 // Fetch API keys for a user

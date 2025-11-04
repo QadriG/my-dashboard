@@ -130,15 +130,21 @@ model Position {
   userId       Int
   exchange     String
   symbol       String
-  side         String // buy/sell
-  amount       Float
+  side         String    // "buy" or "sell"
+  amount       Float     // original size
   entryPrice   Float
   currentPrice Float?
-  pnl          Float?
-  status       String    @default("open")
+  pnl          Float?    // unrealized
+  status       String    @default("open") // "open", "closed"
   openedAt     DateTime  @default(now())
   closedAt     DateTime?
-  leverage     Float? // optional, for futures positions
+  closePrice   Float?    // when closed
+  realizedPnl  Float?    // when closed
+  chartId      String?   // e.g., "3L" — your custom ID
+  alertId      String?   // optional: link to AlertLog
+  leverage     Float?
+  // 🔹 New: track remaining size (for partial closes)
+  remainingSize Float    @default(0) // updated on partial close
 }
 
 // =====================

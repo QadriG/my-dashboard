@@ -1,0 +1,6 @@
+-- AlterTable
+ALTER TABLE "Position" ADD COLUMN     "alertId" TEXT,
+ADD COLUMN     "chartId" TEXT,
+ADD COLUMN     "closePrice" DOUBLE PRECISION,
+ADD COLUMN     "realizedPnl" DOUBLE PRECISION,
+ADD COLUMN     "remainingSize" DOUBLE PRECISION NOT NULL DEFAULT 0;
