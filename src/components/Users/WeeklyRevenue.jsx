@@ -11,35 +11,11 @@ export default function WeeklyRevenue({ isDarkMode, balanceData }) {
   const [revenues, setRevenues] = useState([]);
 
   useEffect(() => {
-    if (balanceData && balanceData.length > 0) {
-      const item = balanceData[0];
-      const snapshots = item.dailyPnLSnapshots || [];
-
-      // Group by week
-      const weekMap = {};
-      snapshots.forEach(snapshot => {
-        const date = new Date(snapshot.date);
-        const year = date.getFullYear();
-        const month = date.getMonth() + 1;
-        const day = date.getDate();
-        const d = new Date(date);
-        d.setHours(0,0,0,0);
-        d.setDate(d.getDate() + 4 - (d.getDay()||7));
-        const yearStart = new Date(year,0,1);
-        const weekNo = Math.ceil(( (d - yearStart) / 86400000 + 1)/7);
-        const weekKey = `${year}-W${weekNo}`;
-
-        if (!weekMap[weekKey]) {
-          weekMap[weekKey] = { totalPnl: 0, count: 0 };
-        }
-        weekMap[weekKey].totalPnl += snapshot.totalUnrealizedPnl;
-        weekMap[weekKey].count++;
-      });
-
-      // Convert to arrays
-      const sortedWeeks = Object.keys(weekMap).sort();
-      setLabels(sortedWeeks);
-      setRevenues(sortedWeeks.map(key => weekMap[key].totalPnl));
+    if (balanceData?.weeklyRevenue) {
+      const labels = balanceData.weeklyRevenue.map(w => w.date);
+      const revenues = balanceData.weeklyRevenue.map(w => w.balance);
+      setLabels(labels);
+      setRevenues(revenues);
     }
   }, [balanceData]);
 

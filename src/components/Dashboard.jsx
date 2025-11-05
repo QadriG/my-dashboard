@@ -42,7 +42,7 @@ export function LightModeToggle({ className, style }) {
 // ---------------------
 export default function AdminDashboard() {
   const { isDarkMode } = useTheme();
-  const { logout } = useAdminAuth();
+  const { user: adminUser, logout } = useAdminAuth();
   const navigate = useNavigate();
 
   const [cardsData, setCardsData] = useState({
@@ -184,42 +184,49 @@ export default function AdminDashboard() {
   if (error) return <div className="p-8 text-red-500">Error loading dashboard: {error}</div>;
 
   return (
-    <Layout onLogout={logout}>
-      {/* Title */}
-      <div className="shimmer-wrapper w-full py-4 px-6 mb-6 flex justify-between items-center">
-        <h1
-          className={`text-4xl font-semibold drop-shadow-md ${
-            isDarkMode ? "text-white" : "text-black"
-          }`}
-        >
-          Admin Dashboard
-        </h1>
-        <LightModeToggle />
-      </div>
+  <Layout onLogout={logout}>
+    <div className="shimmer-wrapper w-full py-4 px-6 mb-6 flex justify-between items-center">
+      <h1 className={`text-4xl font-semibold drop-shadow-md ${isDarkMode ? "text-white" : "text-black"}`}>
+        Admin Dashboard
+      </h1>
+      <LightModeToggle />
+    </div>
 
-      {/* Dashboard content */}
-      <div className="dashboard-content">
-        {/* First Row - Top 4 Aggregated Cards */}
-        <div className="grid grid-cols-4 gap-7 max-lg:grid-cols-2 max-sm:grid-cols-1 mb-6">
-          <div className="dashboard-column dashboard-column-cyan">
-            <ActiveUsers data={cardsData.activeUsers} />
-          </div>
-          <div className="dashboard-column dashboard-column-purple">
-            <ActiveExchange data={cardsData.activeExchange} />
-          </div>
-          <div className="dashboard-column dashboard-column-green">
-            <ActivePositions data={cardsData.activePositions} />
-          </div>
-          <div className="dashboard-column dashboard-column-teal">
-            <TotalBalances data={cardsData.totalBalances} />
-          </div>
+    <div className="dashboard-content">
+      {/* Top 4 Cards */}
+      <div className="grid grid-cols-4 gap-7 max-lg:grid-cols-2 max-sm:grid-cols-1 mb-6">
+        <div className="dashboard-column dashboard-column-cyan">
+          <ActiveUsers data={cardsData.activeUsers} />
         </div>
-
-        {/* Reuse User Dashboard Cards */}
-        <DashboardCards isAdmin={true} dashboardData={balanceData} />
+        <div className="dashboard-column dashboard-column-purple">
+          <ActiveExchange data={cardsData.activeExchange} />
+        </div>
+        <div className="dashboard-column dashboard-column-green">
+          <ActivePositions data={cardsData.activePositions} />
+        </div>
+        <div className="dashboard-column dashboard-column-teal">
+          <TotalBalances data={cardsData.totalBalances} />
+        </div>
       </div>
-    </Layout>
-  );
+
+      {/* Standard Cards — pass filtered admin data */}
+      <DashboardCards
+        userId={adminUser?.id || null}
+        isAdmin={true}
+        dashboardData={{
+          balances: cardsData.profit ? [{
+            balance: { totalBalance: cardsData.profit.total }
+          }] : [],
+          positions: cardsData.openPositions?.positions || [],
+          balanceHistory: cardsData.balanceGraph || [],
+          weeklyRevenue: cardsData.weeklyRevenue || [],
+          dailyPnL: cardsData.dailyPnL || [],
+          bestTradingPairs: cardsData.bestTradingPairs || [],
+        }}
+      />
+    </div>
+  </Layout>
+);
 }
 
 // Reuse the existing DashboardCards component

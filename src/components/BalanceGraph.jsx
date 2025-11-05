@@ -11,27 +11,21 @@ export default function BalanceGraph({ balanceData }) {
   const [range, setRange] = useState("30d"); // ✅ Add state for range
 
   useEffect(() => {
-    if (balanceData && balanceData.length > 0) {
-      const item = balanceData[0];
-      let snapshots = item.dailyPnLSnapshots || [];
+  if (balanceData?.balanceHistory) {
+    let data = balanceData.balanceHistory;
 
-      // 🔹 Filter by range
-      const now = new Date();
-      let filtered = snapshots;
-
-      if (range !== "all") {
-        const days = range === "7d" ? 7 : range === "10d" ? 10 : 30;
-        const cutoff = new Date(now);
-        cutoff.setDate(cutoff.getDate() - days);
-        filtered = snapshots.filter(s => new Date(s.date) >= cutoff);
-      }
-
-      // Sort by date ascending
-      const sorted = [...filtered].sort((a, b) => new Date(a.date) - new Date(b.date));
-      setLabels(sorted.map(s => s.date.split('T')[0]));
-      setBalances(sorted.map(s => s.totalBalance));
+    if (range !== "all") {
+      const days = range === "7d" ? 7 : range === "10d" ? 10 : 30;
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - days);
+      data = data.filter(item => new Date(item.date) >= cutoff);
     }
-  }, [balanceData, range]); // ✅ Re-run when range changes
+
+    const sorted = [...data].sort((a, b) => new Date(a.date) - new Date(b.date));
+    setLabels(sorted.map(s => s.date));
+    setBalances(sorted.map(s => s.balance));
+  }
+}, [balanceData, range]);
 
   useEffect(() => {
     if (!canvasRef.current || balances.length === 0) return;
