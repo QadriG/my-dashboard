@@ -11,7 +11,8 @@ async function getServerTime() {
   return parseInt(res.data.time);
 }
 
-function sign(timestamp, apiKey, recvWindow, queryString, secret) {
+// ✅ Export the sign function
+export function sign(timestamp, apiKey, recvWindow, queryString, secret) {
   const payload = `${timestamp}${apiKey}${recvWindow}${queryString}`;
   return crypto.createHmac('sha256', secret).update(payload).digest('hex');
 }

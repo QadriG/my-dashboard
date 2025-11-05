@@ -1,5 +1,3 @@
-// src/components/FundsDistribution.jsx
-
 import React from "react";
 
 export default function FundsDistribution({ fundsData, balanceData }) {

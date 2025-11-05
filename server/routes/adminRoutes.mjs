@@ -1,5 +1,7 @@
 // server/routes/adminRoutes.mjs
-
+import axios from 'axios';
+import { fetchBalance } from '../services/exchanges/bybitService.mjs';
+const BASE_URL = 'https://api.bybit.com';
 import express from "express";
 import pkg from "@prisma/client";
 const { PrismaClient } = pkg;
@@ -24,6 +26,20 @@ import { fetchUserExchangeData } from "../services/exchangeDataSync.mjs";
 const router = express.Router();
 const prisma = new PrismaClient();
 
+// Helper: Test if an API key is valid by fetching balance
+// Helper: Test if an API key is valid by fetching balance
+async function testApiKey(apiKey, apiSecret, provider = 'bybit', type = 'UNIFIED') {
+  try {
+    // Only support Bybit for now
+    if (provider.toLowerCase() !== 'bybit') return false;
+
+    await fetchBalance(apiKey, apiSecret, type);
+    return true;
+  } catch (err) {
+    console.warn(`API key test failed for ${provider}:`, err.message);
+    return false;
+  }
+}
 // Middleware to ensure admin role
 const adminOnly = roleMiddleware(["admin"]);
 
@@ -123,7 +139,29 @@ router.get('/users', authMiddleware, adminOnly, async (req, res) => {
         total: totalTotal
       };
     });
+// --- Add API Status to Each User ---
+const usersWithApiStatus = await Promise.all(
+  usersWithDashboard.map(async (user) => {
+    let apiStatus = "Not Connected";
+    let apiNames = [];
 
+    if (user.apis && Array.isArray(user.apis)) {
+      for (const api of user.apis) {
+        const isValid = await testApiKey(api.apiKey, api.apiSecret, api.provider, api.type || 'UNIFIED');
+        if (isValid) {
+          apiStatus = "Connected";
+          apiNames.push(api.provider);
+        }
+      }
+    }
+
+    return {
+      ...user,
+      apiStatus,
+      apiNames: apiNames.join(", ") || "-"
+    };
+  })
+);
     // --- Aggregated Metrics (Top 4 Cards) ---
     let totalActiveUsers = 0;
     const exchangeCounts = {};
