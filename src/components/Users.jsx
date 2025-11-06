@@ -33,7 +33,11 @@ export default function AdminUsers() {
       setLoading(false);
     }
   };
-
+useEffect(() => {
+  fetchUsers(); // initial load
+  const interval = setInterval(fetchUsers, 60000); // refresh every 60s
+  return () => clearInterval(interval);
+}, []);
   useEffect(() => {
     fetchUsers();
   }, []);
@@ -205,7 +209,7 @@ export default function AdminUsers() {
   {user.apiStatus === "Connected" ? (
   <span className="text-green-400 font-bold">{user.apiNames}</span>
 ) : (
-  <span className="text-red-400 font-bold">Not Connected</span>
+  <span className="text-red-400 font-bold">Nt Connected</span>
 )}
 </td>
                     <td className="px-2 py-2">{(user.free ?? 0).toFixed(2)}</td>

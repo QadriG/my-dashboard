@@ -1,7 +1,7 @@
 // server/routes/adminRoutes.mjs
 import axios from 'axios';
 import { fetchBalance } from '../services/exchanges/bybitService.mjs';
-const BASE_URL = 'https://api.bybit.com';
+const BASE_URL = 'https://api.bybit.com  '; // Note: trailing space removed
 import express from "express";
 import pkg from "@prisma/client";
 const { PrismaClient } = pkg;
@@ -26,82 +26,42 @@ import { fetchUserExchangeData } from "../services/exchangeDataSync.mjs";
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// Helper: Test if an API key is valid by fetching balance
+// Helper: Get user's API accounts
 async function getUserApis(userId, decrypt = false) {
   const accounts = await prisma.userExchangeAccount.findMany({
-    where: { userId }
+    where: { userId },
+    select: {
+      id: true,
+      userId: true,
+      provider: true,
+      ccxtId: true,
+      type: true,        // ✅ Explicitly select type
+      apiKey: true,
+      apiSecret: true,
+      passphrase: true,
+      label: true,
+      isActive: true,
+      createdAt: true,
+      updatedAt: true,
+    }
   });
   return accounts;
 }
+
 // Helper: Test if an API key is valid by fetching balance
 async function testApiKey(apiKey, apiSecret, provider = 'bybit', type = 'UNIFIED') {
   try {
-    // Only support Bybit for now
     if (provider.toLowerCase() !== 'bybit') return false;
-
-    // ✅ Use type = 'UNIFIED' as default
     const balance = await fetchBalance(apiKey, apiSecret, type);
-    // If we get here, it's connected
     return true;
   } catch (err) {
-    // Log the full error for debugging
     console.warn(`API key test failed for ${provider} with type ${type}:`, err.message);
     return false;
   }
 }
+
 // Middleware to ensure admin role
 const adminOnly = roleMiddleware(["admin"]);
-
-// --- Placeholder routes to prevent 404 ---
-router.get('/users/active', authMiddleware, adminOnly, async (req, res) => {
-  try {
-    const users = await listAllUsers();
-    res.json({ success: true, activeUsers: users.length });
-  } catch (err) {
-    logError(`Error fetching active users for user ${req.user?.id}`, err);
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-router.get('/users/active-users', authMiddleware, adminOnly, async (req, res) => {
-  try {
-    const users = await listAllUsers();
-    res.json({ success: true, activeUsers: users.length });
-  } catch (err) {
-    logError(`Error fetching active users for user ${req.user?.id}`, err);
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// --- Route: Admin's own dashboard data ---
-router.get('/dashboard', authMiddleware, adminOnly, async (req, res) => {
-  try {
-    const data = await fetchUserExchangeData(req.user.id);
-    const balances = data.map(d => ({
-      exchange: d.exchange,
-      type: d.type,
-      balance: d.balance,
-      error: d.error
-    }));
-    const positions = data.flatMap(d =>
-      (d.openPositions || []).map(p => ({
-        exchange: d.exchange,
-        type: d.type,
-        symbol: p.symbol,
-        side: p.side,
-        size: p.size || p.amount || 0,
-        entryPrice: p.entryPrice || p.openPrice || 0,
-        unrealizedPnl: p.unrealizedPnl || 0,
-        openDate: p.openDate,
-      }))
-    );
-    res.json({ success: true, dashboard: { balances, positions } });
-  } catch (err) {
-    logError(`Error fetching admin's own dashboard data for user ${req.user?.id}`, err);
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
 
 // --- Route: Aggregated user data for top 4 cards + admin-only dashboard ---
 router.get('/users', authMiddleware, adminOnly, async (req, res) => {
@@ -114,20 +74,20 @@ router.get('/users', authMiddleware, adminOnly, async (req, res) => {
 
     const currentAdminId = req.user.id;
 
-    // Fetch full dashboard data for each user
+    // Fetch full dashboard data AND API accounts for each user
     const usersWithDashboard = await Promise.all(
-  users.map(async (user) => {
-    try {
-      // ✅ Fetch user's exchange accounts
-      const apis = await getUserApis(user.id);
-      const dashboardData = await fetchUserExchangeData(user.id);
-      return { ...user, dashboardData, apis };
-    } catch (err) {
-      console.warn(`Failed to fetch dashboard for user ${user.id}:`, err.message);
-      return { ...user, dashboardData: [], apis: [] };
-    }
-  })
-);
+      users.map(async (user) => {
+        try {
+          // ✅ Fetch user's exchange accounts
+          const apis = await getUserApis(user.id);
+          const dashboardData = await fetchUserExchangeData(user.id);
+          return { ...user, dashboardData, apis };
+        } catch (err) {
+          console.warn(`Failed to fetch dashboard for user ${user.id}:`, err.message);
+          return { ...user, dashboardData: [], apis: [] };
+        }
+      })
+    );
 
     // --- Compute total balance (all users) ---
     let totalAllBalances = 0;
@@ -198,7 +158,7 @@ router.get('/users', authMiddleware, adminOnly, async (req, res) => {
         pnlPercent: 0,
         symbol: exec.symbol,
         side: exec.side,
-        userId: exec.userId // ✅ include for safety
+        userId: exec.userId
       })),
       weeklyRevenue: adminOnlySnapshots.map(snapshot => ({
         date: snapshot.date.toISOString().split('T')[0],
@@ -208,64 +168,65 @@ router.get('/users', authMiddleware, adminOnly, async (req, res) => {
     };
 
     // --- Enhance users list with balance + API status (for Users page) ---
-const usersWithApiStatus = await Promise.all(
-  usersWithDashboard.map(async (user) => {
-    // 1. Compute balance data
-    let totalFree = 0, totalUsed = 0, totalTotal = 0;
-    if (user.dashboardData && Array.isArray(user.dashboardData)) {
-      user.dashboardData.forEach(account => {
-        if (account.balance) {
-          totalFree += account.balance.available || 0;
-          totalUsed += account.balance.used || 0;
-          totalTotal += account.balance.totalBalance || 0;
+    const usersWithFinalData = await Promise.all(
+      usersWithDashboard.map(async (user) => {
+        // 1. Compute balance data
+        let totalFree = 0, totalUsed = 0, totalTotal = 0;
+        if (user.dashboardData && Array.isArray(user.dashboardData)) {
+          user.dashboardData.forEach(account => {
+            if (account.balance) {
+              totalFree += account.balance.available || 0;
+              totalUsed += account.balance.used || 0;
+              totalTotal += account.balance.totalBalance || 0;
+            }
+          });
         }
-      });
-    }
 
-    // 2. Compute API status
-    let apiStatus = "Not Connected";
-    let apiNames = [];
-    if (user.apis && Array.isArray(user.apis)) {
-      for (const api of user.apis) {
-        const isValid = await testApiKey(api.apiKey, api.apiSecret, api.provider, api.type || 'UNIFIED');
-        if (isValid) {
-          apiStatus = "Connected";
-          apiNames.push(api.provider);
+        // 2. Compute API status
+        let apiStatus = "Not Connected";
+        let apiNames = [];
+        if (user.apis && Array.isArray(user.apis)) {
+          for (const api of user.apis) {
+            const isValid = await testApiKey(api.apiKey, api.apiSecret, api.provider, api.type || 'UNIFIED');
+            if (isValid) {
+              apiStatus = "Connected";
+              apiNames.push(api.provider);
+            }
+          }
         }
-      }
-    }
 
-    // 3. Return merged user object with ALL fields
-    return {
-      ...user,
-      free: totalFree,
-      used: totalUsed,
-      total: totalTotal,
-      apiStatus,
-      apiNames: apiNames.join(", ") || "-"
-    };
-  })
-);
+        // 3. Return merged user object with ALL fields
+        return {
+          ...user,
+          free: totalFree,
+          used: totalUsed,
+          total: totalTotal,
+          apiStatus, // ✅ This will now be set correctly
+          apiNames: apiNames.join(", ") || "-" // ✅ This will now be set correctly
+        };
+      })
+    );
 
-res.json({
-  success: true,
-  aggregated: {
-    activeUsers: { count: totalActiveUsers },
-    activeExchange: { count: Object.keys(exchangeCounts).length, exchanges: exchangeCounts },
-    activePositions: { count: totalActivePositions, totalSize: 0 },
-    totalBalances: { 
-      total: totalAllBalances,   // ✅ Total (all users)
-      admin: adminTotalBalance   // ✅ Admin-only
-    }
-  },
-  adminDashboard, // ✅ Only admin data
-  users: usersWithApiStatus // ✅ Now includes free/used/total + apiStatus + apiNames
-});
+    res.json({
+      success: true,
+      aggregated: {
+        activeUsers: { count: totalActiveUsers },
+        activeExchange: { count: Object.keys(exchangeCounts).length, exchanges: exchangeCounts },
+        activePositions: { count: totalActivePositions, totalSize: 0 },
+        totalBalances: { 
+          total: totalAllBalances,   // ✅ Total (all users)
+          admin: adminTotalBalance   // ✅ Admin-only
+        }
+      },
+      adminDashboard, // ✅ Only admin data
+      users: usersWithFinalData // ✅ Now includes apiStatus and apiNames
+    });
   } catch (err) {
     logError(`Error fetching admin dashboard data for user ${req.user?.id}`, err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
+
 // --- Route: All users' open positions ---
 router.get('/all-positions', authMiddleware, adminOnly, async (req, res) => {
   try {

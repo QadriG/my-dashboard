@@ -42,6 +42,11 @@ export async function fetchBalance(apiKey, apiSecret, accountType = 'UNIFIED') {
     const url = `${BASE_URL}/v5/account/wallet-balance?${queryString}`;
     const response = await axios.get(url, { headers });
 
+    // ✅ Handle specific retCode for invalid API key
+    if (response.data.retCode === 10001 && response.data.retMsg.includes('accountType')) {
+      throw new Error(`Invalid API key or accountType`);
+    }
+
     if (response.data.retCode !== 0) {
       throw new Error(`Bybit API Error ${response.data.retCode}: ${response.data.retMsg}`);
     }
