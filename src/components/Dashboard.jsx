@@ -211,19 +211,23 @@ export default function AdminDashboard() {
 
       {/* Standard Cards — pass filtered admin data */}
       <DashboardCards
-        userId={adminUser?.id || null}
-        isAdmin={true}
-        dashboardData={{
-          balances: cardsData.profit ? [{
-            balance: { totalBalance: cardsData.profit.total }
-          }] : [],
-          positions: cardsData.openPositions?.positions || [],
-          balanceHistory: cardsData.balanceGraph || [],
-          weeklyRevenue: cardsData.weeklyRevenue || [],
-          dailyPnL: cardsData.dailyPnL || [],
-          bestTradingPairs: cardsData.bestTradingPairs || [],
-        }}
-      />
+  userId={adminUser?.id || null}
+  isAdmin={true}
+  dashboardData={{
+    // Pass original data
+    balances: balanceData.balances || [],
+    positions: balanceData.positions || [],
+    openOrders: balanceData.openOrders || [],
+    balanceHistory: balanceData.balanceHistory || [],
+    weeklyRevenue: balanceData.weeklyRevenue || [],
+    dailyPnL: balanceData.dailyPnL || [],
+    bestTradingPairs: balanceData.bestTradingPairs || [],
+    // ✅ CRITICAL: Pass computed card data
+    profit: cardsData.profit,
+    upl: cardsData.upl,
+    fundsDistribution: cardsData.fundsDistribution,
+  }}
+/>
     </div>
   </Layout>
 );

@@ -7,18 +7,20 @@ export default function AdminPositions() {
   const [closedPositions, setClosedPositions] = useState([]);
   const [activeTable, setActiveTable] = useState("open");
 
-  // ✅ Fetch all users' open positions from backend
+  // ✅ Use adminDashboard data (filtered to admin only)
   useEffect(() => {
     const fetchPositions = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/admin/all-positions", {
+        const res = await fetch("http://localhost:5000/api/admin/users", {
           credentials: "include",
         });
         const data = await res.json();
-        if (data.success) {
-          setOpenPositions(data.positions);
-        } else {
-          console.error("Error fetching positions:", data.message);
+        if (data.success && data.adminDashboard) {
+          const adminOnlyPositions = data.adminDashboard.positions || [];
+          const open = adminOnlyPositions.filter(p => p.status === "open");
+          const closed = adminOnlyPositions.filter(p => p.status === "closed");
+          setOpenPositions(open);
+          setClosedPositions(closed);
         }
       } catch (err) {
         console.error("Error fetching positions:", err);
@@ -27,24 +29,22 @@ export default function AdminPositions() {
 
     fetchPositions();
 
-    // Optional: poll every 5s for updates
     const interval = setInterval(fetchPositions, 5000);
     return () => clearInterval(interval);
   }, []);
 
   // ✅ Send "close" action to backend
-  const handleClose = async (userId, symbol, side) => {
+  const handleClose = async (symbol, side) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/positions/close`, {
+      const res = await fetch(`http://localhost:5000/api/positions/close`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ userId, symbol, side }),
+        body: JSON.stringify({ symbol, side }),
       });
       if (res.ok) {
-        // Refresh data after closing
-        const updatedOpen = openPositions.filter((p) => !(p.userId === userId && p.symbol === symbol && p.side === side));
+        const updatedOpen = openPositions.filter((p) => !(p.symbol === symbol && p.side === side));
         setOpenPositions(updatedOpen);
       }
     } catch (err) {
@@ -102,13 +102,12 @@ export default function AdminPositions() {
             <table className="w-full text-white">
               <thead className="bg-gray-200 text-black rounded-xl">
                 <tr>
-                  <th className="px-4 py-2">ID</th>
                   <th className="px-4 py-2">Symbol</th>
                   <th className="px-4 py-2">Side</th>
                   <th className="px-4 py-2">Amount</th>
                   <th className="px-4 py-2">Order Value</th>
                   <th className="px-4 py-2">Open Price</th>
-                  <th className="px-4 py-2">Status</th>
+                  <th className="px-4 py-2">Unrealized PnL</th>
                   <th className="px-4 py-2">Open Date</th>
                   <th className="px-4 py-2">Action</th>
                 </tr>
@@ -117,7 +116,6 @@ export default function AdminPositions() {
                 {openPositions.length > 0 ? (
                   openPositions.map((pos, idx) => (
                     <tr key={idx} className="border-t border-gray-600">
-                      <td className="px-4 py-2">{pos.id}</td>
                       <td className="px-4 py-2">{pos.symbol}</td>
                       <td className="px-4 py-2">
                         <span
@@ -130,14 +128,16 @@ export default function AdminPositions() {
                           {pos.side}
                         </span>
                       </td>
-                      <td className="px-4 py-2">{pos.amount}</td>
-                      <td className="px-4 py-2">${pos.value}</td>
-                      <td className="px-4 py-2">${pos.price}</td>
-                      <td className="px-4 py-2 text-green-600">{pos.status}</td>
+                      <td className="px-4 py-2">{pos.size || pos.amount}</td>
+                      <td className="px-4 py-2">${pos.orderValue}</td>
+                      <td className="px-4 py-2">${pos.entryPrice}</td>
+                      <td className={`px-4 py-2 ${pos.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        ${pos.unrealizedPnl?.toFixed(2)}
+                      </td>
                       <td className="px-4 py-2">{pos.openDate}</td>
                       <td className="px-4 py-2">
                         <button
-                          onClick={() => handleClose(pos.userId, pos.symbol, pos.side)}
+                          onClick={() => handleClose(pos.symbol, pos.side)}
                           className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 text-xs rounded"
                         >
                           Close
@@ -147,7 +147,7 @@ export default function AdminPositions() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="9" className="text-center py-4 text-gray-400">
+                    <td colSpan="8" className="text-center py-4 text-gray-400">
                       No open positions
                     </td>
                   </tr>
@@ -165,11 +165,9 @@ export default function AdminPositions() {
             <table className="w-full text-white">
               <thead className="bg-gray-200 text-black rounded-xl">
                 <tr>
-                  <th className="px-4 py-2">ID</th>
                   <th className="px-4 py-2">Symbol</th>
                   <th className="px-4 py-2">Side</th>
                   <th className="px-4 py-2">Amount</th>
-                  <th className="px-4 py-2">Order Value</th>
                   <th className="px-4 py-2">Open Price</th>
                   <th className="px-4 py-2">Close Price</th>
                   <th className="px-4 py-2">Profit</th>
@@ -183,12 +181,10 @@ export default function AdminPositions() {
                 {closedPositions.length > 0 ? (
                   closedPositions.map((pos, idx) => (
                     <tr key={idx} className="border-t border-gray-600">
-                      <td className="px-4 py-2">{pos.id}</td>
                       <td className="px-4 py-2">{pos.symbol}</td>
                       <td className="px-4 py-2">{pos.side}</td>
-                      <td className="px-4 py-2">{pos.amount}</td>
-                      <td className="px-4 py-2">{pos.value}</td>
-                      <td className="px-4 py-2">{pos.openPrice}</td>
+                      <td className="px-4 py-2">{pos.size || pos.amount}</td>
+                      <td className="px-4 py-2">{pos.entryPrice}</td>
                       <td className="px-4 py-2">{pos.closePrice}</td>
                       <td className="px-4 py-2 text-green-600">{pos.profit}</td>
                       <td className="px-4 py-2 text-green-600">{pos.pnl}</td>

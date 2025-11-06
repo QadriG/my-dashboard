@@ -27,16 +27,25 @@ const router = express.Router();
 const prisma = new PrismaClient();
 
 // Helper: Test if an API key is valid by fetching balance
+async function getUserApis(userId, decrypt = false) {
+  const accounts = await prisma.userExchangeAccount.findMany({
+    where: { userId }
+  });
+  return accounts;
+}
 // Helper: Test if an API key is valid by fetching balance
 async function testApiKey(apiKey, apiSecret, provider = 'bybit', type = 'UNIFIED') {
   try {
     // Only support Bybit for now
     if (provider.toLowerCase() !== 'bybit') return false;
 
-    await fetchBalance(apiKey, apiSecret, type);
+    // ✅ Use type = 'UNIFIED' as default
+    const balance = await fetchBalance(apiKey, apiSecret, type);
+    // If we get here, it's connected
     return true;
   } catch (err) {
-    console.warn(`API key test failed for ${provider}:`, err.message);
+    // Log the full error for debugging
+    console.warn(`API key test failed for ${provider} with type ${type}:`, err.message);
     return false;
   }
 }
@@ -93,8 +102,8 @@ router.get('/dashboard', authMiddleware, adminOnly, async (req, res) => {
   }
 });
 
-// --- Route: Aggregated user data for top 4 cards ---
-// --- Route: Aggregated user data for top 4 cards ---
+
+// --- Route: Aggregated user data for top 4 cards + admin-only dashboard ---
 router.get('/users', authMiddleware, adminOnly, async (req, res) => {
   try {
     const users = await listAllUsers();
@@ -103,48 +112,119 @@ router.get('/users', authMiddleware, adminOnly, async (req, res) => {
     const thirtyDaysAgoDate = new Date(thirtyDaysAgo);
     thirtyDaysAgoDate.setHours(0, 0, 0, 0);
 
+    const currentAdminId = req.user.id;
+
     // Fetch full dashboard data for each user
     const usersWithDashboard = await Promise.all(
-      users.map(async (user) => {
-        try {
-          const dashboardData = await fetchUserExchangeData(user.id);
-          return { ...user, dashboardData };
-        } catch (err) {
-          console.warn(`Failed to fetch dashboard for user ${user.id}:`, err.message);
-          return { ...user, dashboardData: [] };
-        }
-      })
-    );
+  users.map(async (user) => {
+    try {
+      // ✅ Fetch user's exchange accounts
+      const apis = await getUserApis(user.id);
+      const dashboardData = await fetchUserExchangeData(user.id);
+      return { ...user, dashboardData, apis };
+    } catch (err) {
+      console.warn(`Failed to fetch dashboard for user ${user.id}:`, err.message);
+      return { ...user, dashboardData: [], apis: [] };
+    }
+  })
+);
 
-    // --- Enhance each user with aggregated balance data ---
-    const usersWithBalances = usersWithDashboard.map(user => {
-      let totalFree = 0;
-      let totalUsed = 0;
-      let totalTotal = 0;
-
-      if (user.dashboardData && Array.isArray(user.dashboardData)) {
-        user.dashboardData.forEach(account => {
-          if (account.balance) {
-            totalFree += account.balance.available || 0;
-            totalUsed += account.balance.used || 0;
-            totalTotal += account.balance.totalBalance || 0;
-          }
+    // --- Compute total balance (all users) ---
+    let totalAllBalances = 0;
+    usersWithDashboard.forEach(({ dashboardData }) => {
+      if (dashboardData.length > 0) {
+        dashboardData.forEach(item => {
+          totalAllBalances += (item.balance?.totalBalance || 0);
         });
       }
-
-      return {
-        ...user,
-        free: totalFree,
-        used: totalUsed,
-        total: totalTotal
-      };
     });
-// --- Add API Status to Each User ---
+
+    // --- Filter data to admin-only ---
+    const adminOnlyBalances = usersWithDashboard
+      .flatMap(u => u.dashboardData.map(d => ({ ...d, userId: u.id })))
+      .filter(acc => acc.userId === currentAdminId);
+
+    const adminOnlyPositions = usersWithDashboard
+      .flatMap(u => (u.dashboardData.flatMap(d => d.openPositions || []).map(p => ({ ...p, userId: u.id }))))
+      .filter(pos => pos.userId === currentAdminId);
+
+    const adminOnlyExecutions = await prisma.execution.findMany({
+      where: { 
+        userId: currentAdminId,
+        execTime: { gte: thirtyDaysAgoDate } 
+      },
+      orderBy: { execTime: 'desc' }
+    });
+
+    const adminOnlySnapshots = await prisma.dailyPnLSnapshot.findMany({
+      where: { 
+        userId: currentAdminId,
+        date: { gte: thirtyDaysAgoDate } 
+      },
+      orderBy: { date: 'asc' }
+    });
+
+    const adminTotalBalance = adminOnlyBalances.reduce((sum, acc) => sum + (acc.balance?.totalBalance || 0), 0);
+
+    // --- Aggregated Metrics (Top 4 Cards) ---
+    let totalActiveUsers = 0;
+    const exchangeCounts = {};
+    let totalActivePositions = 0;
+
+    usersWithDashboard.forEach(({ dashboardData }) => {
+      if (dashboardData.length > 0) {
+        totalActiveUsers++;
+        dashboardData.forEach(item => {
+          const exchange = item.exchange || 'unknown';
+          exchangeCounts[exchange] = (exchangeCounts[exchange] || 0) + 1;
+          totalActivePositions += (item.openPositions?.length || 0);
+        });
+      }
+    });
+
+    // --- Build admin-only dashboard ---
+    const adminDashboard = {
+      balances: adminOnlyBalances,
+      positions: adminOnlyPositions,
+      openOrders: [],
+      balanceHistory: adminOnlySnapshots.map(snapshot => ({
+        date: snapshot.date.toISOString().split('T')[0],
+        balance: snapshot.totalBalance
+      })),
+      dailyPnL: adminOnlyExecutions.map(exec => ({
+        date: new Date(exec.execTime).toISOString().split('T')[0],
+        balance: 0,
+        pnl: exec.closedPnl || 0,
+        pnlPercent: 0,
+        symbol: exec.symbol,
+        side: exec.side,
+        userId: exec.userId // ✅ include for safety
+      })),
+      weeklyRevenue: adminOnlySnapshots.map(snapshot => ({
+        date: snapshot.date.toISOString().split('T')[0],
+        balance: snapshot.totalBalance
+      })),
+      bestTradingPairs: []
+    };
+
+    // --- Enhance users list with balance + API status (for Users page) ---
 const usersWithApiStatus = await Promise.all(
   usersWithDashboard.map(async (user) => {
+    // 1. Compute balance data
+    let totalFree = 0, totalUsed = 0, totalTotal = 0;
+    if (user.dashboardData && Array.isArray(user.dashboardData)) {
+      user.dashboardData.forEach(account => {
+        if (account.balance) {
+          totalFree += account.balance.available || 0;
+          totalUsed += account.balance.used || 0;
+          totalTotal += account.balance.totalBalance || 0;
+        }
+      });
+    }
+
+    // 2. Compute API status
     let apiStatus = "Not Connected";
     let apiNames = [];
-
     if (user.apis && Array.isArray(user.apis)) {
       for (const api of user.apis) {
         const isValid = await testApiKey(api.apiKey, api.apiSecret, api.provider, api.type || 'UNIFIED');
@@ -155,95 +235,32 @@ const usersWithApiStatus = await Promise.all(
       }
     }
 
+    // 3. Return merged user object with ALL fields
     return {
       ...user,
+      free: totalFree,
+      used: totalUsed,
+      total: totalTotal,
       apiStatus,
       apiNames: apiNames.join(", ") || "-"
     };
   })
 );
-    // --- Aggregated Metrics (Top 4 Cards) ---
-    let totalActiveUsers = 0;
-    const exchangeCounts = {};
-    let totalActivePositions = 0;
-    let totalAllBalances = 0;
 
-    usersWithBalances.forEach(({ dashboardData }) => {
-      if (dashboardData.length > 0) {
-        totalActiveUsers++;
-        dashboardData.forEach(item => {
-          const exchange = item.exchange || 'unknown';
-          exchangeCounts[exchange] = (exchangeCounts[exchange] || 0) + 1;
-          totalActivePositions += (item.openPositions?.length || 0);
-          totalAllBalances += (item.balance?.totalBalance || 0);
-        });
-      }
-    });
-
-    // --- Aggregate Historical Data for Admin Virtual User ---
-    const allExecutions = await prisma.execution.findMany({
-      where: { execTime: { gte: thirtyDaysAgoDate } },
-      orderBy: { execTime: 'desc' }
-    });
-
-    const allSnapshots = await prisma.dailyPnLSnapshot.findMany({
-      where: { date: { gte: thirtyDaysAgoDate } },
-      orderBy: { date: 'asc' }
-    });
-
-    const dailyPnL = allExecutions.map(exec => ({
-      date: new Date(exec.execTime).toISOString().split('T')[0],
-      balance: 0,
-      pnl: exec.closedPnl || 0,
-      pnlPercent: 0,
-      symbol: exec.symbol,
-      side: exec.side
-    }));
-
-    const balanceHistory = allSnapshots.map(snapshot => ({
-      date: snapshot.date.toISOString().split('T')[0],
-      balance: snapshot.totalBalance
-    }));
-
-    const weeklyRevenue = {};
-    allSnapshots.forEach(snapshot => {
-      const date = new Date(snapshot.date);
-      const monday = new Date(date);
-      monday.setDate(monday.getDate() - (monday.getDay() + 6) % 7);
-      const weekKey = monday.toISOString().split('T')[0];
-      weeklyRevenue[weekKey] = snapshot.totalBalance;
-    });
-
-    const weeklyRevenueArray = Object.entries(weeklyRevenue).map(([date, balance]) => ({
-      date,
-      balance
-    })).sort((a, b) => new Date(a.date) - new Date(b.date));
-
-    const adminDashboard = {
-      balances: usersWithBalances.flatMap(u => 
-        u.dashboardData.map(d => ({ ...d, userId: u.id, userEmail: u.email }))
-      ),
-      positions: usersWithBalances.flatMap(u => 
-        (u.dashboardData.flatMap(d => d.openPositions || []).map(p => ({ ...p, userId: u.id, userEmail: u.email })))
-      ),
-      openOrders: [],
-      balanceHistory,
-      dailyPnL,
-      weeklyRevenue: weeklyRevenueArray,
-      bestTradingPairs: []
-    };
-
-    res.json({
-      success: true,
-      aggregated: {
-        activeUsers: { count: totalActiveUsers },
-        activeExchange: { count: Object.keys(exchangeCounts).length, exchanges: exchangeCounts },
-        activePositions: { count: totalActivePositions, totalSize: 0 },
-        totalBalances: { total: totalAllBalances, breakdown: {} }
-      },
-      adminDashboard,
-      users: usersWithBalances // ✅ Now includes free/used/total
-    });
+res.json({
+  success: true,
+  aggregated: {
+    activeUsers: { count: totalActiveUsers },
+    activeExchange: { count: Object.keys(exchangeCounts).length, exchanges: exchangeCounts },
+    activePositions: { count: totalActivePositions, totalSize: 0 },
+    totalBalances: { 
+      total: totalAllBalances,   // ✅ Total (all users)
+      admin: adminTotalBalance   // ✅ Admin-only
+    }
+  },
+  adminDashboard, // ✅ Only admin data
+  users: usersWithApiStatus // ✅ Now includes free/used/total + apiStatus + apiNames
+});
   } catch (err) {
     logError(`Error fetching admin dashboard data for user ${req.user?.id}`, err);
     res.status(500).json({ success: false, message: err.message });

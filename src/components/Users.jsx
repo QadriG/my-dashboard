@@ -201,7 +201,13 @@ export default function AdminUsers() {
                     <td className="px-2 py-2 font-semibold">{user.id}</td>
                     <td className="px-2 py-2 truncate">{user.email}</td>
                     <td className="px-2 py-2 truncate">{user.name || "-"}</td>
-                    <td className="px-2 py-2 truncate">{apiNames}</td>
+                    <td className="px-2 py-2 truncate">
+  {user.apiStatus === "Connected" ? (
+  <span className="text-green-400 font-bold">{user.apiNames}</span>
+) : (
+  <span className="text-red-400 font-bold">Not Connected</span>
+)}
+</td>
                     <td className="px-2 py-2">{(user.free ?? 0).toFixed(2)}</td>
                     <td className="px-2 py-2">{(user.used ?? 0).toFixed(2)}</td>
                     <td className="px-2 py-2">{(user.total ?? 0).toFixed(2)}</td>
