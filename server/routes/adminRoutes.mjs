@@ -1,7 +1,5 @@
 // server/routes/adminRoutes.mjs
-import axios from 'axios';
-import { fetchBalance } from '../services/exchanges/bybitService.mjs';
-const BASE_URL = 'https://api.bybit.com  '; // Note: trailing space removed
+
 import express from "express";
 import pkg from "@prisma/client";
 const { PrismaClient } = pkg;
@@ -22,43 +20,10 @@ import { roleMiddleware } from "../middleware/roleMiddleware.mjs";
 import { errorHandler } from "../middleware/errorHandler.mjs";
 import { info, error as logError } from "../utils/logger.mjs";
 import { fetchUserExchangeData } from "../services/exchangeDataSync.mjs";
+import { fetchBalance } from "../services/exchanges/bybitService.mjs";
 
 const router = express.Router();
 const prisma = new PrismaClient();
-
-// Helper: Get user's API accounts
-async function getUserApis(userId, decrypt = false) {
-  const accounts = await prisma.userExchangeAccount.findMany({
-    where: { userId },
-    select: {
-      id: true,
-      userId: true,
-      provider: true,
-      ccxtId: true,
-      type: true,        // ✅ Explicitly select type
-      apiKey: true,
-      apiSecret: true,
-      passphrase: true,
-      label: true,
-      isActive: true,
-      createdAt: true,
-      updatedAt: true,
-    }
-  });
-  return accounts;
-}
-
-// Helper: Test if an API key is valid by fetching balance
-async function testApiKey(apiKey, apiSecret, provider = 'bybit', type = 'UNIFIED') {
-  try {
-    if (provider.toLowerCase() !== 'bybit') return false;
-    const balance = await fetchBalance(apiKey, apiSecret, type);
-    return true;
-  } catch (err) {
-    console.warn(`API key test failed for ${provider} with type ${type}:`, err.message);
-    return false;
-  }
-}
 
 // Middleware to ensure admin role
 const adminOnly = roleMiddleware(["admin"]);
@@ -78,8 +43,20 @@ router.get('/users', authMiddleware, adminOnly, async (req, res) => {
     const usersWithDashboard = await Promise.all(
       users.map(async (user) => {
         try {
-          // ✅ Fetch user's exchange accounts
-          const apis = await getUserApis(user.id);
+          // ✅ Fetch user's exchange accounts (API keys)
+          const apis = await prisma.userExchangeAccount.findMany({
+            where: { userId: user.id },
+            select: {
+              id: true,
+              provider: true,
+              type: true,
+              apiKey: true,
+              apiSecret: true,
+              passphrase: true,
+              isActive: true,
+            }
+          });
+          
           const dashboardData = await fetchUserExchangeData(user.id);
           return { ...user, dashboardData, apis };
         } catch (err) {
@@ -183,17 +160,22 @@ router.get('/users', authMiddleware, adminOnly, async (req, res) => {
         }
 
         // 2. Compute API status
-        let apiStatus = "Not Connected";
-        let apiNames = [];
-        if (user.apis && Array.isArray(user.apis)) {
-          for (const api of user.apis) {
-            const isValid = await testApiKey(api.apiKey, api.apiSecret, api.provider, api.type || 'UNIFIED');
-            if (isValid) {
-              apiStatus = "Connected";
-              apiNames.push(api.provider);
-            }
-          }
-        }
+let apiStatus = "Not Connected";
+let apiNames = [];
+if (user.apis && Array.isArray(user.apis)) {
+  for (const api of user.apis) {
+    try {
+      // ✅ Actually test the key with fetchBalance
+      const balance = await fetchBalance(api.apiKey, api.apiSecret, api.type || 'UNIFIED');
+      apiStatus = "Connected";
+      apiNames.push(api.provider);
+      // ✅ Break after first valid key (or keep going to collect all)
+    } catch (err) {
+      console.warn(`API key test failed for user ${user.id}, exchange ${api.provider}:`, err.message);
+      // Keep apiStatus as "Not Connected" if test fails
+    }
+  }
+}
 
         // 3. Return merged user object with ALL fields
         return {
@@ -201,8 +183,8 @@ router.get('/users', authMiddleware, adminOnly, async (req, res) => {
           free: totalFree,
           used: totalUsed,
           total: totalTotal,
-          apiStatus, // ✅ This will now be set correctly
-          apiNames: apiNames.join(", ") || "-" // ✅ This will now be set correctly
+          apiStatus, // ✅ This will now be "Connected" or "Not Connected"
+          apiNames: apiNames.join(", ") || "-" // ✅ This will be "bybit" or "-"
         };
       })
     );
@@ -296,7 +278,21 @@ router.get("/users/:id/positions", authMiddleware, adminOnly, (req, res) => {
 router.get("/users/:id/apis", authMiddleware, adminOnly, async (req, res) => {
   try {
     const userId = parseInt(req.params.id, 10);
-    const apis = await getUserApis(userId, true);
+    const apis = await prisma.userExchangeAccount.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        provider: true,
+        type: true,
+        apiKey: true,
+        apiSecret: true,
+        passphrase: true,
+        label: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      }
+    });
     res.json({ success: true, apis });
   } catch (err) {
     logError(`Admin failed to fetch API keys for user ${req.params.id}`, err);
