@@ -1,11 +1,12 @@
 // src/components/UserDashboard.jsx
-/* eslint no-undef: "off" */
+
 import React, { useRef, useState, useEffect } from "react";
 import { useTheme } from "../../context/ThemeContext";
 import { useUserAuth } from "../../hooks/useUserAuth";
 import { useLocation } from "react-router-dom";
 import "../../styles/globals.css";
-import UserSidebar from "./Sidebar.jsx";
+import UserSidebar from "./Sidebar.jsx"; // ✅ User sidebar
+import AdminSidebar from "../../components/Sidebar.jsx"; // ✅ Import admin sidebar
 import hoverSound from "../../assets/click.mp3";
 import DashboardCards from "../DashboardCards";
 
@@ -42,7 +43,8 @@ export default function Dashboard() {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const userId = user?.id || userIdFromState;
+  // ✅ Use route userId if adminView, otherwise logged-in user ID
+  const userId = adminView ? userIdFromState : user?.id;
 
   const playHoverSound = () => {
     if (audioRef.current) {
@@ -60,7 +62,9 @@ export default function Dashboard() {
 
     const fetchBalance = async () => {
       try {
-        const res = await fetch('/api/users/dashboard', {
+        // ✅ Use /api/users/:id/dashboard if adminView, otherwise /api/users/dashboard
+        const endpoint = adminView ? `/api/users/${userId}/dashboard` : '/api/users/dashboard';
+        const res = await fetch(endpoint, {
           method: 'GET',
           credentials: 'include'
         });
@@ -73,7 +77,6 @@ export default function Dashboard() {
 
         const result = await res.json();
         if (result.success && result.dashboard) {
-          // ✅ Pass the entire dashboard object
           setDashboardData(result.dashboard);
         } else {
           setDashboardData({ balances: [], positions: [], openOrders: [] });
@@ -87,7 +90,7 @@ export default function Dashboard() {
     };
 
     fetchBalance();
-  }, [userId]);
+  }, [userId, adminView]);
 
   // Safe fallback: always render dashboard, even if data is missing
   const safeDashboardData = dashboardData || { balances: [], positions: [], openOrders: [] };
@@ -98,11 +101,20 @@ export default function Dashboard() {
         <source src={hoverSound} type="audio/mpeg" />
       </audio>
 
-      <UserSidebar
-        isOpen={true}
-        playHoverSound={playHoverSound}
-        onLogout={logout}
-      />
+      {/* ✅ Show AdminSidebar if adminView is true, otherwise UserSidebar */}
+      {adminView ? (
+        <AdminSidebar
+          isOpen={true}
+          playHoverSound={playHoverSound}
+          onLogout={logout}
+        />
+      ) : (
+        <UserSidebar
+          isOpen={true}
+          playHoverSound={playHoverSound}
+          onLogout={logout}
+        />
+      )}
 
       <main
         className="relative z-20 p-6 overflow-y-auto md:ml-64"
@@ -114,7 +126,7 @@ export default function Dashboard() {
       >
         <div className="shimmer-wrapper w-full py-4 px-6 mb-6 relative flex justify-between items-center">
           <h1 className="text-4xl font-semibold drop-shadow-md inline-block title-bar-text">
-            Dashboard {loading ? "(Loading...)" : ""}
+            Dashboard {adminView ? `for User ${userId}` : ''} {loading ? "(Loading...)" : ""}
           </h1>
           <LightModeToggle />
         </div>

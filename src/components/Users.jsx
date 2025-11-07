@@ -1,4 +1,4 @@
-// src/components/Admin/AdminUsers.jsx
+// src/components/Admin/Users.jsx
 
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -151,11 +151,21 @@ const getLastTradeDate = (user) => {
   };
 
   const handleStats = (userId) => {
-  navigate(`/admin/users/${userId}/dashboard`, { state: { adminView: true } });
+  navigate(`/admin/users/${userId}/dashboard`, { 
+    state: { 
+      adminView: true, 
+      userId: userId // Pass the specific user ID to the dashboard
+    } 
+  });
 };
 
 const handlePositions = (userId) => {
-  navigate(`/admin/users/${userId}/positions`, { state: { adminView: true } });
+  navigate(`/admin/users/${userId}/positions`, { 
+    state: { 
+      adminView: true, 
+      userId: userId // Pass the specific user ID to the positions page
+    } 
+  });
 };
 
   if (loading) return <p className="text-white text-center mt-8">Loading users...</p>;
