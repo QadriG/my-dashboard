@@ -20,10 +20,30 @@ import { roleMiddleware } from "../middleware/roleMiddleware.mjs";
 import { errorHandler } from "../middleware/errorHandler.mjs";
 import { info, error as logError } from "../utils/logger.mjs";
 import { fetchUserExchangeData } from "../services/exchangeDataSync.mjs";
-import { fetchBalance } from "../services/exchanges/bybitService.mjs";
+import { fetchBalance } from "../services/exchanges/bybitService.mjs"; // ✅ Import fetchBalance
 
 const router = express.Router();
 const prisma = new PrismaClient();
+
+// Helper: Get user's API accounts
+async function getUserApis(userId, decrypt = false) {
+  const accounts = await prisma.userExchangeAccount.findMany({
+    where: { userId }
+  });
+  return accounts;
+}
+
+// Helper: Test if an API key is valid by fetching balance
+async function testApiKey(apiKey, apiSecret, provider = 'bybit', type = 'UNIFIED') {
+  try {
+    if (provider.toLowerCase() !== 'bybit') return false;
+    const balance = await fetchBalance(apiKey, apiSecret, type);
+    return true;
+  } catch (err) {
+    console.warn(`API key test failed for ${provider} with type ${type}:`, err.message);
+    return false;
+  }
+}
 
 // Middleware to ensure admin role
 const adminOnly = roleMiddleware(["admin"]);
@@ -43,20 +63,8 @@ router.get('/users', authMiddleware, adminOnly, async (req, res) => {
     const usersWithDashboard = await Promise.all(
       users.map(async (user) => {
         try {
-          // ✅ Fetch user's exchange accounts (API keys)
-          const apis = await prisma.userExchangeAccount.findMany({
-            where: { userId: user.id },
-            select: {
-              id: true,
-              provider: true,
-              type: true,
-              apiKey: true,
-              apiSecret: true,
-              passphrase: true,
-              isActive: true,
-            }
-          });
-          
+          // ✅ Fetch user's exchange accounts
+          const apis = await getUserApis(user.id);
           const dashboardData = await fetchUserExchangeData(user.id);
           return { ...user, dashboardData, apis };
         } catch (err) {
@@ -135,7 +143,7 @@ router.get('/users', authMiddleware, adminOnly, async (req, res) => {
         pnlPercent: 0,
         symbol: exec.symbol,
         side: exec.side,
-        userId: exec.userId
+        userId: exec.userId // ✅ include for safety
       })),
       weeklyRevenue: adminOnlySnapshots.map(snapshot => ({
         date: snapshot.date.toISOString().split('T')[0],
@@ -160,31 +168,37 @@ router.get('/users', authMiddleware, adminOnly, async (req, res) => {
         }
 
         // 2. Compute API status
-let apiStatus = "Not Connected";
-let apiNames = [];
-if (user.apis && Array.isArray(user.apis)) {
-  for (const api of user.apis) {
-    try {
-      // ✅ Actually test the key with fetchBalance
-      const balance = await fetchBalance(api.apiKey, api.apiSecret, api.type || 'UNIFIED');
-      apiStatus = "Connected";
-      apiNames.push(api.provider);
-      // ✅ Break after first valid key (or keep going to collect all)
-    } catch (err) {
-      console.warn(`API key test failed for user ${user.id}, exchange ${api.provider}:`, err.message);
-      // Keep apiStatus as "Not Connected" if test fails
-    }
-  }
-}
+        let apiStatus = "Not Connected";
+        let apiNames = [];
+        if (user.apis && Array.isArray(user.apis)) {
+          for (const api of user.apis) {
+            const isValid = await testApiKey(api.apiKey, api.apiSecret, api.provider, api.type || 'UNIFIED');
+            if (isValid) {
+              apiStatus = "Connected";
+              apiNames.push(api.provider);
+            }
+          }
+        }
 
-        // 3. Return merged user object with ALL fields
+        // 3. ✅ Compute last trade date
+        let lastTrade = null;
+        if (user.dashboardData && Array.isArray(user.dashboardData)) {
+          const allPositions = user.dashboardData.flatMap(d => d.openPositions || []);
+          if (allPositions.length > 0) {
+            const dates = allPositions.map(p => new Date(p.openDate));
+            lastTrade = new Date(Math.max(...dates));
+          }
+        }
+
+        // 4. Return merged user object with ALL fields
         return {
           ...user,
           free: totalFree,
           used: totalUsed,
           total: totalTotal,
           apiStatus, // ✅ This will now be "Connected" or "Not Connected"
-          apiNames: apiNames.join(", ") || "-" // ✅ This will be "bybit" or "-"
+          apiNames: apiNames.join(", ") || "-", // ✅ This will be "bybit" or "-"
+          lastTrade: lastTrade?.toISOString() || null // ✅ Add last trade date
         };
       })
     );
@@ -201,7 +215,7 @@ if (user.apis && Array.isArray(user.apis)) {
         }
       },
       adminDashboard, // ✅ Only admin data
-      users: usersWithFinalData // ✅ Now includes apiStatus and apiNames
+      users: usersWithFinalData // ✅ Now includes apiStatus, apiNames, and lastTrade
     });
   } catch (err) {
     logError(`Error fetching admin dashboard data for user ${req.user?.id}`, err);
