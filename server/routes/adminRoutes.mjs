@@ -20,12 +20,15 @@ import { roleMiddleware } from "../middleware/roleMiddleware.mjs";
 import { errorHandler } from "../middleware/errorHandler.mjs";
 import { info, error as logError } from "../utils/logger.mjs";
 import { fetchUserExchangeData } from "../services/exchangeDataSync.mjs";
-import { fetchBalance } from "../services/exchanges/bybitService.mjs"; // ✅ Import fetchBalance
+import { fetchBalance } from "../services/exchanges/bybitService.mjs"; // ✅ Import for API testing
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// Helper: Get user's API accounts
+// Middleware to ensure admin role
+const adminOnly = roleMiddleware(["admin"]);
+
+// Helper: Get user's exchange accounts
 async function getUserApis(userId, decrypt = false) {
   const accounts = await prisma.userExchangeAccount.findMany({
     where: { userId }
@@ -44,9 +47,6 @@ async function testApiKey(apiKey, apiSecret, provider = 'bybit', type = 'UNIFIED
     return false;
   }
 }
-
-// Middleware to ensure admin role
-const adminOnly = roleMiddleware(["admin"]);
 
 // --- Route: Aggregated user data for top 4 cards + admin-only dashboard ---
 router.get('/users', authMiddleware, adminOnly, async (req, res) => {
@@ -180,25 +180,14 @@ router.get('/users', authMiddleware, adminOnly, async (req, res) => {
           }
         }
 
-        // 3. ✅ Compute last trade date
-        let lastTrade = null;
-        if (user.dashboardData && Array.isArray(user.dashboardData)) {
-          const allPositions = user.dashboardData.flatMap(d => d.openPositions || []);
-          if (allPositions.length > 0) {
-            const dates = allPositions.map(p => new Date(p.openDate));
-            lastTrade = new Date(Math.max(...dates));
-          }
-        }
-
-        // 4. Return merged user object with ALL fields
+        // 3. Return merged user object with ALL fields
         return {
           ...user,
           free: totalFree,
           used: totalUsed,
           total: totalTotal,
           apiStatus, // ✅ This will now be "Connected" or "Not Connected"
-          apiNames: apiNames.join(", ") || "-", // ✅ This will be "bybit" or "-"
-          lastTrade: lastTrade?.toISOString() || null // ✅ Add last trade date
+          apiNames: apiNames.join(", ") || "-" // ✅ This will be "bybit" or "-"
         };
       })
     );
@@ -215,7 +204,7 @@ router.get('/users', authMiddleware, adminOnly, async (req, res) => {
         }
       },
       adminDashboard, // ✅ Only admin data
-      users: usersWithFinalData // ✅ Now includes apiStatus, apiNames, and lastTrade
+      users: usersWithFinalData // ✅ Now includes apiStatus and apiNames
     });
   } catch (err) {
     logError(`Error fetching admin dashboard data for user ${req.user?.id}`, err);
@@ -283,9 +272,21 @@ router.get("/users/:id/stats", authMiddleware, adminOnly, (req, res) => {
   getUserStats(req, res);
 });
 
-router.get("/users/:id/positions", authMiddleware, adminOnly, (req, res) => {
-  info(`Admin ${req.user.id} fetching positions for user ${req.params.id}`);
-  getUserPositions(req, res);
+router.get('/users/:id/positions', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    if (isNaN(userId)) {
+      return res.status(400).json({ success: false, message: "Invalid user ID" });
+    }
+
+    const data = await fetchUserExchangeData(userId);
+    const positions = data.flatMap(d => d.openPositions || []);
+
+    res.json({ success: true, positions });
+  } catch (err) {
+    logError(`Admin ${req.user.id} failed to fetch positions for user ${req.params.id}`, err);
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 // Fetch API keys for a user

@@ -1,15 +1,14 @@
-// src/components/Users/PositionsTable.jsx
-
 import React, { useState, useEffect } from "react";
 import { useTheme } from "../../context/ThemeContext";
-import { useLocation } from "react-router-dom";
-import AdminSidebar from "../../components/Sidebar.jsx"; // ✅ Admin sidebar
-import UserSidebar from "./Sidebar.jsx"; // ✅ User sidebar
+// Remove useLocation and AdminSidebar/UserSidebar imports if not used elsewhere in this component
+// import { useLocation } from "react-router-dom";
+// import AdminSidebar from "../../components/Sidebar.jsx";
+// import UserSidebar from "./Sidebar.jsx";
 
-export default function PositionsTable({ userId }) {
+export default function PositionsTable({ userId, isAdmin = false }) { // Accept isAdmin prop instead of deriving from location
   const { isDarkMode } = useTheme();
-  const location = useLocation();
-  const adminView = location.state?.adminView || false; // ✅ Check admin view
+  // const location = useLocation(); // Remove if not needed
+  // const adminView = location.state?.adminView || false; // Remove if not needed
 
   const [positions, setPositions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -17,9 +16,14 @@ export default function PositionsTable({ userId }) {
 
   useEffect(() => {
     const fetchPositions = async () => {
+      if (!userId) {
+        setLoading(false);
+        setError("User ID is required");
+        return;
+      }
       try {
-        // ✅ Use /api/users/:id/positions if adminView, otherwise /api/positions/active
-        const endpoint = adminView ? `/api/users/${userId}/positions` : '/api/positions/active';
+        // ✅ Use /api/users/:id/positions if isAdmin, otherwise /api/positions/active
+        const endpoint = isAdmin ? `/api/users/${userId}/positions` : '/api/positions/active';
         const res = await fetch(endpoint, { credentials: 'include' });
         const data = await res.json();
         if (res.ok && data.success) {
@@ -35,20 +39,19 @@ export default function PositionsTable({ userId }) {
       }
     };
 
+    // Only fetch if userId is provided
     if (userId) fetchPositions();
-  }, [userId, adminView]); // ✅ Add adminView to dependency
+  }, [userId, isAdmin]); // ✅ Add isAdmin to dependency
 
-  // ✅ Conditional sidebar based on adminView
-  const SidebarComponent = adminView ? AdminSidebar : UserSidebar;
+  // Remove the sidebar rendering part
+  // const SidebarComponent = adminView ? AdminSidebar : UserSidebar;
+  // return (
+  //   <div>
+  //     <SidebarComponent ... />
+  //     ...
 
   return (
-    <div>
-      {/* ✅ Render correct sidebar */}
-      <SidebarComponent
-        isOpen={true}
-        onLogout={() => {}} // Pass no-op or actual logout if needed
-      />
-
+    <div className="p-6"> {/* Add padding/margin if needed for layout */}
       <div className="flex justify-between mb-4 flex-wrap gap-4">
         <div>
           <label className="block text-sm font-medium mb-1">Filter by Pair:</label>

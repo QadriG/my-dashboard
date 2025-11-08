@@ -35,8 +35,11 @@ import { Outlet } from "react-router-dom";
 
 // Users/Logs/ManualPush
 import AdminLogs from "./components/Logs";
-import AdminUsers from "./components/Users";
+import AdminUsers from "./components/Users"; // Note: This seems to be the admin users list
 import AdminManualPush from "./components/ManualPush";
+
+// NEW: Import the new admin user positions component
+import AdminUserPositions from "./components/AdminUserPositions";
 
 // ----------------------
 // Admin Layout (chat-free)
@@ -104,8 +107,10 @@ function App() {
               <Route path="users" element={<AdminUsers />} />
               <Route path="logs" element={<AdminLogs />} />
               <Route path="manualpush" element={<AdminManualPush />} />
+              {/* ✅ NEW ROUTE: Use the new component for user-specific positions */}
+              <Route path="users/:id/positions" element={<AdminUserPositions />} />
+              {/* ✅ ROUTE: This route already existed for user-specific dashboard */}
               <Route path="users/:id/dashboard" element={<UserDashboard />} />
-              <Route path="users/:id/positions" element={<UserPositions />} />
             </Route>
 
             {/* User routes */}

@@ -1,4 +1,5 @@
 // src/components/DashboardCards.jsx
+
 import { useEffect, useState } from "react";
 import Profit from "./Users/Profit";
 import UPL from "./Users/UPL";
@@ -7,9 +8,9 @@ import BalanceGraph from "./Users/BalanceGraph";
 import WeeklyRevenue from "./Users/WeeklyRevenue";
 import DailyPnL from "./Users/DailyPnL";
 import BestTradingPairs from "./Users/BestTradingPairs";
-import OpenPositions from "./Users/OpenPositions";
+import OpenPositions from "./Users/OpenPositions"; // ✅ Ensure this is the updated component
 
-export default function DashboardCards({ userId, isAdmin = false, dashboardData }) {
+export default function DashboardCards({ userId, isAdmin = false, dashboardData }) { // ✅ Accept userId and isAdmin props
   const [cardsData, setCardsData] = useState({
     profit: null,
     upl: null,
@@ -23,7 +24,6 @@ export default function DashboardCards({ userId, isAdmin = false, dashboardData 
 
   useEffect(() => {
     if (dashboardData && dashboardData.balances && dashboardData.balances.length > 0) {
-      const item = dashboardData.balances[0];
       const totalBalance = dashboardData.balances.reduce((sum, acc) => sum + (acc.balance?.totalBalance || 0), 0);
       const available = dashboardData.balances.reduce((sum, acc) => sum + (acc.balance?.available || 0), 0);
 
@@ -49,7 +49,6 @@ export default function DashboardCards({ userId, isAdmin = false, dashboardData 
       const totalPositionsValue = totalLongValue + totalShortValue;
       const totalUPL = totalLongUPL + totalShortUPL;
 
-      // ✅ Use the `dailyPnL` data directly from dashboardData
       setCardsData({
         profit: { total: totalBalance, long: totalLongValue, short: totalShortValue },
         upl: {
@@ -67,7 +66,6 @@ export default function DashboardCards({ userId, isAdmin = false, dashboardData 
           short: totalShortValue,
           totalPositions: totalPositionsValue
         },
-        // ✅ Pass the historical data from dashboardData
         balanceGraph: dashboardData.balanceHistory || [],
         weeklyRevenue: dashboardData.weeklyRevenue || [],
         dailyPnL: dashboardData.dailyPnL || [],
@@ -95,17 +93,16 @@ export default function DashboardCards({ userId, isAdmin = false, dashboardData 
       </div>
 
       <div className="flex gap-4 w-full items-start mt-8 max-lg:flex-col">
-        {/* ✅ Pass full balanceData to these cards */}
         <div className="dashboard-column dashboard-column-cyan w-full lg:w-1/2 p-4 h-[200px] overflow-hidden">
           <BalanceGraph balanceData={dashboardData} />
         </div>
         <div className="dashboard-column dashboard-column-purple w-full lg:w-1/2 p-4 h-[200px] overflow-hidden">
+          {/* ✅ Pass custom range state to WeeklyRevenue */}
           <WeeklyRevenue isDarkMode={false} balanceData={dashboardData} />
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-7 mt-8 max-sm:grid-cols-1">
-        {/* ✅ Pass full balanceData to these cards */}
         <div className="dashboard-column dashboard-column-cyan">
           <DailyPnL balanceData={dashboardData} />
         </div>
@@ -116,7 +113,8 @@ export default function DashboardCards({ userId, isAdmin = false, dashboardData 
 
       <div className="mt-8">
         <div className="dashboard-column dashboard-column-green">
-          <OpenPositions positions={cardsData.openPositions?.positions || []} />
+          {/* ✅ Pass userId and isAdmin to OpenPositions */}
+          <OpenPositions positions={cardsData.openPositions?.positions || []} userId={userId} isAdmin={isAdmin} />
         </div>
       </div>
     </>

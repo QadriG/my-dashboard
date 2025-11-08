@@ -1,17 +1,17 @@
-// src/components/UserDashboard.jsx
+// src/components/Users/Dashboard.jsx
 
 import React, { useRef, useState, useEffect } from "react";
-import { useTheme } from "../../context/ThemeContext";
+import { useTheme } from "../../context/ThemeContext"; // ✅ Import theme context
 import { useUserAuth } from "../../hooks/useUserAuth";
 import { useLocation } from "react-router-dom";
 import "../../styles/globals.css";
 import UserSidebar from "./Sidebar.jsx"; // ✅ User sidebar
 import AdminSidebar from "../../components/Sidebar.jsx"; // ✅ Import admin sidebar
 import hoverSound from "../../assets/click.mp3";
-import DashboardCards from "../DashboardCards";
+import DashboardCards from "../DashboardCards"; // ✅ Reuse user dashboard cards
 
 function LightModeToggle({ className, style }) {
-  const { isDarkMode, toggleTheme } = useTheme();
+  const { isDarkMode, toggleTheme } = useTheme(); // ✅ Use theme context
   return (
     <button
       onClick={toggleTheme}
@@ -37,7 +37,7 @@ export default function Dashboard() {
   const audioRef = useRef(null);
   const { user, logout, loading: authLoading } = useUserAuth();
   const location = useLocation();
-  const adminView = location.state?.adminView || false;
+  const adminView = location.state?.adminView || false; // ✅ Check if in admin view
   const userIdFromState = location.state?.userId || null;
 
   const [dashboardData, setDashboardData] = useState(null);
@@ -77,6 +77,7 @@ export default function Dashboard() {
 
         const result = await res.json();
         if (result.success && result.dashboard) {
+          // ✅ Pass the entire dashboard object
           setDashboardData(result.dashboard);
         } else {
           setDashboardData({ balances: [], positions: [], openOrders: [] });
@@ -90,10 +91,13 @@ export default function Dashboard() {
     };
 
     fetchBalance();
-  }, [userId, adminView]);
+  }, [userId, adminView]); // ✅ Add adminView to dependency
 
   // Safe fallback: always render dashboard, even if data is missing
   const safeDashboardData = dashboardData || { balances: [], positions: [], openOrders: [] };
+
+  // ✅ Conditional sidebar based on adminView
+  const SidebarComponent = adminView ? AdminSidebar : UserSidebar;
 
   return (
     <div className="zoom-out-container relative h-screen w-screen overflow-x-hidden overflow-y-auto">
@@ -101,20 +105,12 @@ export default function Dashboard() {
         <source src={hoverSound} type="audio/mpeg" />
       </audio>
 
-      {/* ✅ Show AdminSidebar if adminView is true, otherwise UserSidebar */}
-      {adminView ? (
-        <AdminSidebar
-          isOpen={true}
-          playHoverSound={playHoverSound}
-          onLogout={logout}
-        />
-      ) : (
-        <UserSidebar
-          isOpen={true}
-          playHoverSound={playHoverSound}
-          onLogout={logout}
-        />
-      )}
+      {/* ✅ Render correct sidebar based on adminView */}
+      <SidebarComponent
+        isOpen={true}
+        playHoverSound={playHoverSound}
+        onLogout={logout}
+      />
 
       <main
         className="relative z-20 p-6 overflow-y-auto md:ml-64"

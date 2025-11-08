@@ -1,5 +1,3 @@
-// server/services/exchangeDataSync.mjs
-
 import PrismaClientPkg from "@prisma/client";
 const { PrismaClient } = PrismaClientPkg;
 import { fetchExchangeData } from "./exchangeManager.mjs";
@@ -79,15 +77,34 @@ export const fetchUserExchangeData = async (userId) => {
         let todayRealizedPnl = 0;
         const allExecutions = exchangeResult.closedExecutions || [];
         const todayExecutions = allExecutions.filter(exec => {
+          if (!exec || typeof exec !== 'object') {
+            console.warn(`[WARN] Invalid execution object:`, exec);
+            return false;
+          }
           const execDate = new Date(exec.execTime).toISOString().split('T')[0];
           return execDate === todayStr;
         });
 
-        todayRealizedPnl = todayExecutions.reduce((sum, exec) => sum + exec.closedPnl, 0);
+        todayRealizedPnl = todayExecutions.reduce((sum, exec) => {
+          if (!exec || typeof exec !== 'object') {
+            console.warn(`[WARN] Invalid execution object in reduce:`, exec);
+            return sum;
+          }
+          return sum + (exec.closedPnl || 0);
+        }, 0);
 
         // 🔸 Save ALL executions to DB (avoid duplicates via execId)
         for (const exec of allExecutions) {
-          if (!exec.execId) continue; // safety
+          // ✅ Safety check: Ensure exec is a valid object and has execId
+          if (!exec || typeof exec !== 'object') {
+            console.warn(`[WARN] Skipping invalid execution object:`, exec);
+            continue;
+          }
+
+          if (!exec.execId) {
+            console.warn(`[WARN] Execution missing execId, skipping save:`, exec);
+            continue; // Skip saving if execId is missing
+          }
 
           try {
             await prisma.execution.upsert({
@@ -96,11 +113,11 @@ export const fetchUserExchangeData = async (userId) => {
               create: {
                 userId: numericUserId,
                 execId: exec.execId,
-                symbol: exec.symbol,
-                side: exec.side,
-                qty: exec.qty,
-                price: exec.price,
-                closedPnl: exec.closedPnl,
+                symbol: exec.symbol || 'UNKNOWN',
+                side: exec.side || 'UNKNOWN',
+                qty: exec.qty || 0,
+                price: exec.price || 0,
+                closedPnl: exec.closedPnl || 0,
                 fee: exec.fee || 0,
                 execTime: new Date(exec.execTime),
               }
@@ -109,44 +126,6 @@ export const fetchUserExchangeData = async (userId) => {
             console.warn(`[WARN] Could not save execution ${exec.execId}:`, err.message);
           }
         }
-
-        // 🔸 Get yesterday's snapshot for continuity
-        let previousBalance = totalBalance;
-        try {
-          const yesterday = new Date(today);
-          yesterday.setDate(yesterday.getDate() - 1);
-          const yesterdayDate = new Date(yesterday);
-
-          const yesterdaySnapshot = await prisma.dailyPnLSnapshot.findFirst({
-            where: { userId: numericUserId, date: yesterdayDate },
-            orderBy: { date: 'desc' }
-          });
-
-          if (yesterdaySnapshot) {
-            previousBalance = yesterdaySnapshot.totalBalance;
-          }
-        } catch (err) {
-          console.warn(`[WARN] Failed to fetch yesterday's snapshot:`, err.message);
-        }
-
-        // 🔸 UPSERT today's snapshot
-        await prisma.dailyPnLSnapshot.upsert({
-          where: { userId_date: { userId: numericUserId, date: todayDate } },
-          update: {
-            totalBalance,
-            totalUnrealizedPnl,
-            totalRealizedPnl: todayRealizedPnl,
-            positions: positions,
-          },
-          create: {
-            userId: numericUserId,
-            date: todayDate,
-            totalBalance,
-            totalUnrealizedPnl,
-            totalRealizedPnl: todayRealizedPnl,
-            positions: positions,
-          },
-        });
 
         results.push({
           exchange: exchangeName,

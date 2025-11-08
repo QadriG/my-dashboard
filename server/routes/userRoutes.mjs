@@ -1,20 +1,9 @@
-// server/routes/adminRoutes.mjs
+// server/routes/userRoutes.mjs
 
 import express from "express";
 import pkg from "@prisma/client";
 const { PrismaClient } = pkg;
 
-import {
-  listAllUsers,
-  deleteUser,
-  updateUserRole,
-  pauseUser,
-  disableUser,
-  getUserStats,
-  getUserPositions,
-  unpauseUser,
-  enableUser,
-} from "../controllers/adminController.mjs";
 import { authMiddleware } from "../middleware/authMiddleware.mjs";
 import { roleMiddleware } from "../middleware/roleMiddleware.mjs";
 import { errorHandler } from "../middleware/errorHandler.mjs";
@@ -47,260 +36,263 @@ async function testApiKey(apiKey, apiSecret, provider = 'bybit', type = 'UNIFIED
   }
 }
 
-// --- Route: Aggregated user data for top 4 cards + admin-only dashboard ---
-router.get('/users', authMiddleware, adminOnly, async (req, res) => {
+// --- Route: Individual user's dashboard data ---
+router.get('/dashboard', authMiddleware, async (req, res) => {
   try {
-    const users = await listAllUsers();
+    const userId = req.user.id;
+
+    // Fetch user's exchange accounts
+    const apis = await getUserApis(userId);
+    const dashboardData = await fetchUserExchangeData(userId);
+
+    const balances = dashboardData.map(d => ({
+      exchange: d.exchange,
+      type: d.type,
+      balance: d.balance,
+      error: d.error
+    }));
+
+    const positions = dashboardData.flatMap(d =>
+      (d.openPositions || []).map(p => ({
+        exchange: d.exchange,
+        type: d.type,
+        symbol: p.symbol,
+        side: p.side,
+        size: p.size || p.amount || 0,
+        entryPrice: p.entryPrice || p.openPrice || 0,
+        unrealizedPnl: p.unrealizedPnl || 0,
+        openDate: p.openDate,
+        orderValue: p.orderValue || 0,
+      }))
+    );
+
+    // Fetch historical data
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const thirtyDaysAgoDate = new Date(thirtyDaysAgo);
     thirtyDaysAgoDate.setHours(0, 0, 0, 0);
 
-    const currentAdminId = req.user.id;
-
-    // Fetch full dashboard data AND API accounts for each user
-    const usersWithDashboard = await Promise.all(
-      users.map(async (user) => {
-        try {
-          // ✅ Fetch user's exchange accounts
-          const apis = await getUserApis(user.id);
-          const dashboardData = await fetchUserExchangeData(user.id);
-          return { ...user, dashboardData, apis };
-        } catch (err) {
-          console.warn(`Failed to fetch dashboard for user ${user.id}:`, err.message);
-          return { ...user, dashboardData: [], apis: [] };
-        }
-      })
-    );
-
-    // --- Compute total balance (all users) ---
-    let totalAllBalances = 0;
-    usersWithDashboard.forEach(({ dashboardData }) => {
-      if (dashboardData.length > 0) {
-        dashboardData.forEach(item => {
-          totalAllBalances += (item.balance?.totalBalance || 0);
-        });
-      }
-    });
-
-    // --- Filter data to admin-only ---
-    const adminOnlyBalances = usersWithDashboard
-      .flatMap(u => u.dashboardData.map(d => ({ ...d, userId: u.id })))
-      .filter(acc => acc.userId === currentAdminId);
-
-    const adminOnlyPositions = usersWithDashboard
-      .flatMap(u => (u.dashboardData.flatMap(d => d.openPositions || []).map(p => ({ ...p, userId: u.id }))))
-      .filter(pos => pos.userId === currentAdminId);
-
-    const adminOnlyExecutions = await prisma.execution.findMany({
-      where: { 
-        userId: currentAdminId,
-        execTime: { gte: thirtyDaysAgoDate } 
-      },
-      orderBy: { execTime: 'desc' }
-    });
-
-    const adminOnlySnapshots = await prisma.dailyPnLSnapshot.findMany({
-      where: { 
-        userId: currentAdminId,
-        date: { gte: thirtyDaysAgoDate } 
-      },
+    const snapshots = await prisma.dailyPnLSnapshot.findMany({
+      where: { userId, date: { gte: thirtyDaysAgoDate } },
       orderBy: { date: 'asc' }
     });
 
-    const adminTotalBalance = adminOnlyBalances.reduce((sum, acc) => sum + (acc.balance?.totalBalance || 0), 0);
+    const balanceHistory = snapshots.map(s => ({
+      date: s.date.toISOString().split('T')[0],
+      balance: s.totalBalance
+    }));
 
-    // --- Aggregated Metrics (Top 4 Cards) ---
-    let totalActiveUsers = 0;
-    const exchangeCounts = {};
-    let totalActivePositions = 0;
-
-    usersWithDashboard.forEach(({ dashboardData }) => {
-      if (dashboardData.length > 0) {
-        totalActiveUsers++;
-        dashboardData.forEach(item => {
-          const exchange = item.exchange || 'unknown';
-          exchangeCounts[exchange] = (exchangeCounts[exchange] || 0) + 1;
-          totalActivePositions += (item.openPositions?.length || 0);
-        });
-      }
+    const executions = await prisma.execution.findMany({
+      where: { userId, execTime: { gte: thirtyDaysAgoDate } },
+      orderBy: { execTime: 'desc' }
     });
 
-    // --- Build admin-only dashboard ---
-    const adminDashboard = {
-      balances: adminOnlyBalances,
-      positions: adminOnlyPositions,
-      openOrders: [],
-      balanceHistory: adminOnlySnapshots.map(snapshot => ({
-        date: snapshot.date.toISOString().split('T')[0],
-        balance: snapshot.totalBalance
-      })),
-      dailyPnL: adminOnlyExecutions.map(exec => ({
-        date: new Date(exec.execTime).toISOString().split('T')[0],
-        balance: 0,
-        pnl: exec.closedPnl || 0,
-        pnlPercent: 0,
-        symbol: exec.symbol,
-        side: exec.side,
-        userId: exec.userId // ✅ include for safety
-      })),
-      weeklyRevenue: adminOnlySnapshots.map(snapshot => ({
-        date: snapshot.date.toISOString().split('T')[0],
-        balance: snapshot.totalBalance
-      })),
-      bestTradingPairs: []
-    };
+    // Aggregate executions by date for daily PnL
+    const dailyPnLMap = new Map();
+    executions.forEach(exec => {
+      const dateStr = new Date(exec.execTime).toISOString().split('T')[0];
+      if (!dailyPnLMap.has(dateStr)) {
+        dailyPnLMap.set(dateStr, 0);
+      }
+      dailyPnLMap.set(dateStr, dailyPnLMap.get(dateStr) + (exec.closedPnl || 0));
+    });
 
-    // --- Enhance users list with balance + API status (for Users page) ---
-    const usersWithFinalData = await Promise.all(
-      usersWithDashboard.map(async (user) => {
-        // 1. Compute balance data
-        let totalFree = 0, totalUsed = 0, totalTotal = 0;
-        if (user.dashboardData && Array.isArray(user.dashboardData)) {
-          user.dashboardData.forEach(account => {
-            if (account.balance) {
-              totalFree += account.balance.available || 0;
-              totalUsed += account.balance.used || 0;
-              totalTotal += account.balance.totalBalance || 0;
-            }
-          });
-        }
+    const dailyPnL = Array.from(dailyPnLMap, ([date, pnl]) => ({
+      date,
+      pnl: pnl,
+      balance: 0, // Or calculate based on snapshot if needed
+      pnlPercent: 0, // Or calculate if needed
+      symbol: 'N/A',
+      side: 'N/A',
+      qty: 0
+    }));
 
-        // 2. Compute API status
-        let apiStatus = "Not Connected";
-        let apiNames = [];
-        if (user.apis && Array.isArray(user.apis)) {
-          for (const api of user.apis) {
-            const isValid = await testApiKey(api.apiKey, api.apiSecret, api.provider, api.type || 'UNIFIED');
-            if (isValid) {
-              apiStatus = "Connected";
-              apiNames.push(api.provider);
-            }
-          }
-        }
+    // Fetch weekly snapshot data for the chart
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6); // Include today + 6 previous days
+    const sevenDaysAgoDate = new Date(sevenDaysAgo);
+    sevenDaysAgoDate.setHours(0, 0, 0, 0);
 
-        // 3. Return merged user object with ALL fields
-        return {
-          ...user,
-          free: totalFree,
-          used: totalUsed,
-          total: totalTotal,
-          apiStatus, // ✅ This will now be "Connected" or "Not Connected"
-          apiNames: apiNames.join(", ") || "-" // ✅ This will be "bybit" or "-"
-        };
-      })
-    );
+    const weeklySnapshots = await prisma.dailyPnLSnapshot.findMany({
+      where: { userId, date: { gte: sevenDaysAgoDate } },
+      orderBy: { date: 'asc' }
+    });
+
+    const weeklyRevenue = weeklySnapshots.map(snapshot => ({
+      date: snapshot.date.toISOString().split('T')[0], // Format date as YYYY-MM-DD
+      balance: snapshot.totalBalance // Use totalBalance from snapshot
+    }));
+
+    // Compute API status for user
+    let apiStatus = "Not Connected";
+    let apiNames = [];
+    for (const api of apis) {
+      const isValid = await testApiKey(api.apiKey, api.apiSecret, api.provider, api.type || 'UNIFIED');
+      if (isValid) {
+        apiStatus = "Connected";
+        apiNames.push(api.provider);
+      }
+    }
 
     res.json({
       success: true,
-      aggregated: {
-        activeUsers: { count: totalActiveUsers },
-        activeExchange: { count: Object.keys(exchangeCounts).length, exchanges: exchangeCounts },
-        activePositions: { count: totalActivePositions, totalSize: 0 },
-        totalBalances: { 
-          total: totalAllBalances,   // ✅ Total (all users)
-          admin: adminTotalBalance   // ✅ Admin-only
-        }
+      dashboard: {
+        balances,
+        positions,
+        openOrders: [],
+        balanceHistory,
+        dailyPnL, // Now aggregated
+        weeklyRevenue, // Now populated
+        bestTradingPairs: [],
       },
-      adminDashboard, // ✅ Only admin data
-      users: usersWithFinalData // ✅ Now includes apiStatus and apiNames
+      apiStatus,
+      apiNames: apiNames.join(", ") || "-"
     });
   } catch (err) {
-    logError(`Error fetching admin dashboard data for user ${req.user?.id}`, err);
+    logError(`Error fetching dashboard data for user ${req.user?.id}`, err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// --- Route: All users' open positions ---
-router.get('/all-positions', authMiddleware, adminOnly, async (req, res) => {
-  try {
-    const users = await listAllUsers();
-    const allUserPositions = await Promise.all(
-      users.map(async (user) => {
-        try {
-          const userExchangeData = await fetchUserExchangeData(user.id);
-          const userOpenPositions = userExchangeData.flatMap(d => d.openPositions || []);
-          return userOpenPositions.map(pos => ({ ...pos, userId: user.id, userEmail: user.email }));
-        } catch (err) {
-          console.error(`Error fetching positions for user ${user.id}:`, err);
-          return [];
-        }
-      })
-    );
-    const allOpenPositions = allUserPositions.flat();
-    res.json({ success: true, positions: allOpenPositions });
-  } catch (err) {
-    logError(`Admin ${req.user.id} failed to fetch all users' positions`, err);
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// --- Existing Routes (Preserved) ---
-router.delete("/users/:id", authMiddleware, adminOnly, (req, res) => {
-  info(`Admin ${req.user.id} deleting user ${req.params.id}`);
-  deleteUser(req, res);
-});
-
-router.patch("/users/:id/role", authMiddleware, adminOnly, (req, res) => {
-  info(`Admin ${req.user.id} updating role for user ${req.params.id}`);
-  updateUserRole(req, res);
-});
-
-router.patch("/users/:id/pause", authMiddleware, adminOnly, (req, res) => {
-  info(`Admin ${req.user.id} pausing user ${req.params.id}`);
-  pauseUser(req, res);
-});
-
-router.patch("/users/:id/unpause", authMiddleware, adminOnly, (req, res) => {
-  info(`Admin ${req.user.id} unpausing user ${req.params.id}`);
-  unpauseUser(req, res);
-});
-
-router.patch("/users/:id/disable", authMiddleware, adminOnly, (req, res) => {
-  info(`Admin ${req.user.id} disabling user ${req.params.id}`);
-  disableUser(req, res);
-});
-
-router.patch("/users/:id/enable", authMiddleware, adminOnly, (req, res) => {
-  info(`Admin ${req.user.id} enabling user ${req.params.id}`);
-  enableUser(req, res);
-});
-
-router.get("/users/:id/stats", authMiddleware, adminOnly, (req, res) => {
-  info(`Admin ${req.user.id} fetching stats for user ${req.params.id}`);
-  getUserStats(req, res);
-});
-
-router.get("/users/:id/positions", authMiddleware, adminOnly, (req, res) => {
-  info(`Admin ${req.user.id} fetching positions for user ${req.params.id}`);
-  getUserPositions(req, res);
-});
-
-// Fetch API keys for a user
-router.get("/users/:id/apis", authMiddleware, adminOnly, async (req, res) => {
+// ✅ Route: User's positions (for admin to view specific user's positions)
+router.get('/:id/positions', authMiddleware, adminOnly, async (req, res) => {
   try {
     const userId = parseInt(req.params.id, 10);
-    const apis = await prisma.userExchangeAccount.findMany({
-      where: { userId },
-      select: {
-        id: true,
-        provider: true,
-        type: true,
-        apiKey: true,
-        apiSecret: true,
-        passphrase: true,
-        label: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true,
-      }
-    });
-    res.json({ success: true, apis });
+    if (isNaN(userId)) {
+      return res.status(400).json({ success: false, message: "Invalid user ID" });
+    }
+
+    const data = await fetchUserExchangeData(userId);
+    const positions = data.flatMap(d => d.openPositions || []);
+
+    res.json({ success: true, positions });
   } catch (err) {
-    logError(`Admin failed to fetch API keys for user ${req.params.id}`, err);
-    res.status(500).json({ success: false, message: "Error fetching API keys" });
+    logError(`Error fetching positions for user ${req.params.id} by admin ${req.user.id}`, err);
+    res.status(500).json({ success: false, message: err.message });
   }
 });
+
+// ✅ NEW Route: Individual user's dashboard data (for admin to view specific user)
+router.get('/:id/dashboard', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    if (isNaN(userId)) {
+      return res.status(400).json({ success: false, message: "Invalid user ID" });
+    }
+
+    // Fetch user's exchange accounts
+    const apis = await getUserApis(userId);
+    const dashboardData = await fetchUserExchangeData(userId);
+
+    const balances = dashboardData.map(d => ({
+      exchange: d.exchange,
+      type: d.type,
+      balance: d.balance,
+      error: d.error
+    }));
+
+    const positions = dashboardData.flatMap(d =>
+      (d.openPositions || []).map(p => ({
+        exchange: d.exchange,
+        type: d.type,
+        symbol: p.symbol,
+        side: p.side,
+        size: p.size || p.amount || 0,
+        entryPrice: p.entryPrice || p.openPrice || 0,
+        unrealizedPnl: p.unrealizedPnl || 0,
+        openDate: p.openDate,
+        orderValue: p.orderValue || 0,
+      }))
+    );
+
+    // Fetch historical data for the specific user
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const thirtyDaysAgoDate = new Date(thirtyDaysAgo);
+    thirtyDaysAgoDate.setHours(0, 0, 0, 0);
+
+    const snapshots = await prisma.dailyPnLSnapshot.findMany({
+      where: { userId, date: { gte: thirtyDaysAgoDate } },
+      orderBy: { date: 'asc' }
+    });
+
+    const balanceHistory = snapshots.map(s => ({
+      date: s.date.toISOString().split('T')[0],
+      balance: s.totalBalance
+    }));
+
+    // Aggregate executions for daily PnL for the specific user
+    const executions = await prisma.execution.findMany({
+      where: { userId, execTime: { gte: thirtyDaysAgoDate } },
+      orderBy: { execTime: 'desc' }
+    });
+
+    const dailyPnLMap = new Map();
+    executions.forEach(exec => {
+      const dateStr = new Date(exec.execTime).toISOString().split('T')[0];
+      if (!dailyPnLMap.has(dateStr)) {
+        dailyPnLMap.set(dateStr, 0);
+      }
+      dailyPnLMap.set(dateStr, dailyPnLMap.get(dateStr) + (exec.closedPnl || 0));
+    });
+
+    const dailyPnL = Array.from(dailyPnLMap, ([date, pnl]) => ({
+      date,
+      pnl: pnl,
+      balance: 0, // Or calculate based on snapshot if needed
+      pnlPercent: 0, // Or calculate if needed
+      symbol: 'N/A',
+      side: 'N/A',
+      qty: 0
+    }));
+
+    // Fetch weekly data for the specific user
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+    const sevenDaysAgoDate = new Date(sevenDaysAgo);
+    sevenDaysAgoDate.setHours(0, 0, 0, 0);
+
+    const weeklySnapshots = await prisma.dailyPnLSnapshot.findMany({
+      where: { userId, date: { gte: sevenDaysAgoDate } },
+      orderBy: { date: 'asc' }
+    });
+
+    const weeklyRevenue = weeklySnapshots.map(snapshot => ({
+      date: snapshot.date.toISOString().split('T')[0],
+      balance: snapshot.totalBalance
+    }));
+
+    // Compute API status for the specific user
+    let apiStatus = "Not Connected";
+    let apiNames = [];
+    for (const api of apis) {
+      const isValid = await testApiKey(api.apiKey, api.apiSecret, api.provider, api.type || 'UNIFIED');
+      if (isValid) {
+        apiStatus = "Connected";
+        apiNames.push(api.provider);
+      }
+    }
+
+    res.json({
+      success: true,
+      dashboard: {
+        balances,
+        positions,
+        openOrders: [],
+        balanceHistory,
+        dailyPnL, // Now aggregated
+        weeklyRevenue, // Now populated
+        bestTradingPairs: [],
+      },
+      apiStatus,
+      apiNames: apiNames.join(", ") || "-"
+    });
+  } catch (err) {
+    logError(`Error fetching dashboard data for user ${req.params.id} by admin ${req.user.id}`, err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 
 // Centralized Error Handler
 router.use(errorHandler);

@@ -1,4 +1,4 @@
-// src/components/Admin/Users.jsx
+// src/components/Admin/AdminUsers.jsx
 
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -33,51 +33,34 @@ export default function AdminUsers() {
       setLoading(false);
     }
   };
-useEffect(() => {
-  fetchUsers(); // initial load
-  const interval = setInterval(fetchUsers, 60000); // refresh every 60s
-  return () => clearInterval(interval);
-}, []);
+
   useEffect(() => {
     fetchUsers();
+    const interval = setInterval(fetchUsers, 60000); // Refresh every 60s
+    return () => clearInterval(interval);
   }, []);
 
-  // Replace existing statusDisplay/statusClass functions
-const statusDisplay = (user) => {
-  // Check if user has logged in in last 24 hours
-  if (user.lastActivity) {
-    const lastLogin = new Date(user.lastActivity);
-    const now = new Date();
-    const diffHours = (now - lastLogin) / 36e5; // ms to hours
-    return diffHours <= 24 ? "Active" : "Inactive";
-  }
-  return "Inactive"; // default if no lastActivity
-};
+  const statusDisplay = (user) => {
+    const s = (user.status || "").toLowerCase();
+    if (s === "paused") return "Paused";
+    if (s === "disabled") return "Disabled";
+    if (user.lastActivity) {
+      const diffHours = (new Date() - new Date(user.lastActivity)) / 36e5;
+      return diffHours <= 24 ? "Active" : "Inactive";
+    }
+    return "Inactive";
+  };
 
-const statusClass = (user) => {
-  if (user.lastActivity) {
-    const lastLogin = new Date(user.lastActivity);
-    const now = new Date();
-    const diffHours = (now - lastLogin) / 36e5;
-    return diffHours <= 24 ? "text-green-400" : "text-red-400";
-  }
-  return "text-red-400";
-};
-
-// ✅ New function: Get last trade date
-const getLastTradeDate = (user) => {
-  // If you have a 'lastTrade' field from your backend
-  if (user.lastTrade) {
-    return new Date(user.lastTrade).toLocaleDateString();
-  }
-  // Or if you compute it from positions
-  if (user.positions && Array.isArray(user.positions) && user.positions.length > 0) {
-    const dates = user.positions.map(p => new Date(p.openDate));
-    const lastDate = new Date(Math.max(...dates));
-    return lastDate.toLocaleDateString();
-  }
-  return "No trades";
-};
+  const statusClass = (user) => {
+    const s = (user.status || "").toLowerCase();
+    if (s === "paused") return "text-amber-400";
+    if (s === "disabled") return "text-red-400";
+    if (user.lastActivity) {
+      const diffHours = (new Date() - new Date(user.lastActivity)) / 36e5;
+      return diffHours <= 24 ? "text-green-400" : "text-red-400";
+    }
+    return "text-red-400";
+  };
 
   const filteredUsers = users.filter((user) => {
     const term = (searchTerm || "").trim().toLowerCase();
@@ -151,22 +134,16 @@ const getLastTradeDate = (user) => {
   };
 
   const handleStats = (userId) => {
-  navigate(`/admin/users/${userId}/dashboard`, { 
-    state: { 
-      adminView: true, 
-      userId: userId // Pass the specific user ID to the dashboard
-    } 
-  });
-};
+    navigate(`/admin/users/${userId}/dashboard`, { 
+      state: { adminView: true, userId: userId } 
+    });
+  };
 
-const handlePositions = (userId) => {
-  navigate(`/admin/users/${userId}/positions`, { 
-    state: { 
-      adminView: true, 
-      userId: userId // Pass the specific user ID to the positions page
-    } 
-  });
-};
+  const handlePositions = (userId) => {
+    navigate(`/admin/users/${userId}/positions`, { 
+      state: { adminView: true, userId: userId } 
+    });
+  };
 
   if (loading) return <p className="text-white text-center mt-8">Loading users...</p>;
   if (error) return <p className="text-red-500 text-center mt-8">{error}</p>;
@@ -231,23 +208,17 @@ const handlePositions = (userId) => {
                     <td className="px-2 py-2 truncate">{user.email}</td>
                     <td className="px-2 py-2 truncate">{user.name || "-"}</td>
                     <td className="px-2 py-2 truncate">
-  {user.apiStatus === "Connected" ? (
-  <span className="text-green-400 font-bold">{user.apiNames}</span>
-) : (
-  <span className="text-red-400 font-bold">Nt Connected</span>
-)}
-</td>
+                      {user.apiStatus === "Connected" ? (
+                        <span className="text-green-400 font-bold">{user.apiNames}</span>
+                      ) : (
+                        <span className="text-red-400 font-bold">Not Connected</span>
+                      )}
+                    </td>
                     <td className="px-2 py-2">{(user.free ?? 0).toFixed(2)}</td>
                     <td className="px-2 py-2">{(user.used ?? 0).toFixed(2)}</td>
                     <td className="px-2 py-2">{(user.total ?? 0).toFixed(2)}</td>
                     <td className="px-2 py-2">{new Date(user.createdAt).toLocaleDateString()}</td>
-                    <td className={`px-2 py-2 text-sm font-medium ${statusClass(user)}`}>
-  {statusDisplay(user)}
-  <br />
-  <span className="text-xs opacity-75">
-    Last Trade: {getLastTradeDate(user)}
-  </span>
-</td>
+                    <td className={`px-2 py-2 text-sm font-medium ${statusClass(user)}`}>{disp}</td>
                     <td className="px-2 py-2">
                       <div className="flex gap-1 justify-between">
                         <button

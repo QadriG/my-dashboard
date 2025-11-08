@@ -1,36 +1,10 @@
+// src/components/Users/OpenPositions.jsx
+
 import React, { useEffect, useState } from "react";
 
-export default function OpenPositions() {
-  const [positions, setPositions] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchPositions() {
-      try {
-        const response = await fetch("/api/positions/active"); // ✅ Adjust to your backend route
-        const data = await response.json();
-
-        console.log("Fetched positions:", data); // 🔍 Debug log
-
-        // ✅ Ensure we always store an array
-        if (Array.isArray(data)) {
-          setPositions(data);
-        } else if (data && Array.isArray(data.positions)) {
-          setPositions(data.positions);
-        } else {
-          console.warn("Unexpected data format:", data);
-          setPositions([]);
-        }
-      } catch (error) {
-        console.error("Error fetching active positions:", error);
-        setPositions([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchPositions();
-  }, []);
+export default function OpenPositions({ positions = [], userId }) { // ✅ Accept positions and userId props
+  const [loading, setLoading] = useState(false); // We don't need to load if we're getting data via prop
+  const [error, setError] = useState(null);
 
   return (
     <div className="dashboard-column open-positions p-4 text-center border-emerald-400">
@@ -39,6 +13,7 @@ export default function OpenPositions() {
       </h2>
 
       <div className="overflow-x-auto">
+        {/* Show loading state only if needed */}
         {loading ? (
           <p className="text-gray-400">Loading positions...</p>
         ) : positions.length === 0 ? (
@@ -74,22 +49,22 @@ export default function OpenPositions() {
                   </td>
                   <td className="p-2">{pos.symbol}</td>
                   <td className="p-2">
-  <span
-    className={`px-2 py-1 rounded ${
-      pos.side?.toLowerCase() === 'buy' || pos.side?.toLowerCase() === 'long'
-        ? 'bg-green-500 text-white border border-green-500'
-        : 'bg-red-500 text-white border border-red-500'
-    }`}
-  >
-    {pos.side?.toLowerCase() === 'buy' ? 'Buy' : pos.side?.toLowerCase() === 'sell' ? 'Sell' : pos.side}
-  </span>
-</td>
-                  <td className="p-2">{pos.amount}</td>
-                  <td className="p-2">{pos.orderValue}</td>
-                  <td className="p-2">{pos.openPrice}</td>
+                    <span
+                      className={`px-2 py-1 rounded ${
+                        pos.side?.toLowerCase() === 'buy' || pos.side?.toLowerCase() === 'long'
+                          ? 'bg-green-500 text-white border border-green-500'
+                          : 'bg-red-500 text-white border border-red-500'
+                      }`}
+                    >
+                      {pos.side?.toLowerCase() === 'buy' ? 'Buy' : pos.side?.toLowerCase() === 'sell' ? 'Sell' : pos.side}
+                    </span>
+                  </td>
+                  <td className="p-2">{(pos.size || 0).toFixed(4)}</td> {/* ✅ Use 'size' if available */}
+                  <td className="p-2">${((pos.size || 0) * (pos.entryPrice || 0)).toFixed(2)}</td> {/* ✅ Calculate Order Value */}
+                  <td className="p-2">${pos.entryPrice?.toFixed(2)}</td> {/* ✅ Use 'entryPrice' if available */}
                   <td className="p-2 text-green-400">{pos.status}</td>
                   <td className="p-2">
-                    {new Date(pos.openDate).toLocaleDateString()}
+                    {new Date(pos.updateTime || Date.now()).toLocaleDateString()} {/* ✅ Use 'updateTime' or fallback */}
                   </td>
                 </tr>
               ))}
