@@ -22,7 +22,30 @@ export default function AdminUsers() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setUsers(data.users || []);
+        // ✅ Process users to include lastTradeDate
+        const usersWithLastTrade = await Promise.all(
+          (data.users || []).map(async (user) => {
+            try {
+              // Fetch the most recent trade for this user
+              const tradeRes = await fetch(`http://localhost:5000/api/users/${user.id}/last-trade`, {
+                credentials: 'include'
+              });
+              const tradeData = await tradeRes.json();
+              
+              let lastTradeDate = null;
+              if (tradeData.success && tradeData.trade && tradeData.trade.tradeTime) {
+                lastTradeDate = new Date(tradeData.trade.tradeTime).toLocaleDateString();
+              }
+              
+              return { ...user, lastTradeDate };
+            } catch (err) {
+              console.error(`Failed to fetch last trade for user ${user.id}:`, err);
+              return { ...user, lastTradeDate: null };
+            }
+          })
+        );
+        
+        setUsers(usersWithLastTrade);
       } else {
         setError(data.message || data.error || "Failed to fetch users");
       }
@@ -218,7 +241,15 @@ export default function AdminUsers() {
                     <td className="px-2 py-2">{(user.used ?? 0).toFixed(2)}</td>
                     <td className="px-2 py-2">{(user.total ?? 0).toFixed(2)}</td>
                     <td className="px-2 py-2">{new Date(user.createdAt).toLocaleDateString()}</td>
-                    <td className={`px-2 py-2 text-sm font-medium ${statusClass(user)}`}>{disp}</td>
+                    <td className={`px-2 py-2 text-sm font-medium ${statusClass(user)}`}>
+                      {/* ✅ Display Status */}
+                      {disp}
+                      {/* ✅ Display Last Trade Date Below Status */}
+                      <br />
+                      <span className="text-xs opacity-75">
+                        {user.lastTradeDate ? `Traded: ${user.lastTradeDate}` : "No trades"}
+                      </span>
+                    </td>
                     <td className="px-2 py-2">
                       <div className="flex gap-1 justify-between">
                         <button

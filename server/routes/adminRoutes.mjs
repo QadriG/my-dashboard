@@ -48,6 +48,14 @@ async function testApiKey(apiKey, apiSecret, provider = 'bybit', type = 'UNIFIED
   }
 }
 
+// Helper function to get the start of the week (Monday)
+function getStartOfWeek(date) {
+  const d = new Date(date);
+  const day = d.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is Sunday
+  return new Date(d.setDate(diff));
+}
+
 // --- Route: Aggregated user data for top 4 cards + admin-only dashboard ---
 router.get('/users', authMiddleware, adminOnly, async (req, res) => {
   try {
@@ -111,6 +119,68 @@ router.get('/users', authMiddleware, adminOnly, async (req, res) => {
 
     const adminTotalBalance = adminOnlyBalances.reduce((sum, acc) => sum + (acc.balance?.totalBalance || 0), 0);
 
+    // --- Aggregate admin executions by date for daily PnL ---
+    const adminDailyPnLMap = new Map();
+    adminOnlyExecutions.forEach(exec => { // ✅ 'exec' is defined here
+      const dateStr = new Date(exec.execTime).toISOString().split('T')[0];
+      if (!adminDailyPnLMap.has(dateStr)) {
+        adminDailyPnLMap.set(dateStr, 0);
+      }
+      adminDailyPnLMap.set(dateStr, adminDailyPnLMap.get(dateStr) + (exec.closedPnl || 0));
+    });
+
+    const adminDailyPnL = Array.from(adminDailyPnLMap, ([date, pnl]) => ({
+      date,
+      balance: 0, // Or calculate based on snapshot if needed
+      pnl: pnl,
+      pnlPercent: 0, // Or calculate if needed
+      symbol: 'N/A', // Or aggregate symbols if needed
+      side: 'N/A',   // Or aggregate sides if needed
+      userId: currentAdminId // ✅ Use the admin's ID
+    }));
+
+    // --- Build admin-only dashboard ---
+    const adminDashboard = {
+  balances: adminOnlyBalances,
+  positions: adminOnlyPositions,
+  openOrders: [],
+  balanceHistory: adminOnlySnapshots.map(snapshot => ({
+    date: snapshot.date.toISOString().split('T')[0],
+    balance: snapshot.totalBalance
+  })),
+  dailyPnL: adminDailyPnL, // Now aggregated
+  // ✅ Aggregate daily snapshots into weekly data for admin (last 4 weeks) - Store only the last day's balance
+  weeklyRevenue: (() => {
+    const fourWeeksAgo = new Date();
+    fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28); // 4 weeks ago
+    const fourWeeksAgoDate = new Date(fourWeeksAgo);
+    fourWeeksAgoDate.setHours(0, 0, 0, 0);
+
+    const weeklySnapshots = adminOnlySnapshots.filter(snapshot => snapshot.date >= fourWeeksAgoDate);
+
+    const weeklyDataMap = new Map();
+
+    for (const snapshot of weeklySnapshots) {
+      const weekStart = getStartOfWeek(snapshot.date);
+      const weekKey = weekStart.toISOString().split('T')[0]; // YYYY-MM-DD format
+
+      // Always store the latest snapshot for this week
+      weeklyDataMap.set(weekKey, {
+        date: weekStart,
+        balance: snapshot.totalBalance, // ✅ Use the balance from the current day
+      });
+    }
+
+    return Array.from(weeklyDataMap.values())
+      .sort((a, b) => a.date - b.date)
+      .map(item => ({
+        date: item.date.toISOString().split('T')[0],
+        balance: item.balance
+      }));
+  })(),
+  bestTradingPairs: []
+};
+
     // --- Aggregated Metrics (Top 4 Cards) ---
     let totalActiveUsers = 0;
     const exchangeCounts = {};
@@ -126,31 +196,6 @@ router.get('/users', authMiddleware, adminOnly, async (req, res) => {
         });
       }
     });
-
-    // --- Build admin-only dashboard ---
-    const adminDashboard = {
-      balances: adminOnlyBalances,
-      positions: adminOnlyPositions,
-      openOrders: [],
-      balanceHistory: adminOnlySnapshots.map(snapshot => ({
-        date: snapshot.date.toISOString().split('T')[0],
-        balance: snapshot.totalBalance
-      })),
-      dailyPnL: adminOnlyExecutions.map(exec => ({
-        date: new Date(exec.execTime).toISOString().split('T')[0],
-        balance: 0,
-        pnl: exec.closedPnl || 0,
-        pnlPercent: 0,
-        symbol: exec.symbol,
-        side: exec.side,
-        userId: exec.userId // ✅ include for safety
-      })),
-      weeklyRevenue: adminOnlySnapshots.map(snapshot => ({
-        date: snapshot.date.toISOString().split('T')[0],
-        balance: snapshot.totalBalance
-      })),
-      bestTradingPairs: []
-    };
 
     // --- Enhance users list with balance + API status (for Users page) ---
     const usersWithFinalData = await Promise.all(
@@ -203,7 +248,7 @@ router.get('/users', authMiddleware, adminOnly, async (req, res) => {
           admin: adminTotalBalance   // ✅ Admin-only
         }
       },
-      adminDashboard, // ✅ Only admin data
+      adminDashboard, // ✅ Only admin data, with aggregated dailyPnL and weeklyRevenue
       users: usersWithFinalData // ✅ Now includes apiStatus and apiNames
     });
   } catch (err) {

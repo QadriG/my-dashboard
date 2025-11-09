@@ -25,6 +25,7 @@ dotenv.config();
 startPeriodicExchangeSync(60_000); // every 60s
 
 const app = express();
+
 const { info, error: logError } = logger;
 const { encryptPassword, comparePassword } = encryptUtils;
 

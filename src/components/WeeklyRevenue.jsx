@@ -1,4 +1,5 @@
 // src/components/WeeklyRevenue.jsx
+
 import React, { useEffect, useRef, useState } from "react";
 import { Chart, registerables } from "chart.js";
 Chart.register(...registerables);
@@ -11,13 +12,14 @@ export default function WeeklyRevenue({ isDarkMode, balanceData }) {
   const [revenues, setRevenues] = useState([]);
 
   useEffect(() => {
-  if (balanceData?.weeklyRevenue) {
-    const labels = balanceData.weeklyRevenue.map(w => w.date);
-    const revenues = balanceData.weeklyRevenue.map(w => w.balance);
-    setLabels(labels);
-    setRevenues(revenues);
-  }
-}, [balanceData]);
+    if (balanceData?.weeklyRevenue) {
+      // ✅ Use the date from the aggregated weekly data
+      const labels = balanceData.weeklyRevenue.map(w => w.date);
+      const revenues = balanceData.weeklyRevenue.map(w => w.balance);
+      setLabels(labels);
+      setRevenues(revenues);
+    }
+  }, [balanceData]);
 
   useEffect(() => {
     if (!canvasRef.current || revenues.length === 0) return;
@@ -70,7 +72,13 @@ export default function WeeklyRevenue({ isDarkMode, balanceData }) {
         plugins: {
           legend: { display: false },
           tooltip: {
-            callbacks: { label: (ctx) => `$${ctx.parsed.y}` },
+            // ✅ Improved tooltip label to show "Week of YYYY-MM-DD: $value"
+            callbacks: {
+              label: (ctx) => {
+                const weekStart = ctx.label; // This is the YYYY-MM-DD string from the label array
+                return `Week of ${weekStart}: $${ctx.parsed.y}`;
+              }
+            },
             bodyColor: labelColor,
             titleColor: labelColor,
             backgroundColor: tooltipBg,

@@ -28,12 +28,21 @@ async function getUserApis(userId, decrypt = false) {
 async function testApiKey(apiKey, apiSecret, provider = 'bybit', type = 'UNIFIED') {
   try {
     if (provider.toLowerCase() !== 'bybit') return false;
+    // Assuming fetchBalance is imported from the correct service
     const balance = await fetchBalance(apiKey, apiSecret, type);
     return true;
   } catch (err) {
     console.warn(`API key test failed for ${provider} with type ${type}:`, err.message);
     return false;
   }
+}
+
+// Helper function to get the start of the week (Monday)
+function getStartOfWeek(date) {
+  const d = new Date(date);
+  const day = d.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is Sunday
+  return new Date(d.setDate(diff));
 }
 
 // --- Route: Individual user's dashboard data ---
@@ -82,13 +91,13 @@ router.get('/dashboard', authMiddleware, async (req, res) => {
       balance: s.totalBalance
     }));
 
+    // Aggregate executions by date for daily PnL
+    const dailyPnLMap = new Map();
     const executions = await prisma.execution.findMany({
       where: { userId, execTime: { gte: thirtyDaysAgoDate } },
       orderBy: { execTime: 'desc' }
     });
 
-    // Aggregate executions by date for daily PnL
-    const dailyPnLMap = new Map();
     executions.forEach(exec => {
       const dateStr = new Date(exec.execTime).toISOString().split('T')[0];
       if (!dailyPnLMap.has(dateStr)) {
@@ -107,21 +116,38 @@ router.get('/dashboard', authMiddleware, async (req, res) => {
       qty: 0
     }));
 
-    // Fetch weekly snapshot data for the chart
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6); // Include today + 6 previous days
-    const sevenDaysAgoDate = new Date(sevenDaysAgo);
-    sevenDaysAgoDate.setHours(0, 0, 0, 0);
+    // Fetch weekly snapshot data for the chart (last 4 weeks)
+    const fourWeeksAgo = new Date();
+    fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28); // 4 weeks ago
+    const fourWeeksAgoDate = new Date(fourWeeksAgo);
+    fourWeeksAgoDate.setHours(0, 0, 0, 0);
 
     const weeklySnapshots = await prisma.dailyPnLSnapshot.findMany({
-      where: { userId, date: { gte: sevenDaysAgoDate } },
+      where: { userId, date: { gte: fourWeeksAgoDate } },
       orderBy: { date: 'asc' }
     });
 
-    const weeklyRevenue = weeklySnapshots.map(snapshot => ({
-      date: snapshot.date.toISOString().split('T')[0], // Format date as YYYY-MM-DD
-      balance: snapshot.totalBalance // Use totalBalance from snapshot
-    }));
+    // ✅ Aggregate daily snapshots into weekly data (by calendar week)
+const weeklyDataMap = new Map();
+
+for (const snapshot of weeklySnapshots) {
+  const weekStart = getStartOfWeek(snapshot.date);
+  const weekKey = weekStart.toISOString().split('T')[0]; // YYYY-MM-DD format
+
+  // Always store the latest snapshot for this week (overwrites previous)
+  weeklyDataMap.set(weekKey, {
+    date: weekStart,
+    balance: snapshot.totalBalance, // ✅ Use the balance from the current day
+  });
+}
+
+    // Convert map to array and sort by date
+    const weeklyRevenue = Array.from(weeklyDataMap.values())
+      .sort((a, b) => a.date - b.date)
+      .map(item => ({
+        date: item.date.toISOString().split('T')[0], // Format date as YYYY-MM-DD
+        balance: item.balance // Use the sum of daily balances for the week
+      }));
 
     // Compute API status for user
     let apiStatus = "Not Connected";
@@ -142,7 +168,7 @@ router.get('/dashboard', authMiddleware, async (req, res) => {
         openOrders: [],
         balanceHistory,
         dailyPnL, // Now aggregated
-        weeklyRevenue, // Now populated
+        weeklyRevenue, // Now aggregated by week (last 4 weeks)
         bestTradingPairs: [],
       },
       apiStatus,
@@ -162,17 +188,43 @@ router.get('/:id/positions', authMiddleware, adminOnly, async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid user ID" });
     }
 
-    const data = await fetchUserExchangeData(userId);
-    const positions = data.flatMap(d => d.openPositions || []);
+    // Fetch full dashboard data for the user
+    const dashboardData = await fetchUserExchangeData(userId);
+
+    // Extract positions from dashboard data
+    const positions = dashboardData.flatMap(d => d.openPositions || []);
 
     res.json({ success: true, positions });
   } catch (err) {
-    logError(`Error fetching positions for user ${req.params.id} by admin ${req.user.id}`, err);
+    logError(`Admin ${req.user.id} failed to fetch positions for user ${req.params.id}`, err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// ✅ NEW Route: Individual user's dashboard data (for admin to view specific user)
+// ✅ NEW Route: Get the most recent trade for a specific user (admin only)
+router.get('/:id/last-trade', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    if (isNaN(userId)) {
+      return res.status(400).json({ success: false, message: "Invalid user ID" });
+    }
+
+    const lastTrade = await prisma.trade.findFirst({
+      where: { userId },
+      orderBy: { tradeTime: 'desc' },
+    });
+
+    res.json({ 
+      success: true, 
+      trade: lastTrade 
+    });
+  } catch (err) {
+    logError(`Admin ${req.user.id} failed to fetch last trade for user ${req.params.id}`, err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ✅ Route: Individual user's dashboard data (for admin to view specific user)
 router.get('/:id/dashboard', authMiddleware, adminOnly, async (req, res) => {
   try {
     const userId = parseInt(req.params.id, 10);
@@ -245,23 +297,38 @@ router.get('/:id/dashboard', authMiddleware, adminOnly, async (req, res) => {
       side: 'N/A',
       qty: 0
     }));
+// Fetch weekly snapshot data for the chart (last 4 weeks)
+const fourWeeksAgo = new Date();
+fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28); // 4 weeks ago
+const fourWeeksAgoDate = new Date(fourWeeksAgo);
+fourWeeksAgoDate.setHours(0, 0, 0, 0);
 
-    // Fetch weekly data for the specific user
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-    const sevenDaysAgoDate = new Date(sevenDaysAgo);
-    sevenDaysAgoDate.setHours(0, 0, 0, 0);
+const weeklySnapshots = await prisma.dailyPnLSnapshot.findMany({
+  where: { userId, date: { gte: fourWeeksAgoDate } },
+  orderBy: { date: 'asc' }
+});
 
-    const weeklySnapshots = await prisma.dailyPnLSnapshot.findMany({
-      where: { userId, date: { gte: sevenDaysAgoDate } },
-      orderBy: { date: 'asc' }
-    });
+// ✅ Aggregate daily snapshots into weekly data (by calendar week) - Store only the last day's balance
+const weeklyDataMap = new Map();
 
-    const weeklyRevenue = weeklySnapshots.map(snapshot => ({
-      date: snapshot.date.toISOString().split('T')[0],
-      balance: snapshot.totalBalance
-    }));
+for (const snapshot of weeklySnapshots) {
+  const weekStart = getStartOfWeek(snapshot.date);
+  const weekKey = weekStart.toISOString().split('T')[0]; // YYYY-MM-DD format
 
+  // Always store the latest snapshot for this week
+  weeklyDataMap.set(weekKey, {
+    date: weekStart,
+    balance: snapshot.totalBalance, // ✅ Use the balance from the current day
+  });
+}
+
+// Convert map to array and sort by date
+const weeklyRevenue = Array.from(weeklyDataMap.values())
+  .sort((a, b) => a.date - b.date)
+  .map(item => ({
+    date: item.date.toISOString().split('T')[0], // Format date as YYYY-MM-DD
+    balance: item.balance // ✅ Use the balance from the last day of the week
+  }));
     // Compute API status for the specific user
     let apiStatus = "Not Connected";
     let apiNames = [];
@@ -281,7 +348,7 @@ router.get('/:id/dashboard', authMiddleware, adminOnly, async (req, res) => {
         openOrders: [],
         balanceHistory,
         dailyPnL, // Now aggregated
-        weeklyRevenue, // Now populated
+        weeklyRevenue, // Now aggregated by week (last 4 weeks)
         bestTradingPairs: [],
       },
       apiStatus,
@@ -292,7 +359,6 @@ router.get('/:id/dashboard', authMiddleware, adminOnly, async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
-
 
 // Centralized Error Handler
 router.use(errorHandler);

@@ -1,67 +1,65 @@
-// src/components/Users/PositionsTable.jsx
+// In PositionsTable.jsx
 import React, { useState, useEffect } from "react";
 import { useTheme } from "../../context/ThemeContext";
+import { useUserAuth } from "../../hooks/useUserAuth";
 
-export default function PositionsTable({ userId }) {
+export default function PositionsTable({ userId }) { // ✅ Accept userId prop
   const { isDarkMode } = useTheme();
+  const { user } = useUserAuth(); // Current logged-in user
   const [openPositions, setOpenPositions] = useState([]);
-  const [closedPositions, setClosedPositions] = useState([]); // 👈 Will be populated from API
+  const [closedPositions, setClosedPositions] = useState([]);
   const [tableType, setTableType] = useState("open");
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
   const [filterSymbol, setFilterSymbol] = useState("All");
   const [loading, setLoading] = useState(true);
 
-  // 🔹 Fetch open positions from /api/positions/active
-  async function fetchOpenPositions() {
+  // 🔹 Fetch positions based on context
+  async function fetchPositions() {
     try {
-      const res = await fetch('/api/positions/active', { credentials: 'include' });
-      const data = await res.json();
-      setOpenPositions(data);
-    } catch (err) {
-      console.error('Failed to fetch open positions:', err);
-    } finally {
-      setLoading(false);
-    }
-  }
+      let positions = [];
 
-  // 🔹 Fetch closed positions from /api/positions/closed (you need to implement this endpoint)
-  async function fetchClosedPositions() {
-    try {
-      const res = await fetch('/api/positions/closed', { credentials: 'include' });
-      const data = await res.json();
-      setClosedPositions(data);
-    } catch (err) {
-      console.error('Failed to fetch closed positions:', err);
-      // Fallback to mock if API fails
-      setClosedPositions([
-        {
-          id: 1,
-          symbol: "BTCUSDT",
-          side: "sell",
-          amount: 0.01,
-          orderValue: "600.00",
-          openPrice: 60000,
-          closePrice: 61000,
-          profit: 1000,
-          pnl: 1.67,
-          status: "closed",
-          openDate: "2025-08-01",
-          closeDate: "2025-08-02"
+      if (userId) {
+        // Admin view: fetch positions for specific user
+        const res = await fetch(`/api/users/${userId}/positions`, { 
+          credentials: 'include' 
+        });
+        const data = await res.json();
+        
+        if (data.success && Array.isArray(data.positions)) {
+          positions = data.positions;
         }
-      ]);
+      } else {
+        // Direct user login: fetch current user's positions from dashboard
+        const res = await fetch('/api/users/dashboard', { credentials: 'include' });
+        const data = await res.json();
+        
+        if (data.success && data.dashboard) {
+          positions = data.dashboard.positions || [];
+        }
+      }
+
+      // Separate open and closed positions
+      const open = positions.filter(p => p.status !== 'closed');
+      const closed = positions.filter(p => p.status === 'closed');
+      
+      setOpenPositions(open);
+      setClosedPositions(closed);
+    } catch (err) {
+      console.error('Failed to fetch positions:', err);
+      setOpenPositions([]);
+      setClosedPositions([]);
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    if (userId) {
-      fetchOpenPositions();
-      fetchClosedPositions(); // 👈 Always fetch closed positions
-    }
-  }, [userId]);
+    fetchPositions();
+  }, [userId]); // ✅ Re-fetch when userId changes
 
+  // ... rest of the component remains the same ...
+  // (Keep all the existing JSX and logic for table rendering, pagination, etc.)
   const positions = tableType === "open" ? openPositions : closedPositions;
   const filteredPositions =
     filterSymbol === "All" ? positions : positions.filter((p) => p.symbol === filterSymbol);
@@ -176,20 +174,20 @@ export default function PositionsTable({ userId }) {
                             {pos.side === 'buy' ? 'Buy' : pos.side === 'sell' ? 'Sell' : pos.side}
                           </span>
                         </td>
-                        <td className="px-4 py-2">{pos.amount.toFixed(4)}</td>
-                        <td className="px-4 py-2">${pos.orderValue}</td>
-                        <td className="px-4 py-2">${pos.openPrice}</td>
-                        <td className="px-4 py-2 text-green-400">{pos.status}</td>
-                        <td className="px-4 py-2">{pos.openDate}</td>
+                        <td className="px-4 py-2">{pos.amount?.toFixed(4) || pos.size?.toFixed(4)}</td>
+                        <td className="px-4 py-2">${pos.orderValue || (pos.size * pos.entryPrice).toFixed(2)}</td>
+                        <td className="px-4 py-2">${pos.openPrice || pos.entryPrice}</td>
+                        <td className="px-4 py-2 text-green-400">{pos.status || 'open'}</td>
+                        <td className="px-4 py-2">{pos.openDate || pos.createdAt}</td>
                       </>
                     ) : (
                       <>
                         <td className="px-4 py-2">{i + 1}</td>
                         <td className="px-4 py-2">{pos.symbol}</td>
                         <td className="px-4 py-2">{pos.side}</td>
-                        <td className="px-4 py-2">{pos.amount}</td>
+                        <td className="px-4 py-2">{pos.amount || pos.size}</td>
                         <td className="px-4 py-2">{pos.orderValue}</td>
-                        <td className="px-4 py-2">{pos.openPrice}</td>
+                        <td className="px-4 py-2">{pos.openPrice || pos.entryPrice}</td>
                         <td className="px-4 py-2">{pos.closePrice}</td>
                         <td className="px-4 py-2 text-green-600 font-semibold">{pos.profit}</td>
                         <td className="px-4 py-2 text-green-600 font-semibold">{pos.pnl}%</td>
