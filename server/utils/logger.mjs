@@ -1,4 +1,3 @@
-// utils/logger.mjs
 import pkg from "@prisma/client";
 const { PrismaClient } = pkg;
 
@@ -39,4 +38,23 @@ export async function error(message, meta = {}) {
   await logToDB("ERROR", message, meta);
 }
 
-export default { info, warn, error };
+// ✅ NEW: Add the logEvent function that was missing
+export async function logEvent({ userId, tvId, exchange, symbol, request, message, level = "INFO" }) {
+  try {
+    await prisma.log.create({
+      data: {
+        userId,
+        tvId,
+        exchange,
+        symbol,
+        request,
+        message,
+        level,
+      },
+    });
+  } catch (err) {
+    console.error("❌ Failed to save log:", err);
+  }
+}
+
+export default { info, warn, error, logEvent }; // ✅ Export logEvent as well

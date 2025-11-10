@@ -55,7 +55,37 @@ function getStartOfWeek(date) {
   const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is Sunday
   return new Date(d.setDate(diff));
 }
+// In server/routes/adminRoutes.mjs, add this route:
+router.get('/logs', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const logs = await prisma.log.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+      include: {
+        user: { select: { id: true, email: true, name: true } },
+      },
+    });
 
+    res.json(
+      logs.map((log) => ({
+        id: log.id,
+        userId: log.userId,
+        userEmail: log.user?.email || "N/A",
+        userName: log.user?.name || "",
+        tvId: log.tvId,
+        exchange: log.exchange,
+        symbol: log.symbol,
+        request: log.request,
+        message: log.message,
+        level: log.level,
+        createdAt: log.createdAt,
+      }))
+    );
+  } catch (err) {
+    console.error("❌ Failed to fetch logs:", err);
+    res.status(500).json({ error: "Failed to fetch logs" });
+  }
+});
 // --- Route: Aggregated user data for top 4 cards + admin-only dashboard ---
 router.get('/users', authMiddleware, adminOnly, async (req, res) => {
   try {

@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from "react";
+import { useAdminAuth } from "../hooks/useAdminAuth"; // ✅ Import the existing admin auth hook
 import "./AdminUsers.css";
 
 export default function Logs() {
+  const { admin, loading: authLoading } = useAdminAuth(); // ✅ Get admin info from context
   const [userFilter, setUserFilter] = useState("All");
   const [tvIdFilter, setTvIdFilter] = useState("All TV IDS");
   const [exchangeFilter, setExchangeFilter] = useState("All Exchanges");
   const [dateFilter, setDateFilter] = useState("");
-
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
   const [isDarkMode, setIsDarkMode] = useState(
     window.matchMedia("(prefers-color-scheme: dark)").matches
   );
@@ -29,20 +29,37 @@ export default function Logs() {
       try {
         setLoading(true);
         setError("");
-        const res = await fetch("/api/logs", { credentials: "include" });
-        if (!res.ok) throw new Error("Failed to fetch logs");
+        // ✅ Make the request with credentials (this should automatically send the session cookie)
+        const res = await fetch("/api/logs", {
+          credentials: "include", // ✅ This automatically sends the session cookie containing the JWT
+        });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
         const data = await res.json();
-        setLogs(data);
+        // ✅ Check if response has 'success' and 'logs'
+        if (data.success && Array.isArray(data.logs)) {
+          setLogs(data.logs);
+        } else {
+          throw new Error("Invalid response format: missing 'success' or 'logs' field");
+        }
       } catch (err) {
-        console.error(err);
-        setError("Unable to load logs");
+        console.error("Error fetching logs:", err);
+        setError(`Unable to load logs: ${err.message}`);
         setLogs([]); // keep table empty
       } finally {
         setLoading(false);
       }
     };
-    fetchLogs();
-  }, []);
+    // ✅ Only fetch logs if the admin is authenticated
+    if (admin && !authLoading) {
+      fetchLogs();
+    } else if (!authLoading && !admin) {
+      // ✅ If not authenticated, set error
+      setError("You must be logged in as an admin to view logs.");
+      setLoading(false);
+    }
+  }, [admin, authLoading]); // ✅ Re-fetch when admin or authLoading changes
 
   // Compute unique filter options dynamically
   const users = ["All", ...Array.from(new Set(logs.map((l) => l.user)))];
@@ -58,11 +75,18 @@ export default function Logs() {
       (dateFilter === "" || log.createdAt.includes(dateFilter))
   );
 
+  if (authLoading) {
+    return <div className="text-white text-center mt-20">Checking authentication...</div>;
+  }
+  if (!admin) {
+    return <div className="text-red-500 text-center mt-20">Access denied: Admins only</div>;
+  }
+
   return (
     <main className="ml-64 flex-1 p-8 overflow-y-auto space-y-10">
       {/* Title */}
       <div className="shimmer-wrapper w-full py-4 px-6 mb-6">
-        <h1 className="text-3xl font-semibold drop-shadow-md">Logs</h1>
+        <h1 className="text-3xl font-semibold drop-shadow-md">Error & Warning Logs</h1>
       </div>
 
       {/* Filters Row */}
@@ -78,7 +102,6 @@ export default function Logs() {
             <option key={idx}>{user}</option>
           ))}
         </select>
-
         <select
           value={tvIdFilter}
           onChange={(e) => setTvIdFilter(e.target.value)}
@@ -90,7 +113,6 @@ export default function Logs() {
             <option key={idx}>{tvId}</option>
           ))}
         </select>
-
         <select
           value={exchangeFilter}
           onChange={(e) => setExchangeFilter(e.target.value)}
@@ -102,7 +124,6 @@ export default function Logs() {
             <option key={idx}>{exchange}</option>
           ))}
         </select>
-
         <input
           type="date"
           value={dateFilter}
@@ -154,7 +175,7 @@ export default function Logs() {
               {!loading && !error && filteredLogs.length === 0 && (
                 <tr>
                   <td colSpan={7} className="py-6 text-center text-gray-400">
-                    No logs found.
+                    No error or warning logs found.
                   </td>
                 </tr>
               )}
@@ -175,7 +196,7 @@ export default function Logs() {
                     <td className="px-4 py-2 text-center">{log.symbol}</td>
                     <td className="px-4 py-2 text-xs break-words text-center">{log.request}</td>
                     <td className="px-4 py-2 text-red-500 font-semibold text-center">{log.log}</td>
-                    <td className="px-4 py-2 text-center">{log.createdAt}</td>
+                    <td className="px-4 py-2 text-center">{new Date(log.createdAt).toLocaleString()}</td>
                   </tr>
                 ))}
             </tbody>

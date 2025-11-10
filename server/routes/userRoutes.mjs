@@ -1,5 +1,3 @@
-// server/routes/userRoutes.mjs
-
 import express from "express";
 import pkg from "@prisma/client";
 const { PrismaClient } = pkg;
@@ -7,7 +5,7 @@ const { PrismaClient } = pkg;
 import { authMiddleware } from "../middleware/authMiddleware.mjs";
 import { roleMiddleware } from "../middleware/roleMiddleware.mjs";
 import { errorHandler } from "../middleware/errorHandler.mjs";
-import { info, error as logError } from "../utils/logger.mjs";
+import { info, error as logError } from "../utils/logger.mjs"; // ❌ Remove logEvent import
 import { fetchUserExchangeData } from "../services/exchangeDataSync.mjs";
 
 const router = express.Router();

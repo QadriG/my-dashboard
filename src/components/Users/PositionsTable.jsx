@@ -1,11 +1,10 @@
-// In PositionsTable.jsx
 import React, { useState, useEffect } from "react";
 import { useTheme } from "../../context/ThemeContext";
-import { useUserAuth } from "../../hooks/useUserAuth";
+import { useUserAuth } from "../../hooks/useUserAuth"; // To get current user ID
 
-export default function PositionsTable({ userId }) { // ✅ Accept userId prop
+export default function PositionsTable({ userId, isAdmin = false }) {
   const { isDarkMode } = useTheme();
-  const { user } = useUserAuth(); // Current logged-in user
+  const { user: currentUser } = useUserAuth(); // Get the currently logged-in user
   const [openPositions, setOpenPositions] = useState([]);
   const [closedPositions, setClosedPositions] = useState([]);
   const [tableType, setTableType] = useState("open");
@@ -13,53 +12,54 @@ export default function PositionsTable({ userId }) { // ✅ Accept userId prop
   const [page, setPage] = useState(1);
   const [filterSymbol, setFilterSymbol] = useState("All");
   const [loading, setLoading] = useState(true);
-
-  // 🔹 Fetch positions based on context
-  async function fetchPositions() {
-    try {
-      let positions = [];
-
-      if (userId) {
-        // Admin view: fetch positions for specific user
-        const res = await fetch(`/api/users/${userId}/positions`, { 
-          credentials: 'include' 
-        });
-        const data = await res.json();
-        
-        if (data.success && Array.isArray(data.positions)) {
-          positions = data.positions;
-        }
-      } else {
-        // Direct user login: fetch current user's positions from dashboard
-        const res = await fetch('/api/users/dashboard', { credentials: 'include' });
-        const data = await res.json();
-        
-        if (data.success && data.dashboard) {
-          positions = data.dashboard.positions || [];
-        }
-      }
-
-      // Separate open and closed positions
-      const open = positions.filter(p => p.status !== 'closed');
-      const closed = positions.filter(p => p.status === 'closed');
-      
-      setOpenPositions(open);
-      setClosedPositions(closed);
-    } catch (err) {
-      console.error('Failed to fetch positions:', err);
-      setOpenPositions([]);
-      setClosedPositions([]);
-    } finally {
-      setLoading(false);
-    }
-  }
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetchPositions();
-  }, [userId]); // ✅ Re-fetch when userId changes
+    const fetchPositions = async () => {
+      try {
+        let positions = [];
 
-  // ... rest of the component remains the same ...
-  // (Keep all the existing JSX and logic for table rendering, pagination, etc.)
+        if (isAdmin && userId) {
+          // Admin viewing specific user's positions
+          const res = await fetch(`/api/users/${userId}/positions`, { credentials: 'include' });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            positions = data.positions || [];
+          } else {
+            throw new Error(data.message || data.error || "Failed to fetch user positions");
+          }
+        } else if (!isAdmin && currentUser?.id) {
+          // Direct user login: fetch current user's positions from dashboard
+          const res = await fetch('/api/users/dashboard', { credentials: 'include' });
+          const data = await res.json();
+          if (res.ok && data.success && data.dashboard) {
+            positions = data.dashboard.positions || [];
+          } else {
+            throw new Error(data.message || data.error || "Failed to fetch dashboard data");
+          }
+        } else {
+          throw new Error("Invalid context for fetching positions");
+        }
+
+        // Separate open and closed positions
+        const open = positions.filter(p => p.status !== 'closed');
+        const closed = positions.filter(p => p.status === 'closed');
+
+        setOpenPositions(open);
+        setClosedPositions(closed);
+      } catch (err) {
+        console.error("Fetch positions error:", err);
+        setError(err.message);
+        setOpenPositions([]);
+        setClosedPositions([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPositions();
+  }, [userId, isAdmin, currentUser?.id]); // Re-fetch if context changes
+
   const positions = tableType === "open" ? openPositions : closedPositions;
   const filteredPositions =
     filterSymbol === "All" ? positions : positions.filter((p) => p.symbol === filterSymbol);
@@ -201,7 +201,7 @@ export default function PositionsTable({ userId }) { // ✅ Accept userId prop
               ) : (
                 <tr>
                   <td colSpan={tableType === "open" ? 8 : 12} className="text-center py-4 text-gray-400">
-                    {loading ? "Loading..." : "No positions found."}
+                    {loading ? "Loading..." : error ? `Error: ${error}` : "No positions found."}
                   </td>
                 </tr>
               )}

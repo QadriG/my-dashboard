@@ -4,6 +4,7 @@ const { PrismaClient } = PrismaClientPkg;
 import { authMiddleware } from "../middleware/authMiddleware.mjs";
 import { encrypt } from "../utils/apiencrypt.mjs";
 import { syncUserExchangesImmediately } from "../services/exchangeDataSync.mjs";
+import { error as logError } from "../utils/logger.mjs"; // ❌ Remove logEvent import, only import error as logError
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -21,6 +22,7 @@ router.get("/list", (req, res) => {
     res.json({ success: true, exchanges: supportedExchanges });
   } catch (err) {
     console.error("Error fetching exchange list:", err);
+    logError("Error fetching exchange list:", err); // ✅ Use existing logger
     res.status(500).json({ success: false, error: "Failed to load exchanges" });
   }
 });
@@ -65,6 +67,7 @@ router.post("/save", authMiddleware, async (req, res) => {
     res.json({ success: true, message: "API credentials saved successfully" });
   } catch (err) {
     console.error("Error saving exchange API keys:", err);
+    logError("Error saving exchange API keys:", err); // ✅ Use existing logger
     res.status(500).json({ success: false, error: "Failed to save API keys" });
   }
 });
@@ -102,6 +105,7 @@ router.get("/test/:exchange", authMiddleware, async (req, res) => {
     res.json({ success: true, balances });
   } catch (err) {
     console.error("Error testing exchange API:", err);
+    logError("Error testing exchange API:", err); // ✅ Use existing logger
     res.status(500).json({ success: false, error: "Server error while testing API keys" });
   }
 });
@@ -149,6 +153,7 @@ router.get("/user/:id/balance", authMiddleware, async (req, res) => {
     res.json({ success: true, dashboard: { balances: dashboardBalances } });
   } catch (err) {
     console.error("Error fetching user balance:", err);
+    logError("Error fetching user balance:", err); // ✅ Use existing logger
     res.status(500).json({ success: false, error: "Failed to fetch balance data" });
   }
 });

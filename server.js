@@ -12,22 +12,21 @@ import { sendEmail } from "./src/utils/mailer.js";
 import webhookRoutes from "./server/routes/webhookRoutes.mjs";
 import adminRoutes from "./server/routes/adminRoutes.mjs";
 import exchangesRoutes from "./server/routes/exchanges.mjs";
-import logger from "./server/utils/logger.mjs";
+import { info as logInfo, error as logError } from "./server/utils/logger.mjs"; // ✅ Import both info and error
 import encryptUtils from "./server/utils/encrypt.mjs";
 import positionsRouter from "./server/routes/positions.mjs";
 import usersRouter from "./server/routes/userRoutes.mjs";
 import balancesRouter from "./server/routes/balances.mjs";
 import manualPushRouter from "./server/routes/manualPush.mjs";
 import { startPeriodicExchangeSync } from "./server/services/exchangeDataSync.mjs";
-
+import logsRoutes from "./server/routes/logs.mjs";
 dotenv.config();
 
 startPeriodicExchangeSync(60_000); // every 60s
 
 const app = express();
 
-const { info, error: logError } = logger;
-const { encryptPassword, comparePassword } = encryptUtils;
+const { encryptPassword, comparePassword } = encryptUtils; // ✅ Only get the functions you need from encryptUtils
 
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
@@ -184,6 +183,7 @@ app.get("/api/auth/check-auth", authMiddleware, async (req, res) => {
     isVerified: user.isVerified,
   });
 });
+
 // Mock endpoints (add to server.js)
 app.get('/api/user/balance-history', authMiddleware, (req, res) => {
   res.json([
@@ -221,6 +221,7 @@ app.get('/api/user/best-trading-pairs', authMiddleware, (req, res) => {
     { pair: "SOL/USDT", profit: 95 }
   ]);
 });
+
 app.get("/api/auth/verify-email", async (req, res) => {
   try {
     const { token } = req.query;
@@ -327,7 +328,16 @@ app.get("/user/profile", authMiddleware, (req, res) => {
 app.get("/admin/dashboard", authMiddleware, adminMiddleware, (req, res) => {
   res.json({ message: "Welcome Admin", user: req.user });
 });
+app.use("/api/logs", authMiddleware, logsRoutes);
+// Add this for unhandled exceptions/rejections - Add this BEFORE app.listen
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  logError(`BACKEND CRASH: Uncaught Exception: ${err.message || err}`); // ✅ Use existing logger
+});
 
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  logError(`BACKEND CRASH: Unhandled Rejection: ${reason.message || reason}`); // ✅ Use existing logger
+});
 
-
-app.listen(5000, () => info(`🚀 Server running on port 5000`));
+app.listen(5000, () => logInfo(`🚀 Server running on port 5000`)); // ✅ Use logInfo instead of info

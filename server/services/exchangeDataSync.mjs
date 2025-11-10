@@ -1,7 +1,7 @@
 import PrismaClientPkg from "@prisma/client";
 const { PrismaClient } = PrismaClientPkg;
 import { fetchExchangeData } from "./exchangeManager.mjs";
-import { info, error as logError } from "../utils/logger.mjs";
+import { info, error as logError } from "../utils/logger.mjs"; // ❌ Remove logEvent import
 
 const prisma = new PrismaClient();
 
@@ -9,6 +9,7 @@ export const fetchUserExchangeData = async (userId) => {
   try {
     const numericUserId = parseInt(userId, 10);
     if (isNaN(numericUserId)) {
+      logError(`Invalid userId: ${userId} is not a valid number`); // ✅ Use existing logger
       throw new Error(`Invalid userId: ${userId} is not a valid number`);
     }
 
@@ -30,6 +31,7 @@ export const fetchUserExchangeData = async (userId) => {
     });
 
     if (!user) {
+      console.warn(`[WARN] No user found with id ${numericUserId}`);
       console.warn(`[WARN] No user found with id ${numericUserId}`);
       return [];
     }
