@@ -2,29 +2,27 @@
 import express from "express";
 import pkg from "@prisma/client";
 const { PrismaClient } = pkg;
-import { isAdmin } from "../middleware/auth.mjs"; // ✅ Admin-only check
+import { isAdmin } from "../middleware/auth.mjs"; // ✅ Make sure this is correct
 const prisma = new PrismaClient();
 const router = express.Router();
-
 /**
  * GET /api/logs
- * Fetch last 200 ERROR/WARN logs with user info
+ * Fetch last 200 logs with user info
  * Admin-only
  */
 router.get("/", isAdmin, async (req, res) => {
   try {
     const logs = await prisma.log.findMany({
-      where: {
-        level: { in: ["ERROR", "WARN"] } // ✅ Only fetch ERROR and WARN logs
-      },
       orderBy: { createdAt: "desc" },
       take: 200,
       include: {
         user: { select: { id: true, email: true, name: true } },
       },
     });
-    res.json(
-      logs.map((log) => ({
+    // ✅ Return the correct structure
+    res.json({
+      success: true,
+      logs: logs.map((log) => ({
         id: log.id,
         userId: log.userId,
         userEmail: log.user?.email || "N/A",
@@ -37,13 +35,16 @@ router.get("/", isAdmin, async (req, res) => {
         level: log.level,
         createdAt: log.createdAt,
       }))
-    );
+    });
   } catch (err) {
     console.error("❌ Failed to fetch logs:", err);
-    res.status(500).json({ error: "Failed to fetch logs" });
+    // ✅ Return an error response with the correct structure
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch logs"
+    });
   }
 });
-
 /**
  * POST /api/logs
  * Insert new log entry
@@ -70,7 +71,6 @@ router.post("/", isAdmin, async (req, res) => {
     res.status(500).json({ error: "Failed to create log" });
   }
 });
-
 /**
  * Utility function for logging (can be imported in other services)
  * Not middleware-protected, since it's internal usage
@@ -84,5 +84,4 @@ export const logEvent = async ({ userId, tvId, exchange, symbol, request, messag
     console.error("❌ Failed to save log:", err);
   }
 };
-
 export default router;

@@ -5,7 +5,7 @@ const { PrismaClient } = pkg;
 import { authMiddleware } from "../middleware/authMiddleware.mjs";
 import { roleMiddleware } from "../middleware/roleMiddleware.mjs";
 import { errorHandler } from "../middleware/errorHandler.mjs";
-import { info, error as logError } from "../utils/logger.mjs"; // ❌ Remove logEvent import
+import { info, warn, error as logError } from "../utils/logger.mjs"; // ✅ Import warn
 import { fetchUserExchangeData } from "../services/exchangeDataSync.mjs";
 
 const router = express.Router();
@@ -30,7 +30,7 @@ async function testApiKey(apiKey, apiSecret, provider = 'bybit', type = 'UNIFIED
     const balance = await fetchBalance(apiKey, apiSecret, type);
     return true;
   } catch (err) {
-    console.warn(`API key test failed for ${provider} with type ${type}:`, err.message);
+    warn(`API key test failed for ${provider} with type ${type}:`, err.message); // ⚠️ WARN: API test failed
     return false;
   }
 }
@@ -173,7 +173,7 @@ for (const snapshot of weeklySnapshots) {
       apiNames: apiNames.join(", ") || "-"
     });
   } catch (err) {
-    logError(`Error fetching dashboard data for user ${req.user?.id}`, err);
+    logError(`Error fetching dashboard data for user ${req.user?.id}`, err); // ❌ ERROR: Dashboard fetch failed
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -194,7 +194,7 @@ router.get('/:id/positions', authMiddleware, adminOnly, async (req, res) => {
 
     res.json({ success: true, positions });
   } catch (err) {
-    logError(`Admin ${req.user.id} failed to fetch positions for user ${req.params.id}`, err);
+    logError(`Admin ${req.user.id} failed to fetch positions for user ${req.params.id}`, err); // ❌ ERROR: Positions fetch failed
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -217,7 +217,7 @@ router.get('/:id/last-trade', authMiddleware, adminOnly, async (req, res) => {
       trade: lastTrade 
     });
   } catch (err) {
-    logError(`Admin ${req.user.id} failed to fetch last trade for user ${req.params.id}`, err);
+    logError(`Admin ${req.user.id} failed to fetch last trade for user ${req.params.id}`, err); // ❌ ERROR: Last trade fetch failed
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -353,7 +353,7 @@ const weeklyRevenue = Array.from(weeklyDataMap.values())
       apiNames: apiNames.join(", ") || "-"
     });
   } catch (err) {
-    logError(`Error fetching dashboard data for user ${req.params.id} by admin ${req.user.id}`, err);
+    logError(`Error fetching dashboard data for user ${req.params.id} by admin ${req.user.id}`, err); // ❌ ERROR: Dashboard fetch failed
     res.status(500).json({ success: false, message: err.message });
   }
 });

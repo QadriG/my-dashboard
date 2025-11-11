@@ -1,7 +1,7 @@
 import PrismaClientPkg from "@prisma/client";
 const { PrismaClient } = PrismaClientPkg;
 import { fetchExchangeData } from "./exchangeManager.mjs";
-import { info, error as logError } from "../utils/logger.mjs"; // ❌ Remove logEvent import
+import { info, warn, error as logError } from "../utils/logger.mjs"; // ✅ Import warn
 
 const prisma = new PrismaClient();
 
@@ -9,7 +9,7 @@ export const fetchUserExchangeData = async (userId) => {
   try {
     const numericUserId = parseInt(userId, 10);
     if (isNaN(numericUserId)) {
-      logError(`Invalid userId: ${userId} is not a valid number`); // ✅ Use existing logger
+      logError(`Invalid userId: ${userId} is not a valid number`); // ❌ ERROR: Invalid input
       throw new Error(`Invalid userId: ${userId} is not a valid number`);
     }
 
@@ -31,13 +31,12 @@ export const fetchUserExchangeData = async (userId) => {
     });
 
     if (!user) {
-      console.warn(`[WARN] No user found with id ${numericUserId}`);
-      console.warn(`[WARN] No user found with id ${numericUserId}`);
+      warn(`No user found with id ${numericUserId}`); // ⚠️ WARN: User not found
       return [];
     }
 
     if (!user.exchanges?.length) {
-      console.warn(`[WARN] User ${numericUserId} has no exchanges linked`);
+      warn(`User ${numericUserId} has no exchanges linked`); // ⚠️ WARN: No exchanges
       return [];
     }
 
@@ -46,7 +45,7 @@ export const fetchUserExchangeData = async (userId) => {
     for (const ex of user.exchanges) {
       const exchangeName = ex.provider?.toLowerCase();
       if (!ex.apiKey || !ex.apiSecret) {
-        console.warn(`[WARN] Skipping ${exchangeName} for user ${numericUserId} — Missing API credentials`);
+        warn(`Skipping ${exchangeName} for user ${numericUserId} — Missing API credentials`); // ⚠️ WARN: Missing credentials
         continue;
       }
 
@@ -80,7 +79,7 @@ export const fetchUserExchangeData = async (userId) => {
         const allExecutions = exchangeResult.closedExecutions || [];
         const todayExecutions = allExecutions.filter(exec => {
           if (!exec || typeof exec !== 'object') {
-            console.warn(`[WARN] Invalid execution object:`, exec);
+            warn(`Invalid execution object:`, exec); // ⚠️ WARN: Invalid execution
             return false;
           }
           const execDate = new Date(exec.execTime).toISOString().split('T')[0];
@@ -89,7 +88,7 @@ export const fetchUserExchangeData = async (userId) => {
 
         todayRealizedPnl = todayExecutions.reduce((sum, exec) => {
           if (!exec || typeof exec !== 'object') {
-            console.warn(`[WARN] Invalid execution object in reduce:`, exec);
+            warn(`Invalid execution object in reduce:`, exec); // ⚠️ WARN: Invalid execution
             return sum;
           }
           return sum + (exec.closedPnl || 0);
@@ -99,12 +98,12 @@ export const fetchUserExchangeData = async (userId) => {
         for (const exec of allExecutions) {
           // ✅ Safety check: Ensure exec is a valid object and has execId
           if (!exec || typeof exec !== 'object') {
-            console.warn(`[WARN] Skipping invalid execution object:`, exec);
+            warn(`Skipping invalid execution object:`, exec); // ⚠️ WARN: Invalid execution
             continue;
           }
 
           if (!exec.execId) {
-            console.warn(`[WARN] Execution missing execId, skipping save:`, exec);
+            warn(`Execution missing execId, skipping save:`, exec); // ⚠️ WARN: Missing execId
             continue; // Skip saving if execId is missing
           }
 
@@ -125,7 +124,7 @@ export const fetchUserExchangeData = async (userId) => {
               }
             });
           } catch (err) {
-            console.warn(`[WARN] Could not save execution ${exec.execId}:`, err.message);
+            warn(`Could not save execution ${exec.execId}:`, err.message); // ⚠️ WARN: Save failed
           }
         }
 
@@ -138,9 +137,9 @@ export const fetchUserExchangeData = async (userId) => {
           error: null,
         });
 
-        info(`✅ ${exchangeName} (${accountType}) data fetched for user ${numericUserId}`);
+        info(`✅ ${exchangeName} (${accountType}) data fetched for user ${numericUserId}`); // ✅ INFO: Success
       } catch (innerErr) {
-        logError(`❌ Failed ${ex.provider} (${ex.type}) for user ${numericUserId}`, innerErr?.message || innerErr);
+        logError(`❌ Failed ${ex.provider} (${ex.type}) for user ${numericUserId}`, innerErr?.message || innerErr); // ❌ ERROR: API failure
         results.push({
           exchange: ex.provider,
           type: ex.type || "spot",
@@ -156,7 +155,7 @@ export const fetchUserExchangeData = async (userId) => {
 
     return results;
   } catch (err) {
-    logError(`User ${userId} — fetchUserExchangeData failed`, err?.message || err);
+    logError(`User ${userId} — fetchUserExchangeData failed`, err?.message || err); // ❌ ERROR: Function failed
     return [];
   }
 };
@@ -164,10 +163,10 @@ export const fetchUserExchangeData = async (userId) => {
 export async function syncUserExchangesImmediately(userId) {
   try {
     const data = await fetchUserExchangeData(userId);
-    info(`✅ Synced exchange data for user ${userId}`);
+    info(`✅ Synced exchange data for user ${userId}`); // ✅ INFO: Success
     return data;
   } catch (err) {
-    logError(`syncUserExchangesImmediately failed for user ${userId}`, err);
+    logError(`syncUserExchangesImmediately failed for user ${userId}`, err); // ❌ ERROR: Function failed
   }
 }
 
@@ -183,5 +182,6 @@ export async function startPeriodicExchangeSync() {
     console.log("✅ Periodic exchange sync completed successfully");
   } catch (err) {
     console.error("[ERROR] startPeriodicExchangeSync failed:", err);
+    logError("startPeriodicExchangeSync failed", err); // ❌ ERROR: Sync failed
   }
 }

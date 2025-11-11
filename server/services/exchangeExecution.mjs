@@ -1,6 +1,6 @@
 // server/services/placeOrderOnExchange.mjs
 import { getExchangeClient } from "./exchangeClients.mjs";
-import { error as logError, info } from "../utils/logger.mjs";
+import { info, warn, error as logError } from "../utils/logger.mjs"; // ✅ Import warn
 
 export const placeOrderOnExchange = async ({
   exchange,
@@ -24,7 +24,7 @@ export const placeOrderOnExchange = async ({
     if (!user) throw new Error(`User ${userId} not found`);
 
     if (user.status !== "active") {
-      info(`User ${userId} is ${user.status}, skipping order`);
+      info(`User ${userId} is ${user.status}, skipping order`); // ✅ INFO: User not active, skip
       return null; // skip placing the order
     }
 
@@ -48,7 +48,7 @@ export const placeOrderOnExchange = async ({
   } catch (err) {
     logError(
       `❌ [${exchange}] Order failed for user ${userEmail} (${userId}): ${err.message}`
-    );
+    ); // ❌ ERROR: Order failed
 
     return {
       success: false,

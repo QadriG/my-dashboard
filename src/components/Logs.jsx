@@ -1,7 +1,7 @@
+// src/components/Admin/Logs.jsx
 import React, { useState, useEffect } from "react";
 import { useAdminAuth } from "../hooks/useAdminAuth"; // ✅ Import the existing admin auth hook
 import "./AdminUsers.css";
-
 export default function Logs() {
   const { admin, loading: authLoading } = useAdminAuth(); // ✅ Get admin info from context
   const [userFilter, setUserFilter] = useState("All");
@@ -14,7 +14,6 @@ export default function Logs() {
   const [isDarkMode, setIsDarkMode] = useState(
     window.matchMedia("(prefers-color-scheme: dark)").matches
   );
-
   // Dark mode detection
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
@@ -22,7 +21,6 @@ export default function Logs() {
     mediaQuery.addEventListener("change", handleChange);
     return () => mediaQuery.removeEventListener("change", handleChange);
   }, []);
-
   // Fetch logs from backend
   useEffect(() => {
     const fetchLogs = async () => {
@@ -60,12 +58,10 @@ export default function Logs() {
       setLoading(false);
     }
   }, [admin, authLoading]); // ✅ Re-fetch when admin or authLoading changes
-
   // Compute unique filter options dynamically
   const users = ["All", ...Array.from(new Set(logs.map((l) => l.user)))];
   const tvIds = ["All TV IDS", ...Array.from(new Set(logs.map((l) => l.tvId)))];
   const exchanges = ["All Exchanges", ...Array.from(new Set(logs.map((l) => l.exchange)))];
-
   // Apply filters
   const filteredLogs = logs.filter(
     (log) =>
@@ -74,21 +70,18 @@ export default function Logs() {
       (exchangeFilter === "All Exchanges" || log.exchange === exchangeFilter) &&
       (dateFilter === "" || log.createdAt.includes(dateFilter))
   );
-
   if (authLoading) {
     return <div className="text-white text-center mt-20">Checking authentication...</div>;
   }
   if (!admin) {
     return <div className="text-red-500 text-center mt-20">Access denied: Admins only</div>;
   }
-
   return (
     <main className="ml-64 flex-1 p-8 overflow-y-auto space-y-10">
       {/* Title */}
       <div className="shimmer-wrapper w-full py-4 px-6 mb-6">
-        <h1 className="text-3xl font-semibold drop-shadow-md">Error & Warning Logs</h1>
+        <h1 className="text-3xl font-semibold drop-shadow-md">Logs</h1>
       </div>
-
       {/* Filters Row */}
       <div className="grid grid-cols-4 gap-4 mb-4 w-full">
         <select
@@ -133,7 +126,6 @@ export default function Logs() {
           }`}
         />
       </div>
-
       {/* Logs Table */}
       <div className="p-6 rounded-xl bg-gradient-to-r from-green-400 to-red-500 shadow-lg overflow-x-auto">
         <div
@@ -175,7 +167,7 @@ export default function Logs() {
               {!loading && !error && filteredLogs.length === 0 && (
                 <tr>
                   <td colSpan={7} className="py-6 text-center text-gray-400">
-                    No error or warning logs found.
+                    No logs found.
                   </td>
                 </tr>
               )}

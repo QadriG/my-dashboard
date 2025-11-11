@@ -18,7 +18,7 @@ import {
 import { authMiddleware } from "../middleware/authMiddleware.mjs";
 import { roleMiddleware } from "../middleware/roleMiddleware.mjs";
 import { errorHandler } from "../middleware/errorHandler.mjs";
-import { info, error as logError } from "../utils/logger.mjs";
+import { info, warn, error as logError } from "../utils/logger.mjs"; // ✅ Import warn
 import { fetchUserExchangeData } from "../services/exchangeDataSync.mjs";
 import { fetchBalance } from "../services/exchanges/bybitService.mjs"; // ✅ Import for API testing
 
@@ -43,7 +43,7 @@ async function testApiKey(apiKey, apiSecret, provider = 'bybit', type = 'UNIFIED
     const balance = await fetchBalance(apiKey, apiSecret, type);
     return true;
   } catch (err) {
-    console.warn(`API key test failed for ${provider} with type ${type}:`, err.message);
+    warn(`API key test failed for ${provider} with type ${type}:`, err.message); // ⚠️ WARN: API test failed
     return false;
   }
 }
@@ -82,7 +82,7 @@ router.get('/logs', authMiddleware, adminOnly, async (req, res) => {
       }))
     );
   } catch (err) {
-    console.error("❌ Failed to fetch logs:", err);
+    logError("❌ Failed to fetch logs:", err); // ❌ ERROR: Logs fetch failed
     res.status(500).json({ error: "Failed to fetch logs" });
   }
 });
@@ -106,7 +106,7 @@ router.get('/users', authMiddleware, adminOnly, async (req, res) => {
           const dashboardData = await fetchUserExchangeData(user.id);
           return { ...user, dashboardData, apis };
         } catch (err) {
-          console.warn(`Failed to fetch dashboard for user ${user.id}:`, err.message);
+          warn(`Failed to fetch dashboard for user ${user.id}:`, err.message); // ⚠️ WARN: Dashboard fetch failed
           return { ...user, dashboardData: [], apis: [] };
         }
       })
@@ -282,7 +282,7 @@ router.get('/users', authMiddleware, adminOnly, async (req, res) => {
       users: usersWithFinalData // ✅ Now includes apiStatus and apiNames
     });
   } catch (err) {
-    logError(`Error fetching admin dashboard data for user ${req.user?.id}`, err);
+    logError(`Error fetching admin dashboard data for user ${req.user?.id}`, err); // ❌ ERROR: Admin dashboard fetch failed
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -298,7 +298,7 @@ router.get('/all-positions', authMiddleware, adminOnly, async (req, res) => {
           const userOpenPositions = userExchangeData.flatMap(d => d.openPositions || []);
           return userOpenPositions.map(pos => ({ ...pos, userId: user.id, userEmail: user.email }));
         } catch (err) {
-          console.error(`Error fetching positions for user ${user.id}:`, err);
+          logError(`Error fetching positions for user ${user.id}:`, err); // ❌ ERROR: Positions fetch failed
           return [];
         }
       })
@@ -306,44 +306,44 @@ router.get('/all-positions', authMiddleware, adminOnly, async (req, res) => {
     const allOpenPositions = allUserPositions.flat();
     res.json({ success: true, positions: allOpenPositions });
   } catch (err) {
-    logError(`Admin ${req.user.id} failed to fetch all users' positions`, err);
+    logError(`Admin ${req.user.id} failed to fetch all users' positions`, err); // ❌ ERROR: All positions fetch failed
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
 // --- Existing Routes (Preserved) ---
 router.delete("/users/:id", authMiddleware, adminOnly, (req, res) => {
-  info(`Admin ${req.user.id} deleting user ${req.params.id}`);
+  info(`Admin ${req.user.id} deleting user ${req.params.id}`); // ✅ INFO: User deletion
   deleteUser(req, res);
 });
 
 router.patch("/users/:id/role", authMiddleware, adminOnly, (req, res) => {
-  info(`Admin ${req.user.id} updating role for user ${req.params.id}`);
+  info(`Admin ${req.user.id} updating role for user ${req.params.id}`); // ✅ INFO: Role update
   updateUserRole(req, res);
 });
 
 router.patch("/users/:id/pause", authMiddleware, adminOnly, (req, res) => {
-  info(`Admin ${req.user.id} pausing user ${req.params.id}`);
+  info(`Admin ${req.user.id} pausing user ${req.params.id}`); // ✅ INFO: User pause
   pauseUser(req, res);
 });
 
 router.patch("/users/:id/unpause", authMiddleware, adminOnly, (req, res) => {
-  info(`Admin ${req.user.id} unpausing user ${req.params.id}`);
+  info(`Admin ${req.user.id} unpausing user ${req.params.id}`); // ✅ INFO: User unpause
   unpauseUser(req, res);
 });
 
 router.patch("/users/:id/disable", authMiddleware, adminOnly, (req, res) => {
-  info(`Admin ${req.user.id} disabling user ${req.params.id}`);
+  info(`Admin ${req.user.id} disabling user ${req.params.id}`); // ✅ INFO: User disable
   disableUser(req, res);
 });
 
 router.patch("/users/:id/enable", authMiddleware, adminOnly, (req, res) => {
-  info(`Admin ${req.user.id} enabling user ${req.params.id}`);
+  info(`Admin ${req.user.id} enabling user ${req.params.id}`); // ✅ INFO: User enable
   enableUser(req, res);
 });
 
 router.get("/users/:id/stats", authMiddleware, adminOnly, (req, res) => {
-  info(`Admin ${req.user.id} fetching stats for user ${req.params.id}`);
+  info(`Admin ${req.user.id} fetching stats for user ${req.params.id}`); // ✅ INFO: Stats fetch
   getUserStats(req, res);
 });
 
@@ -359,7 +359,7 @@ router.get('/users/:id/positions', authMiddleware, adminOnly, async (req, res) =
 
     res.json({ success: true, positions });
   } catch (err) {
-    logError(`Admin ${req.user.id} failed to fetch positions for user ${req.params.id}`, err);
+    logError(`Admin ${req.user.id} failed to fetch positions for user ${req.params.id}`, err); // ❌ ERROR: Positions fetch failed
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -385,7 +385,7 @@ router.get("/users/:id/apis", authMiddleware, adminOnly, async (req, res) => {
     });
     res.json({ success: true, apis });
   } catch (err) {
-    logError(`Admin failed to fetch API keys for user ${req.params.id}`, err);
+    logError(`Admin failed to fetch API keys for user ${req.params.id}`, err); // ❌ ERROR: API keys fetch failed
     res.status(500).json({ success: false, message: "Error fetching API keys" });
   }
 });
