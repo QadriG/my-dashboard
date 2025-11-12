@@ -1,4 +1,3 @@
-// src/components/Admin/Logs.jsx
 import React, { useState, useEffect } from "react";
 import { useAdminAuth } from "../hooks/useAdminAuth"; // ✅ Import the existing admin auth hook
 import "./AdminUsers.css";
@@ -59,13 +58,13 @@ export default function Logs() {
     }
   }, [admin, authLoading]); // ✅ Re-fetch when admin or authLoading changes
   // Compute unique filter options dynamically
-  const users = ["All", ...Array.from(new Set(logs.map((l) => l.user)))];
+  const users = ["All", ...Array.from(new Set(logs.map((l) => l.userEmail)))];
   const tvIds = ["All TV IDS", ...Array.from(new Set(logs.map((l) => l.tvId)))];
   const exchanges = ["All Exchanges", ...Array.from(new Set(logs.map((l) => l.exchange)))];
   // Apply filters
   const filteredLogs = logs.filter(
     (log) =>
-      (userFilter === "All" || log.user === userFilter) &&
+      (userFilter === "All" || log.userEmail === userFilter) &&
       (tvIdFilter === "All TV IDS" || log.tvId === tvIdFilter) &&
       (exchangeFilter === "All Exchanges" || log.exchange === exchangeFilter) &&
       (dateFilter === "" || log.createdAt.includes(dateFilter))
@@ -182,12 +181,13 @@ export default function Logs() {
                         : "border-b border-gray-300 hover:bg-gray-200/10"
                     }`}
                   >
-                    <td className="px-4 py-2 text-center">{log.user}</td>
+                    {/* ✅ Use the correct field names from the API response */}
+                    <td className="px-4 py-2 text-center">{log.userEmail}</td>
                     <td className="px-4 py-2 text-center">{log.tvId}</td>
                     <td className="px-4 py-2 text-center">{log.exchange}</td>
                     <td className="px-4 py-2 text-center">{log.symbol}</td>
                     <td className="px-4 py-2 text-xs break-words text-center">{log.request}</td>
-                    <td className="px-4 py-2 text-red-500 font-semibold text-center">{log.log}</td>
+                    <td className="px-4 py-2 text-red-500 font-semibold text-center">{log.message}</td>
                     <td className="px-4 py-2 text-center">{new Date(log.createdAt).toLocaleString()}</td>
                   </tr>
                 ))}
