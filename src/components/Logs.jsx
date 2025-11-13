@@ -51,6 +51,7 @@ export default function Logs() {
         setLoading(false);
       }
     };
+
     // ✅ Only fetch logs if the admin is authenticated
     if (admin && !authLoading) {
       fetchLogs();
@@ -88,6 +89,7 @@ export default function Logs() {
       <div className="shimmer-wrapper w-full py-4 px-6 mb-6">
         <h1 className="text-3xl font-semibold drop-shadow-md">Critical Logs</h1>
       </div>
+
       {/* Filters Row */}
       <div className="grid grid-cols-4 gap-4 mb-4 w-full">
         <select
@@ -132,6 +134,7 @@ export default function Logs() {
           }`}
         />
       </div>
+
       {/* Logs Table */}
       <div className="p-6 rounded-xl bg-gradient-to-r from-green-400 to-red-500 shadow-lg overflow-x-auto">
         <div
@@ -189,11 +192,19 @@ export default function Logs() {
                         : "border-b border-gray-300 hover:bg-gray-200/10"
                     }`}
                   >
-                    <td className="px-4 py-2 text-center">{log.userEmail}</td>
-                    <td className="px-4 py-2 text-center">{log.tvId}</td>
-                    <td className="px-4 py-2 text-center">{log.exchange}</td>
-                    <td className="px-4 py-2 text-center">{log.symbol}</td>
-                    <td className="px-4 py-2 text-xs break-words text-center">{log.request}</td>
+                    {/* ✅ User Column: Show email or "N/A" if not available */}
+                    <td className="px-4 py-2 text-center">{log.userEmail || "N/A"}</td>
+                    <td className="px-4 py-2 text-center">{log.tvId || "N/A"}</td>
+                    <td className="px-4 py-2 text-center">{log.exchange || "N/A"}</td>
+                    <td className="px-4 py-2 text-center">{log.symbol || "N/A"}</td>
+                    {/* ✅ Request Column: Show request data or "N/A" if not available, handle JSON strings */}
+                    <td className="px-4 py-2 text-xs break-words text-center">
+                      {log.request ? (
+                        typeof log.request === 'string' && log.request.startsWith('{') ? (
+                          <pre className="text-left">{JSON.stringify(JSON.parse(log.request), null, 2)}</pre>
+                        ) : String(log.request) // Convert to string in case it's a number/object
+                      ) : "N/A"}
+                    </td>
                     <td className={`px-4 py-2 font-semibold text-center ${
                       log.level === "ERROR" 
                         ? "text-red-500" 
