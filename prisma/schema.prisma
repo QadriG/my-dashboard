@@ -44,6 +44,7 @@ model User {
   dailyPnLSnapshots DailyPnLSnapshot[]
   tradeEvents       TradeEvent[]
   executions        Execution[] // ✅ Add this line
+  manualPushEvents ManualPushEvent[]
 }
 
 // ==============
@@ -233,4 +234,20 @@ model Execution {
   balanceAfter Float?
 
   @@index([userId, execTime])
+}
+
+model ManualPushEvent {
+  id          Int      @id @default(autoincrement())
+  user        User     @relation(fields: [userId], references: [id])
+  userId      Int
+  symbol      String
+  side        String   // "buy" or "sell"
+  quantity    Float
+  exchange    String
+  status      String   // "success", "failed", "partial"
+  message     String?  // Error message if failed
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([userId, createdAt])
 }

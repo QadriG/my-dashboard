@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAdminAuth } from "../hooks/useAdminAuth"; // ✅ Import the existing admin auth hook
 import "./AdminUsers.css";
+
 export default function Logs() {
   const { admin, loading: authLoading } = useAdminAuth(); // ✅ Get admin info from context
   const [userFilter, setUserFilter] = useState("All");
@@ -13,6 +14,7 @@ export default function Logs() {
   const [isDarkMode, setIsDarkMode] = useState(
     window.matchMedia("(prefers-color-scheme: dark)").matches
   );
+
   // Dark mode detection
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
@@ -20,6 +22,7 @@ export default function Logs() {
     mediaQuery.addEventListener("change", handleChange);
     return () => mediaQuery.removeEventListener("change", handleChange);
   }, []);
+
   // Fetch logs from backend
   useEffect(() => {
     const fetchLogs = async () => {
@@ -57,10 +60,12 @@ export default function Logs() {
       setLoading(false);
     }
   }, [admin, authLoading]); // ✅ Re-fetch when admin or authLoading changes
+
   // Compute unique filter options dynamically
   const users = ["All", ...Array.from(new Set(logs.map((l) => l.userEmail)))];
   const tvIds = ["All TV IDS", ...Array.from(new Set(logs.map((l) => l.tvId)))];
   const exchanges = ["All Exchanges", ...Array.from(new Set(logs.map((l) => l.exchange)))];
+
   // Apply filters
   const filteredLogs = logs.filter(
     (log) =>
@@ -69,17 +74,19 @@ export default function Logs() {
       (exchangeFilter === "All Exchanges" || log.exchange === exchangeFilter) &&
       (dateFilter === "" || log.createdAt.includes(dateFilter))
   );
+
   if (authLoading) {
     return <div className="text-white text-center mt-20">Checking authentication...</div>;
   }
   if (!admin) {
     return <div className="text-red-500 text-center mt-20">Access denied: Admins only</div>;
   }
+
   return (
     <main className="ml-64 flex-1 p-8 overflow-y-auto space-y-10">
       {/* Title */}
       <div className="shimmer-wrapper w-full py-4 px-6 mb-6">
-        <h1 className="text-3xl font-semibold drop-shadow-md">Logs</h1>
+        <h1 className="text-3xl font-semibold drop-shadow-md">Critical Logs</h1>
       </div>
       {/* Filters Row */}
       <div className="grid grid-cols-4 gap-4 mb-4 w-full">
@@ -145,27 +152,28 @@ export default function Logs() {
                 <th className="text-center px-4 py-3 font-semibold">Symbol</th>
                 <th className="text-center px-4 py-3 font-semibold">Request</th>
                 <th className="text-center px-4 py-3 font-semibold">Log</th>
+                <th className="text-center px-4 py-3 font-semibold">Level</th>
                 <th className="text-center px-4 py-3 font-semibold">Created At</th>
               </tr>
             </thead>
             <tbody>
               {loading && (
                 <tr>
-                  <td colSpan={7} className="py-6 text-center text-gray-400">
+                  <td colSpan={8} className="py-6 text-center text-gray-400">
                     Loading logs...
                   </td>
                 </tr>
               )}
               {!loading && error && (
                 <tr>
-                  <td colSpan={7} className="py-6 text-center text-red-500">
+                  <td colSpan={8} className="py-6 text-center text-red-500">
                     {error}
                   </td>
                 </tr>
               )}
               {!loading && !error && filteredLogs.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="py-6 text-center text-gray-400">
+                  <td colSpan={8} className="py-6 text-center text-gray-400">
                     No logs found.
                   </td>
                 </tr>
@@ -181,13 +189,31 @@ export default function Logs() {
                         : "border-b border-gray-300 hover:bg-gray-200/10"
                     }`}
                   >
-                    {/* ✅ Use the correct field names from the API response */}
                     <td className="px-4 py-2 text-center">{log.userEmail}</td>
                     <td className="px-4 py-2 text-center">{log.tvId}</td>
                     <td className="px-4 py-2 text-center">{log.exchange}</td>
                     <td className="px-4 py-2 text-center">{log.symbol}</td>
                     <td className="px-4 py-2 text-xs break-words text-center">{log.request}</td>
-                    <td className="px-4 py-2 text-red-500 font-semibold text-center">{log.message}</td>
+                    <td className={`px-4 py-2 font-semibold text-center ${
+                      log.level === "ERROR" 
+                        ? "text-red-500" 
+                        : log.level === "WARN" 
+                          ? "text-yellow-500" 
+                          : "text-white"
+                    }`}>
+                      {log.message}
+                    </td>
+                    <td className="px-4 py-2 text-center">
+                      <span className={`px-2 py-1 rounded text-xs ${
+                        log.level === "ERROR" 
+                          ? "bg-red-500/30 text-red-400 border border-red-500" 
+                          : log.level === "WARN" 
+                            ? "bg-yellow-500/30 text-yellow-400 border border-yellow-500" 
+                            : "bg-gray-500/30 text-gray-400 border border-gray-500"
+                      }`}>
+                        {log.level}
+                      </span>
+                    </td>
                     <td className="px-4 py-2 text-center">{new Date(log.createdAt).toLocaleString()}</td>
                   </tr>
                 ))}

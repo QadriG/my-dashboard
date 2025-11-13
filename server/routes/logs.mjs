@@ -8,15 +8,13 @@ const router = express.Router();
 
 /**
  * GET /api/logs
- * Fetch last 200 ERROR/WARN logs with user info
+ * Fetch last 200 logs with user info
  * Admin-only
  */
 router.get("/", isAdmin, async (req, res) => {
   try {
+    // Fetch all logs with user info
     const logs = await prisma.log.findMany({
-      where: {
-        level: { in: ["ERROR", "WARN"] } // ✅ Only fetch ERROR and WARN logs
-      },
       orderBy: { createdAt: "desc" },
       take: 200,
       include: {
@@ -24,8 +22,24 @@ router.get("/", isAdmin, async (req, res) => {
       },
     });
 
-    res.json(
-      logs.map((log) => ({
+    // Deduplicate logs based on message + level + userId + exchange + symbol
+    const deduplicatedLogs = [];
+    const seenKeys = new Set();
+
+    for (const log of logs) {
+      // Create a unique key for deduplication
+      const key = `${log.message}|${log.level}|${log.userId}|${log.exchange}|${log.symbol}`;
+      if (!seenKeys.has(key)) {
+        seenKeys.add(key);
+        // Add the log with full user info
+        deduplicatedLogs.push(log);
+      }
+    }
+
+    // Return the deduplicated logs
+    res.json({
+      success: true,
+      logs: deduplicatedLogs.map((log) => ({
         id: log.id,
         userId: log.userId,
         userEmail: log.user?.email || "N/A",
@@ -37,8 +51,8 @@ router.get("/", isAdmin, async (req, res) => {
         message: log.message,
         level: log.level,
         createdAt: log.createdAt,
-      }))
-    );
+      })),
+    });
   } catch (err) {
     console.error("❌ Failed to fetch logs:", err);
     res.status(500).json({ error: "Failed to fetch logs" });
@@ -55,7 +69,7 @@ router.post("/", isAdmin, async (req, res) => {
   try {
     const { userId, tvId, exchange, symbol, request, message, level } = req.body;
     const newLog = await prisma.log.create({
-      data: { // ✅ Fixed: Added 'data:' here
+      data: {
         userId,
         tvId,
         exchange,

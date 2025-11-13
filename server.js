@@ -25,7 +25,7 @@ dotenv.config();
 startPeriodicExchangeSync(60_000); // every 60s
 
 const app = express();
-
+app.set('trust proxy', 1);
 const { encryptPassword, comparePassword } = encryptUtils; // ✅ Only get the functions you need from encryptUtils
 
 const PORT = process.env.PORT || 5000;
@@ -99,7 +99,7 @@ app.use("/api/webhook", webhookRoutes);
 app.use("/api/admin", authMiddleware, adminMiddleware, adminRoutes);
 app.use("/api/users", authMiddleware, usersRouter); // ✅ plural "users"
 app.use("/api/balances", balancesRouter);
-app.use("/api/manual-push", authMiddleware, manualPushRouter);
+app.use("/api/manual-push", authMiddleware, adminMiddleware, manualPushRouter);
 
 app.post("/api/auth/signup", async (req, res) => {
   try {
