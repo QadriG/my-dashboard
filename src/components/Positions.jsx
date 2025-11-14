@@ -107,12 +107,13 @@ export default function AdminPositions() {
             <table className="w-full text-white">
               <thead className="bg-gray-200 text-black rounded-xl">
                 <tr>
+                  <th className="px-4 py-2">ID</th> {/* ✅ Added ID column */}
                   <th className="px-4 py-2">Symbol</th>
                   <th className="px-4 py-2">Side</th>
                   <th className="px-4 py-2">Amount</th>
                   <th className="px-4 py-2">Order Value</th>
                   <th className="px-4 py-2">Open Price</th>
-                  <th className="px-4 py-2">Unrealized PnL</th>
+                  <th className="px-4 py-2">Unrealized PnL</th> {/* ✅ Added Unrealized PnL */}
                   <th className="px-4 py-2">Open Date</th>
                   <th className="px-4 py-2">Action</th>
                 </tr>
@@ -121,8 +122,9 @@ export default function AdminPositions() {
                 {openPositions.length > 0 ? (
                   openPositions.map((pos, idx) => (
                     <tr key={idx} className="border-t border-gray-600">
-                      <td className="px-4 py-2">{pos.symbol}</td>
-                      <td className="px-4 py-2">
+                      <td className="px-4 py-2 text-center">{idx + 1}</td> {/* ✅ Center-aligned */}
+                      <td className="px-4 py-2 text-center">{pos.symbol}</td> {/* ✅ Center-aligned */}
+                      <td className="px-4 py-2 text-center">
                         <span
                           className={`px-2 py-1 text-xs font-semibold rounded ${
                             pos.side.toLowerCase() === "buy" || pos.side.toLowerCase() === "long"
@@ -133,14 +135,14 @@ export default function AdminPositions() {
                           {pos.side}
                         </span>
                       </td>
-                      <td className="px-4 py-2">{pos.size || pos.amount}</td>
-                      <td className="px-4 py-2">${pos.orderValue}</td>
-                      <td className="px-4 py-2">${pos.entryPrice}</td>
-                      <td className={`px-4 py-2 ${pos.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      <td className="px-4 py-2 text-center">{pos.size || pos.amount}</td> {/* ✅ Center-aligned */}
+                      <td className="px-4 py-2 text-center">${pos.orderValue}</td> {/* ✅ Center-aligned */}
+                      <td className="px-4 py-2 text-center">${pos.entryPrice}</td> {/* ✅ Center-aligned */}
+                      <td className={`px-4 py-2 text-center ${pos.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}> {/* ✅ Center-aligned */}
                         ${pos.unrealizedPnl?.toFixed(2)}
                       </td>
-                      <td className="px-4 py-2">{pos.openDate}</td>
-                      <td className="px-4 py-2">
+                      <td className="px-4 py-2 text-center">{pos.openDate}</td> {/* ✅ Center-aligned */}
+                      <td className="px-4 py-2 text-center">
                         <button
                           onClick={() => handleClose(pos.symbol, pos.side)}
                           className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 text-xs rounded"
@@ -170,6 +172,7 @@ export default function AdminPositions() {
             <table className="w-full text-white">
               <thead className="bg-gray-200 text-black rounded-xl">
                 <tr>
+                  <th className="px-4 py-2">ID</th> {/* ✅ Added ID column */}
                   <th className="px-4 py-2">Symbol</th>
                   <th className="px-4 py-2">Side</th>
                   <th className="px-4 py-2">Amount</th>
@@ -186,16 +189,17 @@ export default function AdminPositions() {
                 {closedPositions.length > 0 ? (
                   closedPositions.map((pos, idx) => (
                     <tr key={idx} className="border-t border-gray-600">
-                      <td className="px-4 py-2">{pos.symbol}</td>
-                      <td className="px-4 py-2">{pos.side}</td>
-                      <td className="px-4 py-2">{pos.size || pos.amount}</td>
-                      <td className="px-4 py-2">{pos.entryPrice}</td>
-                      <td className="px-4 py-2">{pos.closePrice}</td>
-                      <td className="px-4 py-2 text-green-600">{pos.profit}</td>
-                      <td className="px-4 py-2 text-green-600">{pos.pnl}</td>
-                      <td className="px-4 py-2 text-red-600">{pos.status}</td>
-                      <td className="px-4 py-2">{pos.openDate}</td>
-                      <td className="px-4 py-2">{pos.closeDate}</td>
+                      <td className="px-4 py-2 text-center">{idx + 1}</td> {/* ✅ Center-aligned */}
+                      <td className="px-4 py-2 text-center">{pos.symbol}</td> {/* ✅ Center-aligned */}
+                      <td className="px-4 py-2 text-center">{pos.side}</td> {/* ✅ Center-aligned */}
+                      <td className="px-4 py-2 text-center">{pos.size || pos.amount}</td> {/* ✅ Center-aligned */}
+                      <td className="px-4 py-2 text-center">{pos.entryPrice}</td> {/* ✅ Center-aligned */}
+                      <td className="px-4 py-2 text-center">{pos.closePrice}</td> {/* ✅ Center-aligned */}
+                      <td className="px-4 py-2 text-center text-green-600">{pos.profit}</td> {/* ✅ Center-aligned */}
+                      <td className="px-4 py-2 text-center text-green-600">{pos.pnl}</td> {/* ✅ Center-aligned */}
+                      <td className="px-4 py-2 text-center text-red-600">{pos.status}</td> {/* ✅ Center-aligned */}
+                      <td className="px-4 py-2 text-center">{pos.openDate}</td> {/* ✅ Center-aligned */}
+                      <td className="px-4 py-2 text-center">{pos.closeDate}</td> {/* ✅ Center-aligned */}
                     </tr>
                   ))
                 ) : (

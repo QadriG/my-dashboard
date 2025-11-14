@@ -1,8 +1,10 @@
+// src/components/Users/PositionsTable.jsx
+
 import React, { useState, useEffect } from "react";
 import { useTheme } from "../../context/ThemeContext";
 import { useUserAuth } from "../../hooks/useUserAuth"; // To get current user ID
 
-export default function PositionsTable({ userId, isAdmin = false }) {
+export default function PositionsTable({ userId: propUserId, isAdmin = false }) {
   const { isDarkMode } = useTheme();
   const { user: currentUser } = useUserAuth(); // Get the currently logged-in user
   const [openPositions, setOpenPositions] = useState([]);
@@ -14,51 +16,61 @@ export default function PositionsTable({ userId, isAdmin = false }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchPositions = async () => {
-      try {
-        let positions = [];
+  // Function to fetch positions
+  const fetchPositions = async () => {
+    try {
+      let positions = [];
 
-        if (isAdmin && userId) {
-          // Admin viewing specific user's positions
-          const res = await fetch(`/api/users/${userId}/positions`, { credentials: 'include' });
-          const data = await res.json();
-          if (res.ok && data.success) {
-            positions = data.positions || [];
-          } else {
-            throw new Error(data.message || data.error || "Failed to fetch user positions");
-          }
-        } else if (!isAdmin && currentUser?.id) {
-          // Direct user login: fetch current user's positions from dashboard
-          const res = await fetch('/api/users/dashboard', { credentials: 'include' });
-          const data = await res.json();
-          if (res.ok && data.success && data.dashboard) {
-            positions = data.dashboard.positions || [];
-          } else {
-            throw new Error(data.message || data.error || "Failed to fetch dashboard data");
-          }
+      if (isAdmin && propUserId) { // ✅ Use propUserId for admin view
+        // Admin viewing specific user's positions
+        const res = await fetch(`/api/users/${propUserId}/positions`, { credentials: 'include' });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          positions = data.positions || [];
         } else {
-          throw new Error("Invalid context for fetching positions");
+          throw new Error(data.message || data.error || "Failed to fetch user positions");
         }
-
-        // Separate open and closed positions
-        const open = positions.filter(p => p.status !== 'closed');
-        const closed = positions.filter(p => p.status === 'closed');
-
-        setOpenPositions(open);
-        setClosedPositions(closed);
-      } catch (err) {
-        console.error("Fetch positions error:", err);
-        setError(err.message);
-        setOpenPositions([]);
-        setClosedPositions([]);
-      } finally {
-        setLoading(false);
+      } else if (!isAdmin && currentUser?.id) {
+        // Direct user login: fetch current user's positions from dashboard
+        const res = await fetch('/api/users/dashboard', { credentials: 'include' });
+        const data = await res.json();
+        if (res.ok && data.success && data.dashboard) {
+          positions = data.dashboard.positions || [];
+        } else {
+          throw new Error(data.message || data.error || "Failed to fetch dashboard data");
+        }
+      } else {
+        throw new Error("Invalid context for fetching positions");
       }
-    };
 
+      // Separate open and closed positions
+      const open = positions.filter(p => p.status !== 'closed');
+      const closed = positions.filter(p => p.status === 'closed');
+
+      setOpenPositions(open);
+      setClosedPositions(closed);
+    } catch (err) {
+      console.error("Fetch positions error:", err);
+      setError(err.message);
+      setOpenPositions([]);
+      setClosedPositions([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch positions on mount and when dependencies change
+  useEffect(() => {
     fetchPositions();
-  }, [userId, isAdmin, currentUser?.id]); // Re-fetch if context changes
+  }, [propUserId, isAdmin, currentUser?.id]); // ✅ Depend on propUserId
+
+  // ✅ Add live update for user page (polling) - Only for non-admin users
+  useEffect(() => {
+    if (!isAdmin) { // Only poll for regular users, not admins viewing others
+      const intervalId = setInterval(fetchPositions, 5000); // Poll every 5 seconds
+      return () => clearInterval(intervalId); // Cleanup on unmount
+    }
+  }, [isAdmin, fetchPositions]); // Re-run effect if isAdmin changes or fetchPositions changes
 
   const positions = tableType === "open" ? openPositions : closedPositions;
   const filteredPositions =
@@ -130,29 +142,28 @@ export default function PositionsTable({ userId, isAdmin = false }) {
               <tr>
                 {tableType === "open" ? (
                   <>
-                    <th className="px-4 py-2 text-left">ID</th>
-                    <th className="px-4 py-2 text-left">Symbol</th>
-                    <th className="px-4 py-2 text-left">Side</th>
-                    <th className="px-4 py-2 text-left">Amount</th>
-                    <th className="px-4 py-2 text-left">Order Value</th>
-                    <th className="px-4 py-2 text-left">Open Price</th>
-                    <th className="px-4 py-2 text-left">Status</th>
-                    <th className="px-4 py-2 text-left">Open Date</th>
+                    <th className="px-4 py-2 text-center">ID</th>
+                    <th className="px-4 py-2 text-center">Symbol</th>
+                    <th className="px-4 py-2 text-center">Side</th>
+                    <th className="px-4 py-2 text-center">Amount</th>
+                    <th className="px-4 py-2 text-center">Order Value</th>
+                    <th className="px-4 py-2 text-center">Open Price</th>
+                    <th className="px-4 py-2 text-center">Unrealized PnL</th>
+                    <th className="px-4 py-2 text-center">Open Date</th>
                   </>
                 ) : (
                   <>
-                    <th className="px-4 py-2 text-left">ID</th>
-                    <th className="px-4 py-2 text-left">Symbol</th>
-                    <th className="px-4 py-2 text-left">Side</th>
-                    <th className="px-4 py-2 text-left">Amount</th>
-                    <th className="px-4 py-2 text-left">Order Value</th>
-                    <th className="px-4 py-2 text-left">Open Price</th>
-                    <th className="px-4 py-2 text-left">Close Price</th>
-                    <th className="px-4 py-2 text-left">Profit</th>
-                    <th className="px-4 py-2 text-left">PnL</th>
-                    <th className="px-4 py-2 text-left">Status</th>
-                    <th className="px-4 py-2 text-left">Open Date</th>
-                    <th className="px-4 py-2 text-left">Close Date</th>
+                    <th className="px-4 py-2 text-center">ID</th>
+                    <th className="px-4 py-2 text-center">Symbol</th>
+                    <th className="px-4 py-2 text-center">Side</th>
+                    <th className="px-4 py-2 text-center">Amount</th>
+                    <th className="px-4 py-2 text-center">Order Value</th>
+                    <th className="px-4 py-2 text-center">Open Price</th>
+                    <th className="px-4 py-2 text-center">Close Price</th>
+                    <th className="px-4 py-2 text-center">Profit</th>
+                    <th className="px-4 py-2 text-center">PnL</th>
+                    <th className="px-4 py-2 text-center">Open Date</th>
+                    <th className="px-4 py-2 text-center">Close Date</th>
                   </>
                 )}
               </tr>
@@ -163,9 +174,9 @@ export default function PositionsTable({ userId, isAdmin = false }) {
                   <tr key={i} className="border-t border-gray-600">
                     {tableType === "open" ? (
                       <>
-                        <td className="px-4 py-2">{i + 1}</td>
-                        <td className="px-4 py-2">{pos.symbol}</td>
-                        <td className="px-4 py-2">
+                        <td className="px-4 py-2 text-center">{i + 1}</td> {/* ✅ Center-aligned */}
+                        <td className="px-4 py-2 text-center">{pos.symbol}</td> {/* ✅ Center-aligned */}
+                        <td className="px-4 py-2 text-center">
                           <span className={`px-2 py-1 rounded text-xs ${
                             pos.side === 'buy' || pos.side === 'long'
                               ? 'bg-green-400/30 text-green-200 border border-green-300'
@@ -174,26 +185,27 @@ export default function PositionsTable({ userId, isAdmin = false }) {
                             {pos.side === 'buy' ? 'Buy' : pos.side === 'sell' ? 'Sell' : pos.side}
                           </span>
                         </td>
-                        <td className="px-4 py-2">{pos.amount?.toFixed(4) || pos.size?.toFixed(4)}</td>
-                        <td className="px-4 py-2">${pos.orderValue || (pos.size * pos.entryPrice).toFixed(2)}</td>
-                        <td className="px-4 py-2">${pos.openPrice || pos.entryPrice}</td>
-                        <td className="px-4 py-2 text-green-400">{pos.status || 'open'}</td>
-                        <td className="px-4 py-2">{pos.openDate || pos.createdAt}</td>
+                        <td className="px-4 py-2 text-center">{pos.amount?.toFixed(4) || pos.size?.toFixed(4)}</td> {/* ✅ Center-aligned */}
+                        <td className="px-4 py-2 text-center">${pos.orderValue || (pos.size * pos.entryPrice).toFixed(2)}</td> {/* ✅ Center-aligned */}
+                        <td className="px-4 py-2 text-center">${pos.openPrice || pos.entryPrice}</td> {/* ✅ Center-aligned */}
+                        <td className={`px-4 py-2 text-center ${pos.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}> {/* ✅ Center-aligned */}
+                          ${pos.unrealizedPnl?.toFixed(2)}
+                        </td>
+                        <td className="px-4 py-2 text-center">{pos.openDate || pos.createdAt}</td> {/* ✅ Center-aligned */}
                       </>
                     ) : (
                       <>
-                        <td className="px-4 py-2">{i + 1}</td>
-                        <td className="px-4 py-2">{pos.symbol}</td>
-                        <td className="px-4 py-2">{pos.side}</td>
-                        <td className="px-4 py-2">{pos.amount || pos.size}</td>
-                        <td className="px-4 py-2">{pos.orderValue}</td>
-                        <td className="px-4 py-2">{pos.openPrice || pos.entryPrice}</td>
-                        <td className="px-4 py-2">{pos.closePrice}</td>
-                        <td className="px-4 py-2 text-green-600 font-semibold">{pos.profit}</td>
-                        <td className="px-4 py-2 text-green-600 font-semibold">{pos.pnl}%</td>
-                        <td className="px-4 py-2 text-red-600 font-semibold">{pos.status}</td>
-                        <td className="px-4 py-2">{pos.openDate}</td>
-                        <td className="px-4 py-2">{pos.closeDate}</td>
+                        <td className="px-4 py-2 text-center">{i + 1}</td> {/* ✅ Center-aligned */}
+                        <td className="px-4 py-2 text-center">{pos.symbol}</td> {/* ✅ Center-aligned */}
+                        <td className="px-4 py-2 text-center">{pos.side}</td> {/* ✅ Center-aligned */}
+                        <td className="px-4 py-2 text-center">{pos.amount || pos.size}</td> {/* ✅ Center-aligned */}
+                        <td className="px-4 py-2 text-center">{pos.orderValue}</td> {/* ✅ Center-aligned */}
+                        <td className="px-4 py-2 text-center">{pos.openPrice || pos.entryPrice}</td> {/* ✅ Center-aligned */}
+                        <td className="px-4 py-2 text-center">{pos.closePrice}</td> {/* ✅ Center-aligned */}
+                        <td className="px-4 py-2 text-center text-green-600 font-semibold">{pos.profit}</td> {/* ✅ Center-aligned */}
+                        <td className="px-4 py-2 text-center text-green-600 font-semibold">{pos.pnl}%</td> {/* ✅ Center-aligned */}
+                        <td className="px-4 py-2 text-center">{pos.openDate}</td> {/* ✅ Center-aligned */}
+                        <td className="px-4 py-2 text-center">{pos.closeDate}</td> {/* ✅ Center-aligned */}
                       </>
                     )}
                   </tr>
