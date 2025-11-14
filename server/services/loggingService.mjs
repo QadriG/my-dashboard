@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
+// In your first logging file (where you have logError, logTradingError, etc.)
 export async function logError({
   user = null,
   tvId = null,
@@ -18,7 +19,8 @@ export async function logError({
         exchange,
         symbol,
         request: typeof request === 'object' ? JSON.stringify(request) : request,
-        log,
+        log, // This should be 'message' if you're following the schema
+        level: "ERROR", // ✅ Explicitly set the level to "ERROR"
         createdAt
       }
     });
@@ -27,7 +29,6 @@ export async function logError({
   }
 }
 
-// Export a convenience function for common error types
 export async function logTradingError({
   user,
   tvId,
@@ -42,7 +43,8 @@ export async function logTradingError({
     exchange,
     symbol,
     request,
-    log: `TRADING ERROR: ${error.message || error}`
+    log: `TRADING ERROR: ${error.message || error}`,
+    level: "ERROR" // ✅ Explicitly set the level
   });
 }
 
@@ -60,7 +62,8 @@ export async function logApiError({
     exchange,
     symbol,
     request,
-    log: `API ERROR: ${error.message || error}`
+    log: `API ERROR: ${error.message || error}`,
+    level: "ERROR" // ✅ Explicitly set the level
   });
 }
 
@@ -78,6 +81,7 @@ export async function logBackendError({
     exchange,
     symbol,
     request,
-    log: `BACKEND ERROR: ${error.message || error}`
+    log: `BACKEND ERROR: ${error.message || error}`,
+    level: "ERROR" // ✅ Explicitly set the level
   });
 }

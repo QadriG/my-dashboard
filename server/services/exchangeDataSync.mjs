@@ -1,7 +1,10 @@
+// server/services/exchangeDataSync.mjs
+
 import PrismaClientPkg from "@prisma/client";
 const { PrismaClient } = PrismaClientPkg;
 import { fetchExchangeData } from "./exchangeManager.mjs";
-import { info, warn, error as logError } from "../utils/logger.mjs"; // ✅ Import warn
+import { info, warn, error as logError } from "../utils/logger.mjs";
+import { logEvent } from "../utils/logger.mjs"; // ✅ Import logEvent for logging
 
 const prisma = new PrismaClient();
 
@@ -94,6 +97,14 @@ export const fetchUserExchangeData = async (userId) => {
           return sum + (exec.closedPnl || 0);
         }, 0);
 
+        // 🔸 Log successful data fetch with userId
+        await logEvent({
+          userId: numericUserId, // ✅ Pass the userId here
+          exchange: exchangeName,
+          message: `✅ ${exchangeName} (${accountType}) data fetched for user ${numericUserId}`,
+          level: "INFO",
+        });
+
         // 🔸 Save ALL executions to DB (avoid duplicates via execId)
         for (const exec of allExecutions) {
           // ✅ Safety check: Ensure exec is a valid object and has execId
@@ -128,6 +139,35 @@ export const fetchUserExchangeData = async (userId) => {
           }
         }
 
+        // ✅ NEW: Save Daily Snapshot for this user
+        try {
+          await prisma.dailyPnLSnapshot.upsert({
+            where: { 
+              userId_date: { 
+                userId: numericUserId, 
+                date: todayDate 
+              } 
+            },
+            update: {
+              totalBalance: totalBalance,
+              totalUnrealizedPnl: totalUnrealizedPnl,
+              totalRealizedPnl: todayRealizedPnl,
+              positions: positions // Assuming positions is an array of objects
+            },
+            create: {
+              userId: numericUserId,
+              date: todayDate,
+              totalBalance: totalBalance,
+              totalUnrealizedPnl: totalUnrealizedPnl,
+              totalRealizedPnl: todayRealizedPnl,
+              positions: positions
+            }
+          });
+          info(`✅ Saved daily snapshot for user ${numericUserId} on ${todayStr}`); // ✅ INFO: Snapshot saved
+        } catch (snapshotErr) {
+          logError(`Failed to save daily snapshot for user ${numericUserId} on ${todayStr}`, snapshotErr); // ❌ ERROR: Snapshot save failed
+        }
+
         results.push({
           exchange: exchangeName,
           type: accountType,
@@ -140,6 +180,15 @@ export const fetchUserExchangeData = async (userId) => {
         info(`✅ ${exchangeName} (${accountType}) data fetched for user ${numericUserId}`); // ✅ INFO: Success
       } catch (innerErr) {
         logError(`❌ Failed ${ex.provider} (${ex.type}) for user ${numericUserId}`, innerErr?.message || innerErr); // ❌ ERROR: API failure
+        
+        // 🔸 Log error with userId
+        await logEvent({
+          userId: numericUserId, // ✅ Pass the userId here
+          exchange: ex.provider,
+          message: `❌ Failed ${ex.provider} (${ex.type}) for user ${numericUserId}: ${innerErr?.message || innerErr}`,
+          level: "ERROR",
+        });
+        
         results.push({
           exchange: ex.provider,
           type: ex.type || "spot",
@@ -156,10 +205,19 @@ export const fetchUserExchangeData = async (userId) => {
     return results;
   } catch (err) {
     logError(`User ${userId} — fetchUserExchangeData failed`, err?.message || err); // ❌ ERROR: Function failed
+    
+    // 🔸 Log error with userId
+    await logEvent({
+      userId: userId, // ✅ Pass the userId here
+      message: `❌ fetchUserExchangeData failed for user ${userId}: ${err?.message || err}`,
+      level: "ERROR",
+    });
+    
     return [];
   }
 };
 
+// ✅ Export the syncUserExchangesImmediately function
 export async function syncUserExchangesImmediately(userId) {
   try {
     const data = await fetchUserExchangeData(userId);
@@ -167,6 +225,13 @@ export async function syncUserExchangesImmediately(userId) {
     return data;
   } catch (err) {
     logError(`syncUserExchangesImmediately failed for user ${userId}`, err); // ❌ ERROR: Function failed
+    
+    // 🔸 Log error with userId
+    await logEvent({
+      userId: userId, // ✅ Pass the userId here
+      message: `❌ syncUserExchangesImmediately failed for user ${userId}: ${err?.message || err}`,
+      level: "ERROR",
+    });
   }
 }
 
@@ -183,5 +248,11 @@ export async function startPeriodicExchangeSync() {
   } catch (err) {
     console.error("[ERROR] startPeriodicExchangeSync failed:", err);
     logError("startPeriodicExchangeSync failed", err); // ❌ ERROR: Sync failed
+    
+    // 🔸 Log error without userId (since it's a system-wide operation)
+    await logEvent({
+      message: `❌ startPeriodicExchangeSync failed: ${err?.message || err}`,
+      level: "ERROR",
+    });
   }
 }

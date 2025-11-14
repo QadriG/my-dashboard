@@ -20,6 +20,7 @@ import balancesRouter from "./server/routes/balances.mjs";
 import manualPushRouter from "./server/routes/manualPush.mjs";
 import { startPeriodicExchangeSync } from "./server/services/exchangeDataSync.mjs";
 import logsRoutes from "./server/routes/logs.mjs";
+import closePositionRoutes from "./server/routes/closePosition.mjs";
 dotenv.config();
 
 startPeriodicExchangeSync(60_000); // every 60s
@@ -100,7 +101,7 @@ app.use("/api/admin", authMiddleware, adminMiddleware, adminRoutes);
 app.use("/api/users", authMiddleware, usersRouter); // ✅ plural "users"
 app.use("/api/balances", balancesRouter);
 app.use("/api/manual-push", authMiddleware, adminMiddleware, manualPushRouter);
-
+app.use("/api/positions/close", authMiddleware, adminMiddleware, closePositionRoutes);
 app.post("/api/auth/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body;

@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { useAdminAuth } from "../hooks/useAdminAuth"; // ✅ Import the existing admin auth hook
+import { useAdminAuth } from "../hooks/useAdminAuth";
 import "./AdminUsers.css";
 
 export default function Logs() {
-  const { admin, loading: authLoading } = useAdminAuth(); // ✅ Get admin info from context
+  const { admin, loading: authLoading } = useAdminAuth();
   const [userFilter, setUserFilter] = useState("All");
   const [tvIdFilter, setTvIdFilter] = useState("All TV IDS");
   const [exchangeFilter, setExchangeFilter] = useState("All Exchanges");
   const [dateFilter, setDateFilter] = useState("");
-  const [logs, setLogs] = useState([]);
+  const [logs, setLogs] = useState([]); // All logs from backend
+  const [filteredLogs, setFilteredLogs] = useState([]); // Filtered logs to display
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [isDarkMode, setIsDarkMode] = useState(
@@ -23,58 +24,66 @@ export default function Logs() {
     return () => mediaQuery.removeEventListener("change", handleChange);
   }, []);
 
-  // Fetch logs from backend
+  // Fetch logs and apply initial critical-only filter
   useEffect(() => {
     const fetchLogs = async () => {
       try {
         setLoading(true);
         setError("");
-        // ✅ Make the request with credentials (this should automatically send the session cookie)
         const res = await fetch("/api/logs", {
-          credentials: "include", // ✅ This automatically sends the session cookie containing the JWT
+          credentials: "include",
         });
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}: ${res.statusText}`);
         }
         const data = await res.json();
-        // ✅ Check if response has 'success' and 'logs'
         if (data.success && Array.isArray(data.logs)) {
+          // Store the logs as received from the backend
           setLogs(data.logs);
+          
+          // Filter for only ERROR/WARN logs initially
+          const criticalLogs = data.logs.filter(
+            log => log.level === "ERROR" || log.level === "WARN"
+          );
+          setFilteredLogs(criticalLogs);
         } else {
           throw new Error("Invalid response format: missing 'success' or 'logs' field");
         }
       } catch (err) {
         console.error("Error fetching logs:", err);
         setError(`Unable to load logs: ${err.message}`);
-        setLogs([]); // keep table empty
+        setLogs([]);
+        setFilteredLogs([]);
       } finally {
         setLoading(false);
       }
     };
 
-    // ✅ Only fetch logs if the admin is authenticated
     if (admin && !authLoading) {
       fetchLogs();
     } else if (!authLoading && !admin) {
-      // ✅ If not authenticated, set error
       setError("You must be logged in as an admin to view logs.");
       setLoading(false);
     }
-  }, [admin, authLoading]); // ✅ Re-fetch when admin or authLoading changes
+  }, [admin, authLoading]);
 
-  // Compute unique filter options dynamically
+  // Compute unique filter options dynamically (from all logs)
   const users = ["All", ...Array.from(new Set(logs.map((l) => l.userEmail)))];
   const tvIds = ["All TV IDS", ...Array.from(new Set(logs.map((l) => l.tvId)))];
   const exchanges = ["All Exchanges", ...Array.from(new Set(logs.map((l) => l.exchange)))];
 
-  // Apply filters
-  const filteredLogs = logs.filter(
-    (log) =>
-      (userFilter === "All" || log.userEmail === userFilter) &&
-      (tvIdFilter === "All TV IDS" || log.tvId === tvIdFilter) &&
-      (exchangeFilter === "All Exchanges" || log.exchange === exchangeFilter) &&
-      (dateFilter === "" || log.createdAt.includes(dateFilter))
-  );
+  // Apply filters whenever filters change
+  useEffect(() => {
+    const filtered = logs
+      .filter(log => log.level === "ERROR" || log.level === "WARN") // Critical logs only
+      .filter(log =>
+        (userFilter === "All" || log.userEmail === userFilter) &&
+        (tvIdFilter === "All TV IDS" || log.tvId === tvIdFilter) &&
+        (exchangeFilter === "All Exchanges" || log.exchange === exchangeFilter) &&
+        (dateFilter === "" || log.createdAt.includes(dateFilter))
+      );
+    setFilteredLogs(filtered);
+  }, [userFilter, tvIdFilter, exchangeFilter, dateFilter, logs]);
 
   if (authLoading) {
     return <div className="text-white text-center mt-20">Checking authentication...</div>;
@@ -85,12 +94,10 @@ export default function Logs() {
 
   return (
     <main className="ml-64 flex-1 p-8 overflow-y-auto space-y-10">
-      {/* Title */}
       <div className="shimmer-wrapper w-full py-4 px-6 mb-6">
         <h1 className="text-3xl font-semibold drop-shadow-md">Critical Logs</h1>
       </div>
 
-      {/* Filters Row */}
       <div className="grid grid-cols-4 gap-4 mb-4 w-full">
         <select
           value={userFilter}
@@ -135,7 +142,6 @@ export default function Logs() {
         />
       </div>
 
-      {/* Logs Table */}
       <div className="p-6 rounded-xl bg-gradient-to-r from-green-400 to-red-500 shadow-lg overflow-x-auto">
         <div
           className={`rounded-xl p-4 ${
@@ -177,7 +183,7 @@ export default function Logs() {
               {!loading && !error && filteredLogs.length === 0 && (
                 <tr>
                   <td colSpan={8} className="py-6 text-center text-gray-400">
-                    No logs found.
+                    No critical logs found.
                   </td>
                 </tr>
               )}
@@ -192,8 +198,17 @@ export default function Logs() {
                         : "border-b border-gray-300 hover:bg-gray-200/10"
                     }`}
                   >
-                    {/* ✅ User Column: Show email or "N/A" if not available */}
-                    <td className="px-4 py-2 text-center">{log.userEmail || "N/A"}</td>
+                    {/* ✅ User Column: Show email and name if available */}
+                    <td className="px-4 py-2 text-center">
+                      {log.userEmail !== "N/A" ? (
+                        <div>
+                          <div>{log.userName}</div>
+                          <div className="text-xs text-gray-500">{log.userEmail}</div>
+                        </div>
+                      ) : (
+                        "N/A"
+                      )}
+                    </td>
                     <td className="px-4 py-2 text-center">{log.tvId || "N/A"}</td>
                     <td className="px-4 py-2 text-center">{log.exchange || "N/A"}</td>
                     <td className="px-4 py-2 text-center">{log.symbol || "N/A"}</td>

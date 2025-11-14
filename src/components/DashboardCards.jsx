@@ -66,8 +66,8 @@ export default function DashboardCards({ userId, isAdmin = false, dashboardData 
           short: totalShortValue,
           totalPositions: totalPositionsValue
         },
-        balanceGraph: dashboardData.balanceHistory || [],
-        weeklyRevenue: dashboardData.weeklyRevenue || [],
+        balanceGraph: dashboardData.balanceHistory || [], // ✅ Pass the correct data
+        weeklyRevenue: dashboardData.weeklyRevenue || [], // ✅ Pass the correct data
         dailyPnL: dashboardData.dailyPnL || [],
         bestTradingPairs: dashboardData.bestTradingPairs || [],
         openPositions: { positions: allPositions }
@@ -94,11 +94,12 @@ export default function DashboardCards({ userId, isAdmin = false, dashboardData 
 
       <div className="flex gap-4 w-full items-start mt-8 max-lg:flex-col">
         <div className="dashboard-column dashboard-column-cyan w-full lg:w-1/2 p-4 h-[200px] overflow-hidden">
-          <BalanceGraph balanceData={dashboardData} />
+          {/* ✅ Pass the computed cardsData.balanceGraph to BalanceGraph */}
+          <BalanceGraph balanceData={{ balanceHistory: cardsData.balanceGraph }} />
         </div>
         <div className="dashboard-column dashboard-column-purple w-full lg:w-1/2 p-4 h-[200px] overflow-hidden">
-          {/* ✅ Pass custom range state to WeeklyRevenue */}
-          <WeeklyRevenue isDarkMode={false} balanceData={dashboardData} />
+          {/* ✅ Pass the computed cardsData.weeklyRevenue to WeeklyRevenue */}
+          <WeeklyRevenue isDarkMode={false} balanceData={{ weeklyRevenue: cardsData.weeklyRevenue }} />
         </div>
       </div>
 

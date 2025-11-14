@@ -5,6 +5,7 @@ const prisma = new PrismaClient();
 
 const timestamp = () => new Date().toISOString();
 
+// In your server/routes/logs.mjs file
 async function logToDB(level, message, meta = {}) {
   try {
     await prisma.log.create({
@@ -15,7 +16,7 @@ async function logToDB(level, message, meta = {}) {
         symbol: meta.symbol || null,
         request: meta.request || null,
         message,
-        level,
+        level, // ✅ This is correct, level is passed in
       },
     });
   } catch (err) {
@@ -25,17 +26,17 @@ async function logToDB(level, message, meta = {}) {
 
 export async function info(message, meta = {}) {
   console.log(`[INFO] [${timestamp()}] ${message}`, meta);
-  await logToDB("INFO", message, meta);
+  await logToDB("INFO", message, meta); // ✅ Level is set to "INFO"
 }
 
 export async function warn(message, meta = {}) {
   console.warn(`[WARN] [${timestamp()}] ${message}`, meta);
-  await logToDB("WARN", message, meta);
+  await logToDB("WARN", message, meta); // ✅ Level is set to "WARN"
 }
 
 export async function error(message, meta = {}) {
   console.error(`[ERROR] [${timestamp()}] ${message}`, meta);
-  await logToDB("ERROR", message, meta);
+  await logToDB("ERROR", message, meta); // ✅ Level is set to "ERROR"
 }
 
 // ✅ NEW: Add the logEvent function that was missing

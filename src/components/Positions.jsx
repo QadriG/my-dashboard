@@ -43,9 +43,14 @@ export default function AdminPositions() {
         },
         body: JSON.stringify({ symbol, side }),
       });
-      if (res.ok) {
+      const data = await res.json();
+      if (res.ok && data.success) {
+        // Optionally, refresh the positions list immediately
         const updatedOpen = openPositions.filter((p) => !(p.symbol === symbol && p.side === side));
         setOpenPositions(updatedOpen);
+        console.log(data.message); // Log the result
+      } else {
+        console.error("Error closing position:", data.message);
       }
     } catch (err) {
       console.error("Error closing position:", err);
