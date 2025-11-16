@@ -1,3 +1,5 @@
+// server/routes/users.mjs
+
 import express from "express";
 import pkg from "@prisma/client";
 const { PrismaClient } = pkg;
@@ -7,6 +9,8 @@ import { roleMiddleware } from "../middleware/roleMiddleware.mjs";
 import { errorHandler } from "../middleware/errorHandler.mjs";
 import { info, warn, error as logError } from "../utils/logger.mjs"; // ✅ Import warn
 import { fetchUserExchangeData } from "../services/exchangeDataSync.mjs";
+// ✅ Import the updated fetchExchangeData that accepts userId
+import { fetchExchangeData } from "../services/exchangeManager.mjs";
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -23,14 +27,26 @@ async function getUserApis(userId, decrypt = false) {
 }
 
 // Helper: Test if an API key is valid by fetching balance
-async function testApiKey(apiKey, apiSecret, provider = 'bybit', type = 'UNIFIED') {
+// ✅ Updated: Accept userId
+async function testApiKey(apiKey, apiSecret, userId, provider = 'bybit', type = 'UNIFIED') {
   try {
     if (provider.toLowerCase() !== 'bybit') return false;
-    // Assuming fetchBalance is imported from the correct service
-    const balance = await fetchBalance(apiKey, apiSecret, type);
+    // ❌ OLD: const balance = await fetchBalance(apiKey, apiSecret, type);
+    // ✅ NEW: Call fetchExchangeData (which then calls bybitService functions with userId)
+    const result = await fetchExchangeData(provider, apiKey, apiSecret, null, type, userId); // Pass userId here
     return true;
   } catch (err) {
-    warn(`API key test failed for ${provider} with type ${type}:`, err.message); // ⚠️ WARN: API test failed
+    // ✅ Log error with userId context here
+    logError(`API key test failed for user ${userId} on ${provider} with type ${type}`, err?.message || err, { userId, exchange: provider, type });
+    // Note: Using logEvent here might create a lot of entries just for failed tests.
+    // Consider if you want to log this as an error in the main log table or just use logError.
+    // If you do want it in the main logs table with deduplication consideration:
+    // await logEvent({
+    //   userId, // ✅ Associate log with user
+    //   exchange: provider,
+    //   message: `API key test failed for user ${userId} (${type}): ${err?.message || err}`,
+    //   level: "WARN", // Or ERROR depending on severity preference
+    // });
     return false;
   }
 }
@@ -126,18 +142,18 @@ router.get('/dashboard', authMiddleware, async (req, res) => {
     });
 
     // ✅ Aggregate daily snapshots into weekly data (by calendar week)
-const weeklyDataMap = new Map();
+    const weeklyDataMap = new Map();
 
-for (const snapshot of weeklySnapshots) {
-  const weekStart = getStartOfWeek(snapshot.date);
-  const weekKey = weekStart.toISOString().split('T')[0]; // YYYY-MM-DD format
+    for (const snapshot of weeklySnapshots) {
+      const weekStart = getStartOfWeek(snapshot.date);
+      const weekKey = weekStart.toISOString().split('T')[0]; // YYYY-MM-DD format
 
-  // Always store the latest snapshot for this week (overwrites previous)
-  weeklyDataMap.set(weekKey, {
-    date: weekStart,
-    balance: snapshot.totalBalance, // ✅ Use the balance from the current day
-  });
-}
+      // Always store the latest snapshot for this week (overwrites previous)
+      weeklyDataMap.set(weekKey, {
+        date: weekStart,
+        balance: snapshot.totalBalance, // ✅ Use the balance from the current day
+      });
+    }
 
     // Convert map to array and sort by date
     const weeklyRevenue = Array.from(weeklyDataMap.values())
@@ -151,7 +167,8 @@ for (const snapshot of weeklySnapshots) {
     let apiStatus = "Not Connected";
     let apiNames = [];
     for (const api of apis) {
-      const isValid = await testApiKey(api.apiKey, api.apiSecret, api.provider, api.type || 'UNIFIED');
+      // ✅ Pass userId to testApiKey
+      const isValid = await testApiKey(api.apiKey, api.apiSecret, userId, api.provider, api.type || 'UNIFIED');
       if (isValid) {
         apiStatus = "Connected";
         apiNames.push(api.provider);
@@ -295,43 +312,46 @@ router.get('/:id/dashboard', authMiddleware, adminOnly, async (req, res) => {
       side: 'N/A',
       qty: 0
     }));
-// Fetch weekly snapshot data for the chart (last 4 weeks)
-const fourWeeksAgo = new Date();
-fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28); // 4 weeks ago
-const fourWeeksAgoDate = new Date(fourWeeksAgo);
-fourWeeksAgoDate.setHours(0, 0, 0, 0);
 
-const weeklySnapshots = await prisma.dailyPnLSnapshot.findMany({
-  where: { userId, date: { gte: fourWeeksAgoDate } },
-  orderBy: { date: 'asc' }
-});
+    // Fetch weekly snapshot data for the chart (last 4 weeks)
+    const fourWeeksAgo = new Date();
+    fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28); // 4 weeks ago
+    const fourWeeksAgoDate = new Date(fourWeeksAgo);
+    fourWeeksAgoDate.setHours(0, 0, 0, 0);
 
-// ✅ Aggregate daily snapshots into weekly data (by calendar week) - Store only the last day's balance
-const weeklyDataMap = new Map();
+    const weeklySnapshots = await prisma.dailyPnLSnapshot.findMany({
+      where: { userId, date: { gte: fourWeeksAgoDate } },
+      orderBy: { date: 'asc' }
+    });
 
-for (const snapshot of weeklySnapshots) {
-  const weekStart = getStartOfWeek(snapshot.date);
-  const weekKey = weekStart.toISOString().split('T')[0]; // YYYY-MM-DD format
+    // ✅ Aggregate daily snapshots into weekly data (by calendar week) - Store only the last day's balance
+    const weeklyDataMap = new Map();
 
-  // Always store the latest snapshot for this week
-  weeklyDataMap.set(weekKey, {
-    date: weekStart,
-    balance: snapshot.totalBalance, // ✅ Use the balance from the current day
-  });
-}
+    for (const snapshot of weeklySnapshots) {
+      const weekStart = getStartOfWeek(snapshot.date);
+      const weekKey = weekStart.toISOString().split('T')[0]; // YYYY-MM-DD format
 
-// Convert map to array and sort by date
-const weeklyRevenue = Array.from(weeklyDataMap.values())
-  .sort((a, b) => a.date - b.date)
-  .map(item => ({
-    date: item.date.toISOString().split('T')[0], // Format date as YYYY-MM-DD
-    balance: item.balance // ✅ Use the balance from the last day of the week
-  }));
+      // Always store the latest snapshot for this week
+      weeklyDataMap.set(weekKey, {
+        date: weekStart,
+        balance: snapshot.totalBalance, // ✅ Use the balance from the current day
+      });
+    }
+
+    // Convert map to array and sort by date
+    const weeklyRevenue = Array.from(weeklyDataMap.values())
+      .sort((a, b) => a.date - b.date)
+      .map(item => ({
+        date: item.date.toISOString().split('T')[0], // Format date as YYYY-MM-DD
+        balance: item.balance // ✅ Use the balance from the last day of the week
+      }));
+
     // Compute API status for the specific user
     let apiStatus = "Not Connected";
     let apiNames = [];
     for (const api of apis) {
-      const isValid = await testApiKey(api.apiKey, api.apiSecret, api.provider, api.type || 'UNIFIED');
+      // ✅ Pass userId to testApiKey
+      const isValid = await testApiKey(api.apiKey, api.apiSecret, userId, api.provider, api.type || 'UNIFIED');
       if (isValid) {
         apiStatus = "Connected";
         apiNames.push(api.provider);

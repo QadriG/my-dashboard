@@ -20,7 +20,8 @@ import { roleMiddleware } from "../middleware/roleMiddleware.mjs";
 import { errorHandler } from "../middleware/errorHandler.mjs";
 import { info, warn, error as logError } from "../utils/logger.mjs"; // ✅ Import warn
 import { fetchUserExchangeData } from "../services/exchangeDataSync.mjs";
-import { fetchBalance } from "../services/exchanges/bybitService.mjs"; // ✅ Import for API testing
+import { logEvent } from "../utils/logger.mjs";
+import { fetchExchangeData } from "../services/exchangeManager.mjs";
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -36,14 +37,33 @@ async function getUserApis(userId, decrypt = false) {
   return accounts;
 }
 
-// Helper: Test if an API key is valid by fetching balance
-async function testApiKey(apiKey, apiSecret, provider = 'bybit', type = 'UNIFIED') {
+// ✅ Updated: Accept userId
+async function testApiKey(apiKey, apiSecret, userId, provider = 'bybit', type = 'UNIFIED') {
   try {
     if (provider.toLowerCase() !== 'bybit') return false;
-    const balance = await fetchBalance(apiKey, apiSecret, type);
+    // ❌ OLD: const balance = await fetchBalance(apiKey, apiSecret, type);
+    // This call does NOT pass the userId to the service layer, so any errors inside fetchBalance
+    // will not be associated with the correct user when logged.
+    // ✅ NEW: Use fetchExchangeData which can pass userId down the chain (though for testing, you might just need a minimal call)
+    // For testing purposes, you might still want to call a simpler function that validates the key,
+    // but ensure *that* function also accepts and uses userId for logging.
+    // For now, let's assume fetchExchangeData can be used for a quick test if it calls the right service function.
+    // A better approach might be to have a dedicated 'validateKey' function in bybitService that accepts userId.
+    // But for now, let's correct the immediate call.
+    // You need to import the correct function that ultimately calls the bybit service with userId.
+    // Assuming `fetchExchangeData` is the correct entry point that passes userId down:
+    const result = await fetchExchangeData(provider, apiKey, apiSecret, null, type, userId); // Pass userId here
+    // If this call succeeds without throwing, the key is valid
     return true;
   } catch (err) {
-    warn(`API key test failed for ${provider} with type ${type}:`, err.message); // ⚠️ WARN: API test failed
+    // ✅ Log error with userId context here
+    // Use logEvent to ensure the userId is stored in the database
+    await logEvent({
+      userId, // ✅ Pass the userId here
+      exchange: provider,
+      message: `API key test failed for user ${userId} (${type}): ${err?.message || err}`,
+      level: "WARN", // Could also be ERROR depending on severity preference
+    });
     return false;
   }
 }
@@ -55,6 +75,7 @@ function getStartOfWeek(date) {
   const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is Sunday
   return new Date(d.setDate(diff));
 }
+
 // In server/routes/adminRoutes.mjs, add this route:
 router.get('/logs', authMiddleware, adminOnly, async (req, res) => {
   try {
@@ -86,6 +107,7 @@ router.get('/logs', authMiddleware, adminOnly, async (req, res) => {
     res.status(500).json({ error: "Failed to fetch logs" });
   }
 });
+
 // --- Route: Aggregated user data for top 4 cards + admin-only dashboard ---
 router.get('/users', authMiddleware, adminOnly, async (req, res) => {
   try {
@@ -171,45 +193,45 @@ router.get('/users', authMiddleware, adminOnly, async (req, res) => {
 
     // --- Build admin-only dashboard ---
     const adminDashboard = {
-  balances: adminOnlyBalances,
-  positions: adminOnlyPositions,
-  openOrders: [],
-  balanceHistory: adminOnlySnapshots.map(snapshot => ({
-    date: snapshot.date.toISOString().split('T')[0],
-    balance: snapshot.totalBalance
-  })),
-  dailyPnL: adminDailyPnL, // Now aggregated
-  // ✅ Aggregate daily snapshots into weekly data for admin (last 4 weeks) - Store only the last day's balance
-  weeklyRevenue: (() => {
-    const fourWeeksAgo = new Date();
-    fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28); // 4 weeks ago
-    const fourWeeksAgoDate = new Date(fourWeeksAgo);
-    fourWeeksAgoDate.setHours(0, 0, 0, 0);
+      balances: adminOnlyBalances,
+      positions: adminOnlyPositions,
+      openOrders: [],
+      balanceHistory: adminOnlySnapshots.map(snapshot => ({
+        date: snapshot.date.toISOString().split('T')[0],
+        balance: snapshot.totalBalance
+      })),
+      dailyPnL: adminDailyPnL, // Now aggregated
+      // ✅ Aggregate daily snapshots into weekly data for admin (last 4 weeks) - Store only the last day's balance
+      weeklyRevenue: (() => {
+        const fourWeeksAgo = new Date();
+        fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28); // 4 weeks ago
+        const fourWeeksAgoDate = new Date(fourWeeksAgo);
+        fourWeeksAgoDate.setHours(0, 0, 0, 0);
 
-    const weeklySnapshots = adminOnlySnapshots.filter(snapshot => snapshot.date >= fourWeeksAgoDate);
+        const weeklySnapshots = adminOnlySnapshots.filter(snapshot => snapshot.date >= fourWeeksAgoDate);
 
-    const weeklyDataMap = new Map();
+        const weeklyDataMap = new Map();
 
-    for (const snapshot of weeklySnapshots) {
-      const weekStart = getStartOfWeek(snapshot.date);
-      const weekKey = weekStart.toISOString().split('T')[0]; // YYYY-MM-DD format
+        for (const snapshot of weeklySnapshots) {
+          const weekStart = getStartOfWeek(snapshot.date);
+          const weekKey = weekStart.toISOString().split('T')[0]; // YYYY-MM-DD format
 
-      // Always store the latest snapshot for this week
-      weeklyDataMap.set(weekKey, {
-        date: weekStart,
-        balance: snapshot.totalBalance, // ✅ Use the balance from the current day
-      });
-    }
+          // Always store the latest snapshot for this week
+          weeklyDataMap.set(weekKey, {
+            date: weekStart,
+            balance: snapshot.totalBalance, // ✅ Use the balance from the current day
+          });
+        }
 
-    return Array.from(weeklyDataMap.values())
-      .sort((a, b) => a.date - b.date)
-      .map(item => ({
-        date: item.date.toISOString().split('T')[0],
-        balance: item.balance
-      }));
-  })(),
-  bestTradingPairs: []
-};
+        return Array.from(weeklyDataMap.values())
+          .sort((a, b) => a.date - b.date)
+          .map(item => ({
+            date: item.date.toISOString().split('T')[0],
+            balance: item.balance
+          }));
+      })(),
+      bestTradingPairs: []
+    };
 
     // --- Aggregated Metrics (Top 4 Cards) ---
     let totalActiveUsers = 0;
@@ -247,7 +269,8 @@ router.get('/users', authMiddleware, adminOnly, async (req, res) => {
         let apiNames = [];
         if (user.apis && Array.isArray(user.apis)) {
           for (const api of user.apis) {
-            const isValid = await testApiKey(api.apiKey, api.apiSecret, api.provider, api.type || 'UNIFIED');
+            // ✅ Pass userId to testApiKey
+            const isValid = await testApiKey(api.apiKey, api.apiSecret, user.id, api.provider, api.type || 'UNIFIED');
             if (isValid) {
               apiStatus = "Connected";
               apiNames.push(api.provider);

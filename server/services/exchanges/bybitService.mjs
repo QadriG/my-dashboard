@@ -2,6 +2,8 @@
 
 import axios from 'axios';
 import crypto from 'crypto';
+import { info, warn, error as logError } from "../../utils/logger.mjs"; // Import logging
+import { logEvent } from "../../utils/logger.mjs"; // Import logEvent
 
 // ✅ Fixed: removed trailing space
 const BASE_URL = 'https://api.bybit.com'; // No trailing space
@@ -17,7 +19,7 @@ export function sign(timestamp, apiKey, recvWindow, queryString, secret) {
   return crypto.createHmac('sha256', secret).update(payload).digest('hex');
 }
 
-export async function fetchBalance(apiKey, apiSecret, accountType = 'UNIFIED') {
+export async function fetchBalance(apiKey, apiSecret, accountType = 'UNIFIED', userId) { // ✅ Accept userId
   try {
     const serverTime = await getServerTime();
     const timestamp = serverTime;
@@ -44,7 +46,16 @@ export async function fetchBalance(apiKey, apiSecret, accountType = 'UNIFIED') {
     const response = await axios.get(url, { headers });
 
     if (response.data.retCode !== 0) {
-      throw new Error(`Bybit API Error ${response.data.retCode}: ${response.data.retMsg}`);
+      const errorMsg = `Bybit API Error ${response.data.retCode}: ${response.data.retMsg}`;
+      // ✅ Log error with userId context here
+      logError(`[Bybit] API Error fetching balance for user ${userId}`, errorMsg, { userId, exchange: 'bybit', type: accountType, apiCall: 'getWalletBalance' });
+      await logEvent({
+        userId, // ✅ Associate log with user
+        exchange: 'bybit',
+        message: `[Bybit] API Error fetching balance for user ${userId} (${accountType}): ${errorMsg}`,
+        level: "ERROR",
+      });
+      throw new Error(errorMsg);
     }
 
     const coins = response.data.result.list[0]?.coin || [];
@@ -72,11 +83,20 @@ export async function fetchBalance(apiKey, apiSecret, accountType = 'UNIFIED') {
       used: usdt.used
     };
   } catch (err) {
-    throw new Error(`Bybit fetchBalance failed: ${err.message}`);
+    // ✅ Log error with userId context here (for network issues, etc.)
+    logError(`[Bybit] Error fetching balance for user ${userId}`, err?.message || err, { userId, exchange: 'bybit', type: accountType, apiCall: 'getWalletBalance' });
+    await logEvent({
+      userId, // ✅ Associate log with user
+      exchange: 'bybit',
+      message: `[Bybit] Error fetching balance for user ${userId} (${accountType}): ${err?.message || err}`,
+      level: "ERROR",
+    });
+    // Re-throw or handle as needed
+    throw new Error(`Bybit fetchBalance failed for user ${userId}: ${err.message}`);
   }
 }
 
-export async function fetchPositions(apiKey, apiSecret, accountType = 'UNIFIED') {
+export async function fetchPositions(apiKey, apiSecret, accountType = 'UNIFIED', userId) { // ✅ Accept userId
   try {
     const serverTime = await getServerTime();
     const timestamp = serverTime;
@@ -103,7 +123,16 @@ export async function fetchPositions(apiKey, apiSecret, accountType = 'UNIFIED')
     const response = await axios.get(url, { headers });
 
     if (response.data.retCode !== 0) {
-      throw new Error(`Bybit API Error ${response.data.retCode}: ${response.data.retMsg}`);
+      const errorMsg = `Bybit API Error ${response.data.retCode}: ${response.data.retMsg}`;
+      // ✅ Log error with userId context here
+      logError(`[Bybit] API Error fetching positions for user ${userId}`, errorMsg, { userId, exchange: 'bybit', type: accountType, apiCall: 'getPositions' });
+      await logEvent({
+        userId, // ✅ Associate log with user
+        exchange: 'bybit',
+        message: `[Bybit] API Error fetching positions for user ${userId} (${accountType}): ${errorMsg}`,
+        level: "ERROR",
+      });
+      throw new Error(errorMsg);
     }
 
     return response.data.result.list.map(p => ({
@@ -126,11 +155,20 @@ export async function fetchPositions(apiKey, apiSecret, accountType = 'UNIFIED')
       unrealizedPnl: parseFloat(p.unrealisedPnl)
     }));
   } catch (err) {
-    throw new Error(`Bybit fetchPositions failed: ${err.message}`);
+    // ✅ Log error with userId context here (for network issues, etc.)
+    logError(`[Bybit] Error fetching positions for user ${userId}`, err?.message || err, { userId, exchange: 'bybit', type: accountType, apiCall: 'getPositions' });
+    await logEvent({
+      userId, // ✅ Associate log with user
+      exchange: 'bybit',
+      message: `[Bybit] Error fetching positions for user ${userId} (${accountType}): ${err?.message || err}`,
+      level: "ERROR",
+    });
+    // Re-throw or handle as needed
+    throw new Error(`Bybit fetchPositions failed for user ${userId}: ${err.message}`);
   }
 }
 
-export async function closePositionByMarket(apiKey, apiSecret, symbol, side, category = 'linear', settleCoin = 'USDT') {
+export async function closePositionByMarket(apiKey, apiSecret, symbol, side, userId, category = 'linear', settleCoin = 'USDT') { // ✅ Accept userId first
   try {
     const serverTime = await getServerTime();
     const timestamp = serverTime;
@@ -138,14 +176,24 @@ export async function closePositionByMarket(apiKey, apiSecret, symbol, side, cat
 
     const closeSide = side.toLowerCase() === 'buy' ? 'Sell' : 'Buy';
 
-    const positions = await fetchPositions(apiKey, apiSecret, 'UNIFIED');
+    // Fetch positions using the updated function that accepts userId
+    const positions = await fetchPositions(apiKey, apiSecret, 'UNIFIED', userId); // ✅ Pass userId
     const positionToClose = positions.find(p => p.symbol === symbol && p.side.toLowerCase() === side.toLowerCase());
 
     if (!positionToClose) {
-      throw new Error(`Position to close not found for symbol ${symbol} and side ${side}`);
+      const errorMsg = `Position to close not found for symbol ${symbol} and side ${side} for user ${userId}`;
+      // ✅ Log error with userId context here
+      logError(`[Bybit] Position not found for closing`, errorMsg, { userId, exchange: 'bybit', symbol, side, apiCall: 'getPositionsForClose' });
+      await logEvent({
+        userId, // ✅ Associate log with user
+        exchange: 'bybit',
+        message: `[Bybit] Position not found for closing for user ${userId} on ${symbol} (${side})`,
+        level: "ERROR",
+      });
+      throw new Error(errorMsg);
     }
 
-    const orderSize = positionToClose.size;
+    const orderSize = positionToClose.amount; // Use 'amount' as per fetchPositions mapping
 
     const orderPayload = {
       category,
@@ -174,8 +222,25 @@ export async function closePositionByMarket(apiKey, apiSecret, symbol, side, cat
     const response = await axios.post(url, orderPayload, { headers });
 
     if (response.data.retCode !== 0) {
-      throw new Error(`Bybit API Error ${response.data.retCode}: ${response.data.retMsg}`);
+      const errorMsg = `Bybit API Error ${response.data.retCode}: ${response.data.retMsg}`;
+      // ✅ Log error with userId context here
+      logError(`[Bybit] API Error closing position for user ${userId}`, errorMsg, { userId, exchange: 'bybit', symbol, side, apiCall: 'placeOrder' });
+      await logEvent({
+        userId, // ✅ Associate log with user
+        exchange: 'bybit',
+        message: `[Bybit] API Error closing position for user ${userId} on ${symbol} (${side}): ${errorMsg}`,
+        level: "ERROR",
+      });
+      throw new Error(errorMsg);
     }
+
+    info(`[Bybit] Position closed successfully for user ${userId} on ${symbol} (${side})`, { userId, symbol, side, orderId: response.data.result.orderId }); // Log success with context
+    await logEvent({
+      userId, // ✅ Associate log with user
+      exchange: 'bybit',
+      message: `[Bybit] Position closed successfully for user ${userId} on ${symbol} (${side}), Order ID: ${response.data.result.orderId}`,
+      level: "INFO",
+    });
 
     return {
       success: true,
@@ -183,8 +248,16 @@ export async function closePositionByMarket(apiKey, apiSecret, symbol, side, cat
       data: response.data.result
     };
   } catch (err) {
-    console.error(`Error closing position on Bybit:`, err.message);
-    throw new Error(`Failed to close position on Bybit: ${err.message}`);
+    // ✅ Log error with userId context here (for network issues, etc.)
+    logError(`[Bybit] Error closing position for user ${userId}`, err?.message || err, { userId, exchange: 'bybit', symbol, side, apiCall: 'placeOrder' });
+    await logEvent({
+      userId, // ✅ Associate log with user
+      exchange: 'bybit',
+      message: `[Bybit] Error closing position for user ${userId} on ${symbol} (${side}): ${err?.message || err}`,
+      level: "ERROR",
+    });
+    // Re-throw or handle as needed
+    throw new Error(`Failed to close position on Bybit for user ${userId}: ${err.message}`);
   }
 }
 
@@ -192,7 +265,7 @@ export async function closePositionByMarket(apiKey, apiSecret, symbol, side, cat
  * Fetch closed trade executions (includes realized PnL)
  * Only for derivatives (linear/inverse); spot not supported here
  */
-export async function fetchClosedExecutions(apiKey, apiSecret, category = 'linear') {
+export async function fetchClosedExecutions(apiKey, apiSecret, category = 'linear', userId) { // ✅ Accept userId
   try {
     const serverTime = await getServerTime();
     const timestamp = serverTime;
@@ -225,7 +298,16 @@ export async function fetchClosedExecutions(apiKey, apiSecret, category = 'linea
     const response = await axios.get(url, { headers });
 
     if (response.data.retCode !== 0) {
-      throw new Error(`Bybit API Error ${response.data.retCode}: ${response.data.retMsg}`);
+      const errorMsg = `Bybit API Error ${response.data.retCode}: ${response.data.retMsg}`;
+      // ✅ Log error with userId context here
+      logError(`[Bybit] API Error fetching executions for user ${userId}`, errorMsg, { userId, exchange: 'bybit', category, apiCall: 'getExecutionList' });
+      await logEvent({
+        userId, // ✅ Associate log with user
+        exchange: 'bybit',
+        message: `[Bybit] API Error fetching executions for user ${userId} (${category}): ${errorMsg}`,
+        level: "ERROR",
+      });
+      throw new Error(errorMsg);
     }
 
     const executions = response.data.result?.list || []; // ✅ Add ? for safety
@@ -233,7 +315,7 @@ export async function fetchClosedExecutions(apiKey, apiSecret, category = 'linea
     return executions.map(exec => {
       // ✅ Validate each field
       if (!exec || !exec.execId) {
-        console.warn("Skipping invalid execution:", exec);
+        warn(`[Bybit] Skipping invalid execution for user ${userId}:`, exec, { userId, execId: exec?.execId }); // Log with context
         return null;
       }
 
@@ -251,7 +333,16 @@ export async function fetchClosedExecutions(apiKey, apiSecret, category = 'linea
     }).filter(Boolean); // ✅ Remove nulls
 
   } catch (err) {
-    throw new Error(`Bybit fetchClosedExecutions failed: ${err.message}`);
+    // ✅ Log error with userId context here (for network issues, etc.)
+    logError(`[Bybit] Error fetching executions for user ${userId}`, err?.message || err, { userId, exchange: 'bybit', category, apiCall: 'getExecutionList' });
+    await logEvent({
+      userId, // ✅ Associate log with user
+      exchange: 'bybit',
+      message: `[Bybit] Error fetching executions for user ${userId} (${category}): ${err?.message || err}`,
+      level: "ERROR",
+    });
+    // Re-throw or handle as needed
+    throw new Error(`Bybit fetchClosedExecutions failed for user ${userId}: ${err.message}`);
   }
 }
 

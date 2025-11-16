@@ -1,3 +1,4 @@
+// src/components/AdminUserPositions.jsx
 import React from "react";
 import { useParams } from "react-router-dom";
 import PositionsTable from "../components/Users/PositionsTable"; // ✅ Reuse the working component
@@ -11,8 +12,8 @@ export default function AdminUserPositions() {
         <h1 className="text-3xl font-semibold drop-shadow-md">Positions for User {userId}</h1>
       </div>
 
-      {/* ✅ Pass userId to the existing PositionsTable component */}
-      <PositionsTable userId={parseInt(userId, 10)} />
+      {/* ✅ Pass userId AND explicitly set isAdmin=true to the PositionsTable component */}
+      <PositionsTable userId={parseInt(userId, 10)} isAdmin={true} />
     </div>
   );
 }

@@ -58,24 +58,29 @@ router.get("/", isAdmin, async (req, res) => {
       orderBy: { createdAt: "desc" },
       take: 200,
       include: {
-        user: { select: { id: true, email: true, name: true } },
+        user: { select: { id: true, email: true, name: true } }, // ✅ Include related User
       },
     });
 
-    // Deduplicate logs based on message + level + userId + exchange + symbol
+    // Deduplicate logs based on message + level + (included) user ID + exchange + symbol
     const deduplicatedLogs = [];
     const seenKeys = new Set();
 
     for (const log of logs) {
+      // ✅ Use log.user?.id for the key, fallback to log.userId if needed
+      const userIdForDedup = log.user?.id ?? log.userId ?? 'NO_USER'; // Handle potential null user object or id
+
       // Create a unique key for deduplication
-      const key = `${log.message}|${log.level}|${log.userId}|${log.exchange}|${log.symbol}`;
+      const key = `${log.message}|${log.level}|${userIdForDedup}|${log.exchange}|${log.symbol}`;
+
       if (!seenKeys.has(key)) {
         seenKeys.add(key);
 
-        // Extract user info from message if not already available
+        // Extract user info from message if not already available via include
         let userEmail = log.user?.email || "N/A";
         let userName = log.user?.name || "N/A";
 
+        // Only try to extract from message if DB join didn't yield user info and a message exists
         if (userEmail === "N/A" && log.message) {
           const extractedUser = await extractUserFromMessage(log.message);
           if (extractedUser) {
@@ -108,8 +113,8 @@ router.get("/", isAdmin, async (req, res) => {
         // Add the log with full user info and enhanced request data
         deduplicatedLogs.push({
           ...log,
-          userEmail,
-          userName,
+          userEmail, // Use the potentially enhanced user info
+          userName, // Use the potentially enhanced user info
           request
         });
       }
@@ -120,7 +125,7 @@ router.get("/", isAdmin, async (req, res) => {
       success: true,
       logs: deduplicatedLogs.map((log) => ({
         id: log.id,
-        userId: log.userId,
+        userId: log.userId, // Original field from DB
         userEmail: log.userEmail,
         userName: log.userName,
         tvId: log.tvId,
@@ -133,7 +138,7 @@ router.get("/", isAdmin, async (req, res) => {
       })),
     });
   } catch (err) {
-    console.error("❌ Failed to fetch logs:", err);
+    console.error("❌ Failed to fetch logs:", err); // Keep this one for critical server errors
     res.status(500).json({ error: "Failed to fetch logs" });
   }
 });

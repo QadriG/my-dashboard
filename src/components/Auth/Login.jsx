@@ -146,7 +146,8 @@ export default function Login() {
     setError("");
     if (password !== confirmPassword) return setError("Passwords do not match");
     try {
-      const res = await fetch(`${API_BASE}/signup`, {
+      // Changed from /signup to /register to match your backend route
+      const res = await fetch(`${API_BASE}/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: username, email, password }),
@@ -270,7 +271,7 @@ export default function Login() {
                 placeholder="Confirm Password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg bg-black bg-opacity-20 border border-white border-opacity-30 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 rounded-lg bg-black bg-opacity-20 border border-white border-opacity-30 text-white placeholder-gray-400 focus:outline-none focus:2 focus:ring-blue-500"
                 required
               />
               <button type="submit" className="neon-button w-full py-3 text-white font-semibold rounded-lg mt-2">Sign Up</button>

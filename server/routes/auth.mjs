@@ -1,4 +1,4 @@
-// authRoutes.mjs
+// server/routes/auth.mjs
 import express from "express";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
@@ -6,9 +6,9 @@ import pkg from "@prisma/client";
 const { PrismaClient } = pkg;
 
 import crypto from "crypto";
-import { hashPassword, comparePassword } from "../utils/encrypt.mjs";
+import { encryptPassword, comparePassword } from "../utils/encrypt.mjs";
 import { info, error as logError } from "../utils/logger.mjs";
-import { sendEmail } from "../utils/mailer.mjs";
+import { sendEmail } from "../../src/utils/mailer.js"; 
 
 dotenv.config();
 
@@ -17,6 +17,7 @@ const prisma = new PrismaClient();
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key";
 const JWT_EXPIRES_IN = "7d"; // 7 days
+const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:3000";
 
 // ========================
 // ✅ Register
@@ -34,28 +35,45 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ message: "Email already exists" });
     }
 
-    const hashedPassword = await hashPassword(password);
-    const verificationToken = crypto.randomBytes(32).toString("hex");
+    const hashedPassword = await encryptPassword(password);
+    const role = email === "info@tradingmachine.ai" ? "admin" : "user";
 
+    // Create user with isVerified: false initially
     const newUser = await prisma.user.create({
       data: {
         name,
         email,
         password: hashedPassword,
-        role: "user",
-        verificationToken,
+        role,
+        isVerified: false,
+        tokenVersion: 1
       },
     });
 
-    // Send verification email with backend URL
-    const verifyUrl = `${process.env.BACKEND_URL}/api/auth/verify-email/${verificationToken}`;
-    await sendEmail(newUser.email, "Verify Your Email", `Click here to verify: ${verifyUrl}`);
+    // Generate JWT verification token (like in server.js)
+    const verifyToken = jwt.sign({ userId: newUser.id }, JWT_SECRET, { expiresIn: "1d" });
+    
+    // Update user to store the verification token
+    await prisma.user.update({
+      where: { id: newUser.id },
+      data: { verificationToken: verifyToken }
+    });
+
+    // Send verification email with CLIENT_URL (like in server.js)
+    const verifyLink = `${CLIENT_URL}/verify-email?token=${encodeURIComponent(verifyToken)}`;
+    await sendEmail(
+      newUser.email,
+      "Verify your QuantumCopyTrading account",
+      `<p>Hello ${name},</p>
+       <p>Please verify your email by clicking below:</p>
+       <p><a href="${verifyLink}" target="_blank">Verify Email</a></p>
+       <p>Link expires in 24h.</p>`
+    );
 
     info(`New user registered: ${newUser.email} (ID: ${newUser.id})`);
 
     res.status(201).json({
-      message: "User registered successfully. Please check your email to verify your account.",
-      user: { id: newUser.id, name: newUser.name, email: newUser.email },
+      message: "Signup successful! Check email to verify account.",
     });
   } catch (err) {
     logError("Error registering user", err);
@@ -66,23 +84,55 @@ router.post("/register", async (req, res) => {
 // ========================
 // ✅ Verify Email (redirect)
 // ========================
-router.get("/verify-email/:token", async (req, res) => {
-  const { token } = req.params;
+router.get("/verify-email", async (req, res) => {
+  const { token } = req.query;
+  console.log(`[DEBUG] Verifying email with token: ${token}`);
+  
   try {
-    const user = await prisma.user.findFirst({ where: { verificationToken: token } });
-    if (!user) {
-      return res.redirect(`${process.env.FRONTEND_URL}/verify-failed`);
+    if (!token) {
+      return res.status(400).send("Missing verification token");
     }
 
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+      console.log(`[DEBUG] Decoded token:`, decoded);
+    } catch (err) {
+      console.log(`[DEBUG] JWT verification failed:`, err.message);
+      return res.status(400).send("Invalid or expired verification link");
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+    if (!user) {
+      console.log(`[DEBUG] No user found with ID: ${decoded.userId}`);
+      return res.status(400).send("User not found");
+    }
+    
+    console.log(`[DEBUG] Found user: ${user.email}, ID: ${user.id}, isVerified: ${user.isVerified}`);
+
+    if (user.isVerified) {
+      console.log(`[DEBUG] User ${user.email} (ID: ${user.id}) is already verified.`);
+      return res.send("Email already verified. You can log in.");
+    }
+
+    // Update user to mark as verified and clear the token
     await prisma.user.update({
       where: { id: user.id },
-      data: { isVerified: true, verificationToken: null },
+      data: {
+        isVerified: true,
+        verificationToken: null
+      }
     });
 
-    res.redirect(`${process.env.FRONTEND_URL}/login?verified=success`);
+    console.log(`[DEBUG] Successfully verified user ${user.id} (${user.email})`);
+
+    // Redirect to login page with success message
+    res.redirect(`${CLIENT_URL}/login?verified=success`);
+
   } catch (err) {
+    console.error(`[ERROR] Error verifying email for token ${token}:`, err);
     logError("Error verifying email", err);
-    res.redirect(`${process.env.FRONTEND_URL}/verify-failed`);
+    return res.status(500).send("Server error verifying email");
   }
 });
 
@@ -99,7 +149,7 @@ router.post("/login", async (req, res) => {
     }
 
     if (!user.isVerified) {
-      return res.status(403).json({ message: "Please verify your email before logging in." });
+      return res.status(403).json({ message: "Email not verified" });
     }
 
     if (user.status === "paused") {
@@ -131,8 +181,13 @@ router.post("/login", async (req, res) => {
 
     res.json({
       message: "Login successful",
-      token,
-      user: { id: user.id, name: user.name, role: user.role, status: user.status },
+      user: { 
+        id: user.id, 
+        email: user.email, 
+        role: user.role, 
+        status: user.status, 
+        isVerified: user.isVerified 
+      },
     });
   } catch (err) {
     logError("Error logging in", err);
@@ -148,21 +203,28 @@ router.post("/forgot-password", async (req, res) => {
   try {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      return res.status(400).json({ message: "No account with that email" });
+      return res.status(400).json({ message: "Email not found" });
     }
 
     const resetToken = crypto.randomBytes(32).toString("hex");
-    const resetTokenExp = new Date(Date.now() + 1000 * 60 * 15); // 15 min
+    const resetExp = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
     await prisma.user.update({
-      where: { id: user.id },
-      data: { resetToken, resetTokenExp },
+      where: { email },
+      data: { resetToken, resetTokenExp: resetExp },
     });
 
-    const resetUrl = `${process.env.BACKEND_URL}/api/auth/reset-password/${resetToken}`;
-    await sendEmail(user.email, "Password Reset", `Reset your password: ${resetUrl}`);
+    const resetLink = `${CLIENT_URL}/my-dashboard/reset-password/${resetToken}`;
+    await sendEmail(
+      email,
+      "Reset your QuantumCopyTrading password",
+      `<p>Hello ${user.name || "User"},</p>
+       <p>Click below to reset your password:</p>
+       <a href="${resetLink}" target="_blank">Reset Password</a>
+       <p>Link expires in 15 min.</p>`
+    );
 
-    res.json({ message: "Password reset link sent to your email" });
+    res.json({ message: "Password reset email sent" });
   } catch (err) {
     logError("Error sending reset link", err);
     res.status(500).json({ message: "Error sending reset link", error: err.message });
@@ -170,40 +232,21 @@ router.post("/forgot-password", async (req, res) => {
 });
 
 // ========================
-// ✅ Validate Reset Token (redirect)
-// ========================
-router.get("/reset-password/:token", async (req, res) => {
-  const { token } = req.params;
-  try {
-    const user = await prisma.user.findFirst({
-      where: { resetToken: token, resetTokenExp: { gt: new Date() } },
-    });
-    if (!user) {
-      return res.redirect(`${process.env.FRONTEND_URL}/reset-failed`);
-    }
-
-    // Redirect to frontend reset form
-    res.redirect(`${process.env.FRONTEND_URL}/reset-password?token=${token}`);
-  } catch (err) {
-    logError("Error validating reset token", err);
-    res.redirect(`${process.env.FRONTEND_URL}/reset-failed`);
-  }
-});
-
-// ========================
 // ✅ Reset Password
 // ========================
-router.post("/reset-password", async (req, res) => {
-  const { token, newPassword } = req.body;
+router.post("/reset-password/:token", async (req, res) => {
+  const { token } = req.params;
+  const { password } = req.body;
+  
   try {
     const user = await prisma.user.findFirst({
       where: { resetToken: token, resetTokenExp: { gt: new Date() } },
     });
     if (!user) {
-      return res.status(400).json({ message: "Invalid or expired reset token" });
+      return res.status(400).json({ message: "Invalid or expired token" });
     }
 
-    const hashedPassword = await hashPassword(newPassword);
+    const hashedPassword = await encryptPassword(password);
 
     await prisma.user.update({
       where: { id: user.id },
@@ -211,11 +254,10 @@ router.post("/reset-password", async (req, res) => {
         password: hashedPassword,
         resetToken: null,
         resetTokenExp: null,
-        tokenVersion: { increment: 1 },
       },
     });
 
-    res.json({ message: "Password reset successful. Please log in." });
+    res.json({ message: "Password reset successful" });
   } catch (err) {
     logError("Error resetting password", err);
     res.status(500).json({ message: "Error resetting password", error: err.message });
@@ -233,6 +275,8 @@ router.post("/logout", (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
+      path: "/",
+      expires: new Date(0),
     });
     info("User logged out successfully");
   }
@@ -265,8 +309,11 @@ router.get("/check-auth", async (req, res) => {
       }
 
       res.json({
-        authenticated: true,
-        user: { id: user.id, name: user.name, role: user.role, status: user.status },
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        isVerified: user.isVerified,
       });
     });
   } catch (err) {

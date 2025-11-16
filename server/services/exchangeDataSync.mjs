@@ -56,12 +56,14 @@ export const fetchUserExchangeData = async (userId) => {
         const accountType = ex.type || "spot";
         console.log(`[DEBUG] Fetching ${accountType.toUpperCase()} data for ${user.email} on ${exchangeName}`);
 
+        // ✅ Pass userId to fetchExchangeData
         const exchangeResult = await fetchExchangeData(
           ex.provider,
           ex.apiKey,
           ex.apiSecret,
           ex.passphrase,
-          accountType
+          accountType,
+          numericUserId // ✅ Pass the userId here
         );
 
         const positions = exchangeResult.openPositions || [];

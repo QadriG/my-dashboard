@@ -155,7 +155,7 @@ export default function AdminPositions() {
                 ) : (
                   <tr>
                     <td colSpan="8" className="text-center py-4 text-gray-400">
-                      No open positions
+                      Loading positions...
                     </td>
                   </tr>
                 )}

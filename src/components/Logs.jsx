@@ -1,3 +1,5 @@
+// src/components/Logs.jsx
+
 import React, { useState, useEffect } from "react";
 import { useAdminAuth } from "../hooks/useAdminAuth";
 import "./AdminUsers.css";
@@ -45,7 +47,11 @@ export default function Logs() {
           const criticalLogs = data.logs.filter(
             log => log.level === "ERROR" || log.level === "WARN"
           );
-          setFilteredLogs(criticalLogs);
+          
+          // ✅ Take only the last 100 critical logs
+          const last100CriticalLogs = criticalLogs.slice(0, 100);
+          
+          setFilteredLogs(last100CriticalLogs);
         } else {
           throw new Error("Invalid response format: missing 'success' or 'logs' field");
         }
@@ -74,15 +80,27 @@ export default function Logs() {
 
   // Apply filters whenever filters change
   useEffect(() => {
-    const filtered = logs
-      .filter(log => log.level === "ERROR" || log.level === "WARN") // Critical logs only
-      .filter(log =>
-        (userFilter === "All" || log.userEmail === userFilter) &&
-        (tvIdFilter === "All TV IDS" || log.tvId === tvIdFilter) &&
-        (exchangeFilter === "All Exchanges" || log.exchange === exchangeFilter) &&
-        (dateFilter === "" || log.createdAt.includes(dateFilter))
-      );
-    setFilteredLogs(filtered);
+    let filtered = logs
+      .filter(log => log.level === "ERROR" || log.level === "WARN"); // Critical logs only
+
+    // Apply other filters only if not "All"
+    if (userFilter !== "All") {
+      filtered = filtered.filter(log => log.userEmail === userFilter);
+    }
+    if (tvIdFilter !== "All TV IDS") {
+      filtered = filtered.filter(log => log.tvId === tvIdFilter);
+    }
+    if (exchangeFilter !== "All Exchanges") {
+      filtered = filtered.filter(log => log.exchange === exchangeFilter);
+    }
+    if (dateFilter !== "") {
+      filtered = filtered.filter(log => log.createdAt.includes(dateFilter));
+    }
+
+    // ✅ Take only the last 100 logs after applying filters
+    const last100FilteredLogs = filtered.slice(0, 100);
+
+    setFilteredLogs(last100FilteredLogs);
   }, [userFilter, tvIdFilter, exchangeFilter, dateFilter, logs]);
 
   if (authLoading) {
