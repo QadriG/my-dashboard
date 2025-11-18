@@ -1,3 +1,4 @@
+// server.js
 import express from "express";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
@@ -80,18 +81,29 @@ const adminMiddleware = (req, res, next) => {
 
 app.use(bodyParser.json());
 app.use(cookieParser());
+
+// Configure CORS to handle preflight requests correctly
 app.use(
   cors({
     origin: (origin, callback) => {
       const allowedOrigins = process.env.CORS_WHITELIST
         ? process.env.CORS_WHITELIST.split(",")
         : ["http://localhost:3000", "http://localhost:5173"];
-      if (!origin || allowedOrigins.includes(origin)) callback(null, true);
-      else callback(new Error("Not allowed by CORS"));
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
     },
     credentials: true,
+    // Add these options to handle preflight requests
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    exposedHeaders: ['Content-Length', 'X-Knowledge-Base'],
+    maxAge: 86400, // 24 hours
   })
 );
+
 app.use(helmet());
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
 

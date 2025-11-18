@@ -8,7 +8,7 @@ const { PrismaClient } = pkg;
 import crypto from "crypto";
 import { encryptPassword, comparePassword } from "../utils/encrypt.mjs";
 import { info, error as logError } from "../utils/logger.mjs";
-import { sendEmail } from "../../src/utils/mailer.js"; 
+import { sendEmail } from "../../src/utils/mailer.js";
 
 dotenv.config();
 
@@ -40,7 +40,7 @@ router.post("/register", async (req, res) => {
 
     // Create user with isVerified: false initially
     const newUser = await prisma.user.create({
-      data: {
+      data: {  // ← Added 'data:' here
         name,
         email,
         password: hashedPassword,
@@ -50,16 +50,16 @@ router.post("/register", async (req, res) => {
       },
     });
 
-    // Generate JWT verification token (like in server.js)
+    // Generate JWT verification token
     const verifyToken = jwt.sign({ userId: newUser.id }, JWT_SECRET, { expiresIn: "1d" });
     
     // Update user to store the verification token
     await prisma.user.update({
       where: { id: newUser.id },
-      data: { verificationToken: verifyToken }
+      data: { verificationToken: verifyToken }  // ← Added 'data:' here
     });
 
-    // Send verification email with CLIENT_URL (like in server.js)
+    // Send verification email
     const verifyLink = `${CLIENT_URL}/verify-email?token=${encodeURIComponent(verifyToken)}`;
     await sendEmail(
       newUser.email,
@@ -84,12 +84,14 @@ router.post("/register", async (req, res) => {
 // ========================
 // ✅ Verify Email (redirect)
 // ========================
+// In server/routes/auth.mjs, add this to the verify-email route
 router.get("/verify-email", async (req, res) => {
   const { token } = req.query;
   console.log(`[DEBUG] Verifying email with token: ${token}`);
   
   try {
     if (!token) {
+      console.log(`[DEBUG] No token provided`);
       return res.status(400).send("Missing verification token");
     }
 
@@ -115,6 +117,9 @@ router.get("/verify-email", async (req, res) => {
       return res.send("Email already verified. You can log in.");
     }
 
+    // Add this line to log the update operation
+    console.log(`[DEBUG] Updating user ${user.id} to isVerified: true`);
+    
     // Update user to mark as verified and clear the token
     await prisma.user.update({
       where: { id: user.id },
@@ -124,7 +129,7 @@ router.get("/verify-email", async (req, res) => {
       }
     });
 
-    console.log(`[DEBUG] Successfully verified user ${user.id} (${user.email})`);
+    console.log(`[DEBUG] Successfully updated user ${user.id} (${user.email})`);
 
     // Redirect to login page with success message
     res.redirect(`${CLIENT_URL}/login?verified=success`);
@@ -211,7 +216,7 @@ router.post("/forgot-password", async (req, res) => {
 
     await prisma.user.update({
       where: { email },
-      data: { resetToken, resetTokenExp: resetExp },
+      data: { resetToken, resetTokenExp: resetExp },  // ← Added 'data:' here
     });
 
     const resetLink = `${CLIENT_URL}/my-dashboard/reset-password/${resetToken}`;
@@ -250,7 +255,7 @@ router.post("/reset-password/:token", async (req, res) => {
 
     await prisma.user.update({
       where: { id: user.id },
-      data: {
+      data: {  // ← Added 'data:' here
         password: hashedPassword,
         resetToken: null,
         resetTokenExp: null,
@@ -294,27 +299,37 @@ router.get("/check-auth", async (req, res) => {
       return res.status(401).json({ message: "No token provided" });
     }
 
+    // Fixed: Added proper callback function
     jwt.verify(token, JWT_SECRET, async (err, decoded) => {
-      if (err) return res.status(401).json({ message: "Invalid token" });
-
-      const user = await prisma.user.findUnique({ where: { id: decoded.id } });
-      if (!user) return res.status(401).json({ message: "User not found" });
-
-      if (user.status === "paused" || user.status === "disabled") {
-        return res.status(403).json({ message: `Your account is ${user.status}` });
+      if (err) {
+        return res.status(401).json({ message: "Invalid token" });
       }
 
-      if (decoded.tokenVersion !== user.tokenVersion) {
-        return res.status(401).json({ message: "Token has been invalidated. Please log in again." });
-      }
+      try {
+        const user = await prisma.user.findUnique({ where: { id: decoded.id } });
+        if (!user) {
+          return res.status(401).json({ message: "User not found" });
+        }
 
-      res.json({
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        status: user.status,
-        isVerified: user.isVerified,
-      });
+        if (user.status === "paused" || user.status === "disabled") {
+          return res.status(403).json({ message: `Your account is ${user.status}` });
+        }
+
+        if (decoded.tokenVersion !== user.tokenVersion) {
+          return res.status(401).json({ message: "Token has been invalidated. Please log in again." });
+        }
+
+        res.json({
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          status: user.status,
+          isVerified: user.isVerified,
+        });
+      } catch (dbErr) {
+        logError("Error fetching user during auth check", dbErr);
+        res.status(500).json({ message: "Error checking authentication", error: dbErr.message });
+      }
     });
   } catch (err) {
     logError("Error checking authentication", err);

@@ -18,6 +18,7 @@ export default function Login() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [loading, setLoading] = useState(false);
   const canvasRef = useRef(null);
   const mouseRef = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
 
@@ -41,13 +42,67 @@ export default function Login() {
     };
   }, []);
 
+  // Add a separate effect to handle the initial verification
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get("verified") === "success") {
+      console.log("[DEBUG] Login.jsx: Found 'verified=success' in URL");
       setSuccess("✅ Your email is verified! Please log in.");
       setCurrentForm("login");
+      return;
     }
-  }, [location]);
+
+    const token = params.get("token");
+    console.log(`[DEBUG] Login.jsx: Checking for token in URL. Token found: ${!!token}`);
+    if (token) {
+      console.log(`[DEBUG] Login.jsx: Token value: ${token.substring(0, 20)}...`); // Log first 20 chars
+      // Immediately initiate verification
+      handleEmailVerification(token);
+    } else {
+      console.log("[DEBUG] Login.jsx: No token found in URL.");
+    }
+  }, [location]); // Only depend on location for this effect
+
+  const handleEmailVerification = async (token) => {
+    console.log(`[DEBUG] Login.jsx: handleEmailVerification called with token: ${token.substring(0, 20)}...`);
+    setLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      console.log(`[DEBUG] Login.jsx: About to fetch ${API_BASE}/verify-email?token=${encodeURIComponent(token)}`);
+      const res = await fetch(`${API_BASE}/verify-email?token=${encodeURIComponent(token)}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        // credentials: "include", // We don't need session cookies for verification
+      });
+
+      console.log(`[DEBUG] Login.jsx: Fetch response received. Status: ${res.status}, Redirected: ${res.redirected}`);
+
+      // If the backend redirects (which it should on success), the browser will follow it.
+      // The useEffect checking for 'verified=success' should then trigger.
+      if (res.redirected) {
+        console.log("[DEBUG] Login.jsx: Backend redirected. Browser should follow.");
+        // Optionally, we could manually navigate if needed, but redirect is preferred
+        // navigate(res.url); // This might interfere with the automatic redirect
+        return; // Let the browser handle the redirect and reload
+      }
+
+      // If the response is not a redirect, it means it's an error response (HTML page or JSON error)
+      const responseText = await res.text(); // Read the response body
+      console.error(`[ERROR] Login.jsx: Verification failed with status ${res.status}. Response:`, responseText);
+      setError(`Verification failed with status ${res.status}. Check console for details.`);
+
+    } catch (err) {
+      console.error("[ERROR] Login.jsx: Network error during verification:", err);
+      setError("Network error during verification. Please check the console.");
+    } finally {
+      console.log("[DEBUG] Login.jsx: handleEmailVerification finally block executed. Setting loading to false.");
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -146,7 +201,6 @@ export default function Login() {
     setError("");
     if (password !== confirmPassword) return setError("Passwords do not match");
     try {
-      // Changed from /signup to /register to match your backend route
       const res = await fetch(`${API_BASE}/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -231,6 +285,7 @@ export default function Login() {
               </p>
             )}
             {success && <p className="text-green-500 mt-2">{success}</p>}
+            {loading && <p className="text-blue-500 mt-2">Verifying your email...</p>}
             <div className="mt-4 text-sm">
               <button type="button" onClick={() => switchForm("forgot")} className="text-white hover:underline">Forgot Password?</button>
             </div>
