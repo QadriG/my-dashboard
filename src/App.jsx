@@ -89,7 +89,11 @@ function App() {
             {/* Public routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/reset-password/:token" element={<ResetPassword />} />
-            <Route path="/verify-email/:token" element={<Navigate to="/login" replace />} />
+            {/* ✅ CHANGE THIS: Load Login component directly to handle verification */}
+            <Route path="/verify-email" element={<Login />} />
+            {/* If you want to use a path parameter instead of query: */}
+            {/* <Route path="/verify-email/:token" element={<Login />} /> */}
+            {/* In this case, Login.jsx needs to read token from match.params.token instead of location.search.token */}
 
             {/* Admin routes */}
             <Route

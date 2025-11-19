@@ -82,7 +82,7 @@ const adminMiddleware = (req, res, next) => {
 app.use(bodyParser.json());
 app.use(cookieParser());
 
-// Configure CORS to handle preflight requests correctly
+// Configure CORS to handle preflight requests correctly for all routes
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -98,7 +98,7 @@ app.use(
     credentials: true,
     // Add these options to handle preflight requests
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cache-Control'],
     exposedHeaders: ['Content-Length', 'X-Knowledge-Base'],
     maxAge: 86400, // 24 hours
   })

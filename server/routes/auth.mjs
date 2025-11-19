@@ -82,9 +82,8 @@ router.post("/register", async (req, res) => {
 });
 
 // ========================
-// ✅ Verify Email (redirect)
+// ✅ Verify Email (redirect) with welcome email
 // ========================
-// In server/routes/auth.mjs, add this to the verify-email route
 router.get("/verify-email", async (req, res) => {
   const { token } = req.query;
   console.log(`[DEBUG] Verifying email with token: ${token}`);
@@ -117,11 +116,8 @@ router.get("/verify-email", async (req, res) => {
       return res.send("Email already verified. You can log in.");
     }
 
-    // Add this line to log the update operation
-    console.log(`[DEBUG] Updating user ${user.id} to isVerified: true`);
-    
     // Update user to mark as verified and clear the token
-    await prisma.user.update({
+    const updatedUser = await prisma.user.update({
       where: { id: user.id },
       data: {
         isVerified: true,
@@ -130,6 +126,24 @@ router.get("/verify-email", async (req, res) => {
     });
 
     console.log(`[DEBUG] Successfully updated user ${user.id} (${user.email})`);
+
+    // Send welcome email after successful verification
+    try {
+      await sendEmail(
+        updatedUser.email,
+        "Welcome to QuantumCopyTrading!",
+        `<p>Hello ${updatedUser.name || "User"},</p>
+         <p>Congratulations! Your email has been verified successfully.</p>
+         <p>Welcome to QuantumCopyTrading. We're excited to have you on board!</p>
+         <p>You can now log in to your account and start trading.</p>
+         <p>Best regards,<br/>The QuantumCopyTrading Team</p>`
+      );
+      console.log(`[DEBUG] Welcome email sent to ${updatedUser.email}`);
+    } catch (emailErr) {
+      console.error(`[ERROR] Failed to send welcome email to ${updatedUser.email}:`, emailErr);
+      // Don't fail the verification if email sending fails - just log the error
+      logError(`Failed to send welcome email to ${updatedUser.email}`, emailErr);
+    }
 
     // Redirect to login page with success message
     res.redirect(`${CLIENT_URL}/login?verified=success`);

@@ -42,67 +42,46 @@ export default function Login() {
     };
   }, []);
 
-  // Add a separate effect to handle the initial verification
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    if (params.get("verified") === "success") {
-      console.log("[DEBUG] Login.jsx: Found 'verified=success' in URL");
-      setSuccess("✅ Your email is verified! Please log in.");
-      setCurrentForm("login");
-      return;
-    }
+ // Update this useEffect in your Login.jsx
+useEffect(() => {
+  const params = new URLSearchParams(location.search);
+  if (params.get("verified") === "success") {
+    console.log("[DEBUG] Login.jsx: Found 'verified=success' in URL");
+    setSuccess("✅ Your email is verified! You can now log in.");
+    setCurrentForm("login");
+    // Clear the URL parameters to avoid showing the message again on refresh
+    window.history.replaceState({}, document.title, "/login");
+    return;
+  }
 
-    const token = params.get("token");
-    console.log(`[DEBUG] Login.jsx: Checking for token in URL. Token found: ${!!token}`);
-    if (token) {
-      console.log(`[DEBUG] Login.jsx: Token value: ${token.substring(0, 20)}...`); // Log first 20 chars
-      // Immediately initiate verification
-      handleEmailVerification(token);
-    } else {
-      console.log("[DEBUG] Login.jsx: No token found in URL.");
-    }
-  }, [location]); // Only depend on location for this effect
+  const token = params.get("token");
+  console.log(`[DEBUG] Login.jsx: Checking for token in URL. Token found: ${!!token}`);
+  if (token) {
+    console.log(`[DEBUG] Login.jsx: Token value: ${token.substring(0, 20)}...`); // Log first 20 chars
+    // Immediately initiate verification - this will redirect the browser
+    handleEmailVerification(token);
+  } else {
+    console.log("[DEBUG] Login.jsx: No token found in URL.");
+  }
+}, [location]);
 
   const handleEmailVerification = async (token) => {
-    console.log(`[DEBUG] Login.jsx: handleEmailVerification called with token: ${token.substring(0, 20)}...`);
-    setLoading(true);
-    setError("");
-    setSuccess("");
+  console.log(`[DEBUG] Login.jsx: handleEmailVerification called with token: ${token.substring(0, 20)}...`);
+  setLoading(true);
+  setError("");
+  setSuccess("");
 
-    try {
-      console.log(`[DEBUG] Login.jsx: About to fetch ${API_BASE}/verify-email?token=${encodeURIComponent(token)}`);
-      const res = await fetch(`${API_BASE}/verify-email?token=${encodeURIComponent(token)}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        // credentials: "include", // We don't need session cookies for verification
-      });
-
-      console.log(`[DEBUG] Login.jsx: Fetch response received. Status: ${res.status}, Redirected: ${res.redirected}`);
-
-      // If the backend redirects (which it should on success), the browser will follow it.
-      // The useEffect checking for 'verified=success' should then trigger.
-      if (res.redirected) {
-        console.log("[DEBUG] Login.jsx: Backend redirected. Browser should follow.");
-        // Optionally, we could manually navigate if needed, but redirect is preferred
-        // navigate(res.url); // This might interfere with the automatic redirect
-        return; // Let the browser handle the redirect and reload
-      }
-
-      // If the response is not a redirect, it means it's an error response (HTML page or JSON error)
-      const responseText = await res.text(); // Read the response body
-      console.error(`[ERROR] Login.jsx: Verification failed with status ${res.status}. Response:`, responseText);
-      setError(`Verification failed with status ${res.status}. Check console for details.`);
-
-    } catch (err) {
-      console.error("[ERROR] Login.jsx: Network error during verification:", err);
-      setError("Network error during verification. Please check the console.");
-    } finally {
-      console.log("[DEBUG] Login.jsx: handleEmailVerification finally block executed. Setting loading to false.");
-      setLoading(false);
-    }
-  };
+  try {
+    // Instead of fetch, redirect the browser directly to the verification endpoint
+    // This allows the server-side redirect to work properly
+    window.location.href = `${API_BASE}/verify-email?token=${encodeURIComponent(token)}`;
+  } catch (err) {
+    console.error("[ERROR] Login.jsx: Error during verification redirect:", err);
+    setError("Error during verification. Please try again.");
+    setLoading(false);
+  }
+  // Don't need finally block since we're redirecting
+};
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -326,7 +305,7 @@ export default function Login() {
                 placeholder="Confirm Password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg bg-black bg-opacity-20 border border-white border-opacity-30 text-white placeholder-gray-400 focus:outline-none focus:2 focus:ring-blue-500"
+                className="w-full px-4 py-3 rounded-lg bg-black bg-opacity-20 border border-white border-opacity-30 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
               <button type="submit" className="neon-button w-full py-3 text-white font-semibold rounded-lg mt-2">Sign Up</button>
