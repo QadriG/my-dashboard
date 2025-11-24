@@ -118,12 +118,12 @@ router.get("/verify-email", async (req, res) => {
 
     // Update user to mark as verified and clear the token
     const updatedUser = await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        isVerified: true,
-        verificationToken: null
-      }
-    });
+  where: { id: user.id },
+  data: {
+    isVerified: true,
+    verificationToken: null
+  }
+});
 
     console.log(`[DEBUG] Successfully updated user ${user.id} (${user.email})`);
 
@@ -148,7 +148,8 @@ router.get("/verify-email", async (req, res) => {
     // Redirect to login page with success message
     res.redirect(`${CLIENT_URL}/login?verified=success`);
 
-  } catch (err) {
+  }
+   catch (err) {
     console.error(`[ERROR] Error verifying email for token ${token}:`, err);
     logError("Error verifying email", err);
     return res.status(500).send("Server error verifying email");

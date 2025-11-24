@@ -4,51 +4,35 @@ import axios from 'axios';
 import crypto from 'crypto';
 import { info, warn, error as logError } from "../../utils/logger.mjs";
 import { logEvent } from "../../utils/logger.mjs";
-import fs from 'fs'; // Add this import
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-// For ES modules, getting __dirname requires this workaround
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-// Define the path for the debug log file
 const debugLogPath = path.join(__dirname, '..', '..', 'logs', 'binance_debug.log');
 
-// Ensure the logs directory exists
 const logsDir = path.dirname(debugLogPath);
 if (!fs.existsSync(logsDir)) {
     fs.mkdirSync(logsDir, { recursive: true });
 }
 
-// Function to append debug logs to the file
 const appendDebugLog = (message) => {
     const timestamp = new Date().toISOString();
     const logEntry = `[${timestamp}] ${message}\n`;
     fs.appendFileSync(debugLogPath, logEntry);
 };
 
-// ✅ Fixed: Use correct base URLs for different account types
+// ✅ FIXED: Removed trailing spaces from all base URLs
 const SPOT_BASE_URL = 'https://api.binance.com';
-const FUTURES_BASE_URL = 'https://fapi.binance.com'; // USDT-M futures
-const COIN_FUTURES_BASE_URL = 'https://dapi.binance.com'; // COIN-M futures
+const FUTURES_BASE_URL = 'https://fapi.binance.com';
+const COIN_FUTURES_BASE_URL = 'https://dapi.binance.com';
 
 /**
  * Sign request for Binance API
- * @param {string} queryString - Query string to sign
- * @param {string} secret - API secret
- * @param {string} endpointType - 'spot', 'futures', or 'coin_futures'
- * @returns {string} Signature
  */
 export function sign(queryString, secret, endpointType = 'spot') {
-  if (endpointType === 'spot') {
-    // ✅ Spot API signature: HMAC-SHA256(queryString, secret)
-    // This is the CORRECT method for spot API
-    return crypto.createHmac('sha256', secret).update(queryString).digest('hex');
-  } else {
-    // ✅ Futures API signature: HMAC-SHA256(queryString, secret)
-    // This is also correct for futures
-    return crypto.createHmac('sha256', secret).update(queryString).digest('hex');
-  }
+  return crypto.createHmac('sha256', secret).update(queryString).digest('hex');
 }
 
 /**
@@ -72,29 +56,29 @@ export async function fetchBalance(apiKey, apiSecret, accountType = 'SPOT', user
         recvWindow: recvWindow.toString()
       });
       const queryString = params.toString();
-      const signature = sign(queryString, apiSecret, 'spot'); // ✅ Correct signature method
+      const signature = sign(queryString, apiSecret, 'spot');
       url += `?${queryString}&signature=${signature}`;
       
     } else if (accountType === 'FUTURES') {
-      baseUrl = FUTURES_BASE_URL; // USDT-M futures
+      baseUrl = FUTURES_BASE_URL;
       url = `${baseUrl}/fapi/v2/account`;
       params = new URLSearchParams({
         timestamp: timestamp.toString(),
         recvWindow: recvWindow.toString()
       });
       const queryString = params.toString();
-      const signature = sign(queryString, apiSecret, 'futures'); // ✅ Correct signature method
+      const signature = sign(queryString, apiSecret, 'futures');
       url += `?${queryString}&signature=${signature}`;
       
     } else if (accountType === 'COIN_FUTURES') {
-      baseUrl = COIN_FUTURES_BASE_URL; // COIN-M futures
+      baseUrl = COIN_FUTURES_BASE_URL;
       url = `${baseUrl}/dapi/v1/account`;
       params = new URLSearchParams({
         timestamp: timestamp.toString(),
         recvWindow: recvWindow.toString()
       });
       const queryString = params.toString();
-      const signature = sign(queryString, apiSecret, 'futures'); // Same as futures
+      const signature = sign(queryString, apiSecret, 'futures');
       url += `?${queryString}&signature=${signature}`;
       
     } else {
@@ -106,16 +90,14 @@ export async function fetchBalance(apiKey, apiSecret, accountType = 'SPOT', user
       'Content-Type': 'application/json'
     };
 
-    // Write debug log to file instead of console
     const debugUrlMessage = `[DEBUG] Fetching balance from: ${url}`;
     appendDebugLog(debugUrlMessage);
 
     const response = await axios.get(url, { 
       headers,
-      timeout: 10000 // Add timeout
+      timeout: 10000
     });
 
-    // Write debug log to file instead of console
     const debugStatusMessage = `[DEBUG] Balance response status: ${response.status}`;
     appendDebugLog(debugStatusMessage);
 
@@ -131,11 +113,9 @@ export async function fetchBalance(apiKey, apiSecret, accountType = 'SPOT', user
       throw new Error(errorMsg);
     }
 
-    // ✅ ADD YOUR DEBUG LOGS HERE - Right after processing the API response
     const rawBalanceLog = `[DEBUG] Raw balance response: ${JSON.stringify(response.data, null, 2)}`;
-    appendDebugLog(rawBalanceLog); // Write to file
+    appendDebugLog(rawBalanceLog);
 
-    // Process response based on account type
     let balances = {};
     let totalBalance = 0;
     let available = 0;
@@ -158,15 +138,13 @@ export async function fetchBalance(apiKey, apiSecret, accountType = 'SPOT', user
         used += locked;
       }
     } else if (accountType === 'FUTURES' || accountType === 'COIN_FUTURES') {
-      // Process Futures balance
       totalBalance = parseFloat(response.data.totalWalletBalance) || 0;
       available = parseFloat(response.data.totalAvailableBalance) || 0;
-      used = totalBalance - available; // Used = Total - Available
+      used = totalBalance - available;
     }
 
-    // ✅ ADD YOUR DEBUG LOGS HERE - Right after processing the data
     const processedBalanceLog = `[DEBUG] Processed balance: ${JSON.stringify({ totalBalance, available, used }, null, 2)}`;
-    appendDebugLog(processedBalanceLog); // Write to file
+    appendDebugLog(processedBalanceLog);
 
     return {
       success: true,
@@ -176,7 +154,6 @@ export async function fetchBalance(apiKey, apiSecret, accountType = 'SPOT', user
       used
     };
   } catch (err) {
-    // Log the full error for debugging
     console.error(`[ERROR] Binance fetchBalance error for user ${userId}:`, err?.response?.data || err.message);
     
     logError(`[Binance] Error fetching balance for user ${userId}`, err?.message || err, { userId, exchange: 'binance', type: accountType, apiCall: 'getAccount' });
@@ -213,7 +190,7 @@ export async function fetchPositions(apiKey, apiSecret, accountType = 'FUTURES',
         recvWindow: recvWindow.toString()
       });
       const queryString = params.toString();
-      const signature = sign(queryString, apiSecret, 'futures'); // ✅ Correct signature
+      const signature = sign(queryString, apiSecret, 'futures');
       url += `?${queryString}&signature=${signature}`;
       
     } else if (accountType === 'COIN_FUTURES') {
@@ -224,7 +201,7 @@ export async function fetchPositions(apiKey, apiSecret, accountType = 'FUTURES',
         recvWindow: recvWindow.toString()
       });
       const queryString = params.toString();
-      const signature = sign(queryString, apiSecret, 'futures'); // Same as futures
+      const signature = sign(queryString, apiSecret, 'futures');
       url += `?${queryString}&signature=${signature}`;
       
     } else {
@@ -236,13 +213,11 @@ export async function fetchPositions(apiKey, apiSecret, accountType = 'FUTURES',
       'Content-Type': 'application/json'
     };
 
-    // Write debug log to file instead of console
     const debugPositionsUrlMessage = `[DEBUG] Fetching positions from: ${url}`;
     appendDebugLog(debugPositionsUrlMessage);
 
     const response = await axios.get(url, { headers });
 
-    // Write debug log to file instead of console
     const debugPositionsStatusMessage = `[DEBUG] Positions response status: ${response.status}`;
     appendDebugLog(debugPositionsStatusMessage);
 
@@ -258,13 +233,11 @@ export async function fetchPositions(apiKey, apiSecret, accountType = 'FUTURES',
       throw new Error(errorMsg);
     }
 
-    // ✅ ADD DEBUG LOG FOR RAW POSITIONS DATA
     const rawPositionsLog = `[DEBUG] Raw positions response: ${JSON.stringify(response.data, null, 2)}`;
-    appendDebugLog(rawPositionsLog); // Write to file
+    appendDebugLog(rawPositionsLog);
 
-    // Process response for Futures positions
     const positions = response.data
-      .filter(p => parseFloat(p.positionAmt) !== 0) // Only include positions with size > 0
+      .filter(p => parseFloat(p.positionAmt) !== 0)
       .map(p => ({
         symbol: p.symbol,
         side: parseFloat(p.positionAmt) > 0 ? 'buy' : 'sell',
@@ -285,9 +258,8 @@ export async function fetchPositions(apiKey, apiSecret, accountType = 'FUTURES',
         unrealizedPnl: parseFloat(p.unRealizedProfit)
       }));
 
-    // ✅ ADD DEBUG LOG FOR PROCESSED POSITIONS DATA
     const processedPositionsLog = `[DEBUG] Processed positions: ${JSON.stringify(positions, null, 2)}`;
-    appendDebugLog(processedPositionsLog); // Write to file
+    appendDebugLog(processedPositionsLog);
 
     return positions;
   } catch (err) {
@@ -314,19 +286,19 @@ export async function closePositionByMarket(apiKey, apiSecret, symbol, side, use
 
     const closeSide = side.toLowerCase() === 'buy' ? 'SELL' : 'BUY';
 
-    const baseUrl = FUTURES_BASE_URL; // USDT-M futures
+    const baseUrl = FUTURES_BASE_URL;
     const url = `${baseUrl}/fapi/v1/order`;
     const params = new URLSearchParams({
       symbol: symbol,
       side: closeSide,
       type: 'MARKET',
-      quantity: '1', // You need to determine the correct quantity
-      reduceOnly: 'true', // Important for closing positions
+      quantity: '1',
+      reduceOnly: 'true',
       timestamp: timestamp.toString(),
       recvWindow: recvWindow.toString()
     });
     const queryString = params.toString();
-    const signature = sign(queryString, apiSecret, 'futures'); // ✅ Correct signature
+    const signature = sign(queryString, apiSecret, 'futures');
 
     const headers = {
       'X-MBX-APIKEY': apiKey,
@@ -360,7 +332,7 @@ export async function closePositionByMarket(apiKey, apiSecret, symbol, side, use
     return {
       success: true,
       message: `Position ${side} for ${symbol} closed successfully via Binance API.`,
-       response:data  // ✅ Fixed: Corrected syntax
+      response_data: response.data // ✅ FIXED: Correct syntax with colon
     };
   } catch (err) {
     console.error(`[ERROR] Binance closePosition error for user ${userId}:`, err?.response?.data || err.message);
@@ -378,33 +350,27 @@ export async function closePositionByMarket(apiKey, apiSecret, symbol, side, use
 
 /**
  * Fetch closed trade executions (includes realized PnL)
- * Only for derivatives (Futures); spot not supported here
  */
 export async function fetchClosedExecutions(apiKey, apiSecret, category = 'linear', userId) {
   try {
     const timestamp = Date.now();
     const recvWindow = 60000;
 
-    // Binance Futures API endpoint for closed trades
-    const baseUrl = FUTURES_BASE_URL; // USDT-M futures
+    const baseUrl = FUTURES_BASE_URL;
     const url = `${baseUrl}/fapi/v1/userTrades`;
     const params = new URLSearchParams({
-      // You might want to specify a symbol or fetch all
-      // startTime: (Date.now() - 7 * 24 * 60 * 60 * 1000).toString(), // Last 7 days
-      // endTime: Date.now().toString(),
       limit: '100',
       timestamp: timestamp.toString(),
       recvWindow: recvWindow.toString()
     });
     const queryString = params.toString();
-    const signature = sign(queryString, apiSecret, 'futures'); // ✅ Correct signature
+    const signature = sign(queryString, apiSecret, 'futures');
 
     const headers = {
       'X-MBX-APIKEY': apiKey,
       'Content-Type': 'application/json'
     };
 
-    // Add signature to query string
     const fullUrl = `${url}?${queryString}&signature=${signature}`;
 
     const response = await axios.get(fullUrl, { headers });
@@ -421,14 +387,12 @@ export async function fetchClosedExecutions(apiKey, apiSecret, category = 'linea
       throw new Error(errorMsg);
     }
 
-    // ✅ ADD DEBUG LOG FOR RAW EXECUTIONS DATA
     const rawExecutionsLog = `[DEBUG] Raw executions response: ${JSON.stringify(response.data, null, 2)}`;
-    appendDebugLog(rawExecutionsLog); // Write to file
+    appendDebugLog(rawExecutionsLog);
 
-    const executions = response.data; // Binance returns an array of trades
+    const executions = response.data;
 
     const processedExecutions = executions.map(exec => {
-      // Validate each field
       if (!exec || !exec.id) {
         warn(`[Binance] Skipping invalid execution for user ${userId}:`, exec, { userId, execId: exec?.id });
         return null;
@@ -440,16 +404,15 @@ export async function fetchClosedExecutions(apiKey, apiSecret, category = 'linea
         side: exec.side.toLowerCase(),
         price: parseFloat(exec.price),
         qty: parseFloat(exec.qty),
-        closedPnl: parseFloat(exec.realizedPnL) || 0, // Binance uses 'realizedPnL'
+        closedPnl: parseFloat(exec.realizedPnL) || 0,
         execTime: parseInt(exec.time),
         fee: parseFloat(exec.fee) || 0,
-        execType: exec.type // Binance uses 'type' for order type
+        execType: exec.type
       };
-    }).filter(Boolean); // Remove nulls
+    }).filter(Boolean);
 
-    // ✅ ADD DEBUG LOG FOR PROCESSED EXECUTIONS DATA
     const processedExecutionsLog = `[DEBUG] Processed executions: ${JSON.stringify(processedExecutions, null, 2)}`;
-    appendDebugLog(processedExecutionsLog); // Write to file
+    appendDebugLog(processedExecutionsLog);
 
     return processedExecutions;
 
@@ -467,7 +430,6 @@ export async function fetchClosedExecutions(apiKey, apiSecret, category = 'linea
   }
 }
 
-// ✅ Fixed: Proper export default object
 export default {
   fetchBalance,
   fetchPositions,

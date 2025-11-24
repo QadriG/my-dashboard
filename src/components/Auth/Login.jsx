@@ -42,7 +42,7 @@ export default function Login() {
     };
   }, []);
 
- // Update this useEffect in your Login.jsx
+// Update this useEffect in your Login.jsx
 useEffect(() => {
   const params = new URLSearchParams(location.search);
   if (params.get("verified") === "success") {
@@ -65,7 +65,8 @@ useEffect(() => {
   }
 }, [location]);
 
-  const handleEmailVerification = async (token) => {
+ // Replace the handleEmailVerification function in your Login.jsx
+const handleEmailVerification = async (token) => {
   console.log(`[DEBUG] Login.jsx: handleEmailVerification called with token: ${token.substring(0, 20)}...`);
   setLoading(true);
   setError("");
