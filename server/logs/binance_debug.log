@@ -88189,3 +88189,9 @@
 [2025-11-24T17:05:01.136Z] [DEBUG] Fetching balance from: https://api.binance.com/api/v3/account?timestamp=1764003901136&recvWindow=60000&signature=4554694e99ce403f7d890dbcc70a900daac300af0eb2aa1f1ff6c5596b469010
 [2025-11-24T17:05:03.420Z] [DEBUG] Fetching balance from: https://api.binance.com/api/v3/account?timestamp=1764003903420&recvWindow=60000&signature=2f8eaf5a415fa8ee34570a2fd8960550c656a7d915576bb7f21a0867424b34a7
 [2025-11-24T17:05:06.449Z] [DEBUG] Fetching balance from: https://api.binance.com/api/v3/account?timestamp=1764003906449&recvWindow=60000&signature=71610d9acf53b158f8c7ea704a7bcb435c86d482ff75e7e15c22e82eb4741a55
+[2025-11-25T11:07:49.344Z] [DEBUG] Fetching balance from: https://fapi.binance.com/fapi/v2/account?timestamp=1764068869344&recvWindow=60000&signature=ad501bd709c60db0c21dd15f19410c47f38d5041fbf65a1e578f564f79f9c8bd
+[2025-11-25T11:07:50.441Z] [DEBUG] Fetching balance from: https://api.binance.com/api/v3/account?timestamp=1764068870441&recvWindow=60000&signature=82703b310737e7afc12fa76445f571abcb946a15b826a53d66538ad5b51564ee
+[2025-11-25T11:08:07.220Z] [DEBUG] Fetching balance from: https://fapi.binance.com/fapi/v2/account?timestamp=1764068887220&recvWindow=60000&signature=08dea53b15bbb7e815f31a3bb47ddc6f27ccee65fdf8717a0149de3f198d03dd
+[2025-11-25T11:08:07.844Z] [DEBUG] Fetching balance from: https://api.binance.com/api/v3/account?timestamp=1764068887843&recvWindow=60000&signature=9bf9b023b4597bcd6339c51b3a395bb98fc0d137308046329ab7801b11540f5c
+[2025-11-25T11:08:08.845Z] [DEBUG] Fetching balance from: https://fapi.binance.com/fapi/v2/account?timestamp=1764068888845&recvWindow=60000&signature=58ce51e2b7565d02ff513df16050f278eb9eb8f12bd9495ec29eae4f5a956c33
+[2025-11-25T11:08:09.369Z] [DEBUG] Fetching balance from: https://api.binance.com/api/v3/account?timestamp=1764068889368&recvWindow=60000&signature=8d8bc426723d89a7aa9cc52f74c462a098305362dc7ace1cda97154c58959fcd
