@@ -332,7 +332,7 @@ export async function closePositionByMarket(apiKey, apiSecret, symbol, side, use
     return {
       success: true,
       message: `Position ${side} for ${symbol} closed successfully via Binance API.`,
-      response_data: response.data // ✅ FIXED: Correct syntax with colon
+      response_data: response.data // ✅ CORRECTED: Added colon and property name
     };
   } catch (err) {
     console.error(`[ERROR] Binance closePosition error for user ${userId}:`, err?.response?.data || err.message);
